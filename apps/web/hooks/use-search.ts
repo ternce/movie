@@ -5,7 +5,31 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { api, endpoints } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-client';
 import type { PaginatedList } from '@/types';
-import type { SeriesContent } from '@/components/content';
+import type { AgeCategory } from '@/components/content';
+
+/**
+ * Unified search result item returned by the content list API
+ */
+export interface SearchResultItem {
+  id: string;
+  slug: string;
+  title: string;
+  thumbnailUrl: string;
+  ageCategory: AgeCategory;
+  contentType: 'SERIES' | 'CLIP' | 'SHORT' | 'TUTORIAL';
+  // Series-specific
+  seasonCount?: number;
+  episodeCount?: number;
+  rating?: number;
+  year?: number;
+  // Clip/Short-specific
+  duration?: number;
+  viewCount?: number;
+  // Tutorial-specific
+  lessonCount?: number;
+  completedLessons?: number;
+  category?: string;
+}
 
 interface SearchSuggestion {
   id: string;
@@ -51,7 +75,7 @@ export function useSearchResults(params: SearchResultsParams) {
   return useQuery({
     queryKey: queryKeys.content.list({ search: query, type, category, age, year, sortBy, page, limit }),
     queryFn: async () => {
-      const response = await api.get<PaginatedList<SeriesContent>>(endpoints.content.list, {
+      const response = await api.get<PaginatedList<SearchResultItem>>(endpoints.content.list, {
         params: {
           search: query,
           contentType: type !== 'all' ? type : undefined,

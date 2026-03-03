@@ -4,15 +4,77 @@ import * as React from 'react';
 import { MagnifyingGlass, SmileySad } from '@phosphor-icons/react';
 
 import { ContentGrid } from '@/components/ui/grid';
-import { SeriesCard, VideoCardSkeletonGrid, type SeriesContent } from '@/components/content';
+import {
+  SeriesCard,
+  ClipCard,
+  TutorialCard,
+  VideoCardSkeletonGrid,
+} from '@/components/content';
+import type { SearchResultItem } from '@/hooks/use-search';
 import { cn } from '@/lib/utils';
 
 interface SearchResultsProps {
   query: string;
-  results: SeriesContent[];
+  results: SearchResultItem[];
   isLoading: boolean;
   totalResults: number;
   className?: string;
+}
+
+/**
+ * Render the appropriate card component based on content type
+ */
+function SearchResultCard({ item }: { item: SearchResultItem }) {
+  switch (item.contentType) {
+    case 'CLIP':
+    case 'SHORT':
+      return (
+        <ClipCard
+          content={{
+            id: item.id,
+            slug: item.slug,
+            title: item.title,
+            thumbnailUrl: item.thumbnailUrl,
+            duration: item.duration ?? 0,
+            viewCount: item.viewCount ?? 0,
+            ageCategory: item.ageCategory,
+            category: item.category,
+          }}
+        />
+      );
+    case 'TUTORIAL':
+      return (
+        <TutorialCard
+          content={{
+            id: item.id,
+            slug: item.slug,
+            title: item.title,
+            thumbnailUrl: item.thumbnailUrl,
+            lessonCount: item.lessonCount ?? 0,
+            completedLessons: item.completedLessons ?? 0,
+            ageCategory: item.ageCategory,
+            category: item.category,
+          }}
+        />
+      );
+    case 'SERIES':
+    default:
+      return (
+        <SeriesCard
+          content={{
+            id: item.id,
+            slug: item.slug,
+            title: item.title,
+            thumbnailUrl: item.thumbnailUrl,
+            seasonCount: item.seasonCount ?? 0,
+            episodeCount: item.episodeCount ?? 0,
+            ageCategory: item.ageCategory,
+            rating: item.rating,
+            year: item.year,
+          }}
+        />
+      );
+  }
 }
 
 /**
@@ -91,7 +153,7 @@ export function SearchResults({
 
       <ContentGrid variant="default">
         {results.map((item) => (
-          <SeriesCard key={item.id} content={item} />
+          <SearchResultCard key={item.id} item={item} />
         ))}
       </ContentGrid>
     </div>

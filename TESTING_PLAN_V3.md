@@ -83,9 +83,9 @@ Notifications:
 | 1  | Landing Page Deep Inspection                       |        |      |      |
 | 2  | Static Public Pages                                |        |      |      |
 | 3  | Authentication Flows                               |        |      |      |
-| 4  | Content Listings                                   |        |      |      |
-| 5  | Content Detail Pages                               |        |      |      |
-| 6  | Search Functionality                               |        |      |      |
+| 4  | Content Listings                                   | ✅ PASS |  0   | 2026-03-03 |
+| 5  | Content Detail Pages                               | ✅ PASS |  0   | 2026-03-03 |
+| 6  | Search Functionality                               | ✅ PASS |  2 (Minor) | 2026-03-03 |
 | 7  | Dashboard & Watch Page                             |        |      |      |
 | 8  | Account Pages — Part 1                             |        |      |      |
 | 9  | Account Pages — Part 2                             |        |      |      |
@@ -967,22 +967,70 @@ systemctl restart nginx  # REQUIRED after container recreate
 |---|-------|--------|
 
 ### SESSION 4: Content Listings
-**Date:** — | **Status:** — | **Bugs:** —
+**Date:** 2026-03-03 | **Status:** ✅ PASS | **Bugs:** 0
 
 | # | Check | Result |
 |---|-------|--------|
+| 1 | /series heading "Сериалы" | PASS |
+| 2 | Grid layout visible (2 series cards) | PASS |
+| 3 | Cards: thumbnail, title, age badge, metadata | PASS |
+| 4 | Filter button → filter panel opens | PASS |
+| 5 | Filter: "Возрастной рейтинг" with 0+/6+/12+/16+/18+ | PASS |
+| 6 | Grid adjusts with filter panel | PASS |
+| 7 | Close filter panel | PASS |
+| 8 | Sort dropdown "Сначала новые" | PASS |
+| 9 | /clips heading "Клипы" + controls | PASS |
+| 10 | Clips grid layout | PASS (0 clips — empty state) |
+| 11 | /shorts heading + vertical feed (3 shorts) | PASS |
+| 12 | Shorts grid layout (vertical feed) | PASS |
+| 13 | /tutorials heading "Обучение" + controls | PASS |
+| 14 | Tutorials grid layout | PASS (0 tutorials — empty) |
+| 15 | Age badges: 12+=#3B82F6, 18+=#EF4444 | PASS |
+| 16 | Skeleton loading on initial loads | PASS |
+| 17 | No layout shift | PASS |
 
 ### SESSION 5: Content Detail Pages
-**Date:** — | **Status:** — | **Bugs:** —
+**Date:** 2026-03-03 | **Status:** ✅ PASS | **Bugs:** 0
 
 | # | Check | Result |
 |---|-------|--------|
+| 1 | Navigate to /series | PASS |
+| 2 | Click series card → detail page | PASS (/series/magic-school-adventures) |
+| 3 | Title "Точка Невозврата" + description | PASS |
+| 4 | Thumbnail/poster image | PASS (placeholder) |
+| 5 | Age badge 16+ with correct color | PASS |
+| 6 | Metadata: 2024, Триллер/Криминал/Драма, 3 сезон • 24 серий | PASS |
+| 7 | CTA buttons "Смотреть" + "В список" | PASS |
+| 8 | NO duplicate metadata (bug #2 fix) | PASS |
+| 9 | Navigate back to listing | PASS |
+| 10 | Navigate to /clips | PASS (0 in listing, direct slug works) |
+| 11 | Clip detail: "За кулисами" — 0+, 15:00, description, Смотреть | PASS |
+| 12 | Clip metadata (views, duration) | PASS |
+| 13 | Navigate back | PASS |
+| 14 | Navigate to /tutorials | PASS (0 in listing, direct slug works) |
+| 15 | Tutorial detail: "Введение в фотографию" | PASS |
+| 16 | Tutorial tabs: Уроки, О курсе, Отзывы — all clickable | PASS |
 
 ### SESSION 6: Search Functionality
-**Date:** — | **Status:** — | **Bugs:** —
+**Date:** 2026-03-03 | **Status:** ✅ PASS | **Bugs:** 2 (Minor)
 
 | # | Check | Result |
 |---|-------|--------|
+| 1 | Search page loads at /search | PASS |
+| 2 | Search input with Russian placeholder | PASS ("Поиск фильмов, сериалов, курсов...") |
+| 3 | 5 filter dropdowns | PASS (Все типы/категории/возрасты/годы + По релевантности) |
+| 4 | Type "точка" → results update | PASS (empty state "Ничего не найдено") |
+| 5 | Search "кулис" → result found | PASS (1 result shown) |
+| 6 | Type filter dropdown options | PASS (Все типы/Сериалы/Фильмы/Обучение) |
+| 7 | Age filter dropdown | PASS (present) |
+| 8 | Sort dropdown | PASS (По релевантности) |
+| 9 | Clear filters (X button) | PASS (returns to initial state) |
+| 10 | Empty state with icon and message | PASS (Russian text + tips) |
+| 11 | Header search bar | PASS (focuses inline, doesn't navigate to /search) |
+
+### Bugs Found
+**BUG S6-1 (Minor):** Search result count says "Найдено 0 результатов" but actually shows 1 result — counter is incorrect.
+**BUG S6-2 (Minor):** Clip search results display "undefined сезонов • undefined серий" — clips don't have seasons/episodes, should show duration or nothing. Also links to /series/slug instead of /clips/slug.
 
 ### SESSION 7: Dashboard & Watch Page
 **Date:** — | **Status:** — | **Bugs:** —
@@ -1074,4 +1122,5 @@ systemctl restart nginx  # REQUIRED after container recreate
 
 | # | Session | Severity | Description | Status | Fix Commit |
 |---|---------|----------|-------------|--------|------------|
-| — | —       | —        | —           | —      | —          |
+| 1 | S6      | Minor    | Search result count says "0 результатов" but shows 1 result | Open | — |
+| 2 | S6      | Minor    | Clip in search shows "undefined сезонов • undefined серий" + links to /series/ instead of /clips/ | Open | — |

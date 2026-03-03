@@ -13,7 +13,7 @@ import {
   RecentSearches,
   type SearchFiltersState,
 } from '@/components/search';
-import { useSearchResults } from '@/hooks/use-search';
+import { useSearchResults, type SearchResultItem } from '@/hooks/use-search';
 
 const RECENT_SEARCHES_KEY = 'mp-recent-searches';
 
@@ -88,8 +88,8 @@ export default function SearchPage() {
     page: currentPage,
     limit: 20,
   });
-  const results = searchResponse?.data?.items ?? [];
-  const totalResults = searchResponse?.data?.total ?? 0;
+  const results: SearchResultItem[] = searchResponse?.data?.items ?? [];
+  const totalResults = searchResponse?.data?.total || results.length;
 
   // Load recent searches on mount
   React.useEffect(() => {
