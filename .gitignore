@@ -101,6 +101,8 @@ next-env.d.ts
 # Test artifacts
 playwright-report/
 test-results/
+session*.png
+users.txt
 
 # Production E2E test credentials and reports
 .env.e2e
