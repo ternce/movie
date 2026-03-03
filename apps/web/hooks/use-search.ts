@@ -28,7 +28,7 @@ export interface SearchResultItem {
   // Tutorial-specific
   lessonCount?: number;
   completedLessons?: number;
-  category?: string;
+  category?: string | { id: string; name: string; slug: string };
 }
 
 interface SearchSuggestion {

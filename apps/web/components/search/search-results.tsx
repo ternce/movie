@@ -22,9 +22,20 @@ interface SearchResultsProps {
 }
 
 /**
+ * Extract category name from API response (can be string or object)
+ */
+function getCategoryName(category: SearchResultItem['category']): string | undefined {
+  if (!category) return undefined;
+  if (typeof category === 'string') return category;
+  return category.name;
+}
+
+/**
  * Render the appropriate card component based on content type
  */
 function SearchResultCard({ item }: { item: SearchResultItem }) {
+  const categoryName = getCategoryName(item.category);
+
   switch (item.contentType) {
     case 'CLIP':
     case 'SHORT':
@@ -38,7 +49,7 @@ function SearchResultCard({ item }: { item: SearchResultItem }) {
             duration: item.duration ?? 0,
             viewCount: item.viewCount ?? 0,
             ageCategory: item.ageCategory,
-            category: item.category,
+            category: categoryName,
           }}
         />
       );
@@ -53,7 +64,7 @@ function SearchResultCard({ item }: { item: SearchResultItem }) {
             lessonCount: item.lessonCount ?? 0,
             completedLessons: item.completedLessons ?? 0,
             ageCategory: item.ageCategory,
-            category: item.category,
+            category: categoryName,
           }}
         />
       );
