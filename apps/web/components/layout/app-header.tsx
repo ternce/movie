@@ -63,7 +63,7 @@ export function AppHeader({ className }: AppHeaderProps) {
           )}
 
           {/* Content type tabs - hidden on mobile */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1">
             {CONTENT_TYPES.map((type) => (
               <button
                 key={type.id}
