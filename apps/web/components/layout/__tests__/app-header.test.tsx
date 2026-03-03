@@ -13,10 +13,6 @@ vi.mock('next/link', () => ({
 // Mock hooks and stores
 const mockSetMobileMenuOpen = vi.fn();
 
-vi.mock('@/hooks/use-media-query', () => ({
-  useIsMobile: vi.fn(() => false),
-}));
-
 vi.mock('@/stores/auth.store', () => ({
   useAuthStore: vi.fn(() => ({
     user: { firstName: 'Test', lastName: 'User', email: 'test@example.com', avatarUrl: null },
@@ -26,6 +22,7 @@ vi.mock('@/stores/auth.store', () => ({
 vi.mock('@/stores/ui.store', () => ({
   useUIStore: vi.fn(() => ({
     setMobileMenuOpen: mockSetMobileMenuOpen,
+    setSearchOpen: vi.fn(),
   })),
 }));
 
@@ -73,12 +70,9 @@ vi.mock('lucide-react', () => ({
   Menu: ({ className }: { className?: string }) => <svg data-testid="menu-icon" className={className} />,
 }));
 
-import { useIsMobile } from '@/hooks/use-media-query';
-
 describe('AppHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useIsMobile).mockReturnValue(false);
   });
 
   describe('Rendering', () => {
@@ -109,25 +103,19 @@ describe('AppHeader', () => {
       expect(screen.getByLabelText('Уведомления')).toBeInTheDocument();
     });
 
-    it('should render mobile menu button with aria-label="Открыть меню" when mobile', () => {
-      vi.mocked(useIsMobile).mockReturnValue(true);
+    it('should always render mobile menu button in DOM (CSS-hidden on desktop)', () => {
       render(<AppHeader />);
-      expect(screen.getByLabelText('Открыть меню')).toBeInTheDocument();
-    });
-
-    it('should not render mobile menu button on desktop', () => {
-      vi.mocked(useIsMobile).mockReturnValue(false);
-      render(<AppHeader />);
-      expect(screen.queryByLabelText('Открыть меню')).not.toBeInTheDocument();
+      const menuButton = screen.getByLabelText('Открыть меню');
+      expect(menuButton).toBeInTheDocument();
+      expect(menuButton.className).toContain('md:hidden');
     });
   });
 
   describe('Content type tabs', () => {
-    it('should render content type tabs on desktop', () => {
-      vi.mocked(useIsMobile).mockReturnValue(false);
+    it('should render content type tabs', () => {
       render(<AppHeader />);
-      expect(screen.getByText('Movies')).toBeInTheDocument();
-      expect(screen.getByText('Series')).toBeInTheDocument();
+      expect(screen.getByText('Фильмы')).toBeInTheDocument();
+      expect(screen.getByText('Сериалы')).toBeInTheDocument();
     });
   });
 });

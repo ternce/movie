@@ -6,7 +6,6 @@ import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { PageTransition } from '@/components/layout/page-transition';
 import { MobileSearchOverlay } from '@/components/search/mobile-search-overlay';
 import { PendingDocumentsModal } from '@/components/documents/pending-documents-modal';
-import { useIsMobile } from '@/hooks/use-media-query';
 
 /**
  * Main layout with sidebar navigation - matches Figma design
@@ -16,17 +15,13 @@ export default function MainLayoutClient({
 }: {
   children: React.ReactNode;
 }) {
-  const isMobile = useIsMobile();
-
   return (
     <div className="min-h-screen bg-mp-bg-primary">
       {/* Sidebar */}
       <AppSidebar />
 
       {/* Main content area */}
-      <div
-        className={`min-h-screen transition-all duration-300 ${isMobile ? 'ml-0' : 'ml-[230px]'}`}
-      >
+      <div className="min-h-screen transition-all duration-300 ml-0 md:ml-[230px]">
         {/* Header */}
         <AppHeader />
 

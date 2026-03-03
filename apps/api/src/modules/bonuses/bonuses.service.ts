@@ -69,98 +69,123 @@ export class BonusesService {
    * Get user's bonus balance with statistics.
    */
   async getBalance(userId: string): Promise<BonusBalanceDto> {
-    const [user, stats] = await Promise.all([
-      this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { bonusBalance: true },
-      }),
-      this.prisma.bonusTransaction.groupBy({
-        by: ['type'],
-        where: { userId },
-        _sum: { amount: true },
-      }),
-    ]);
+    try {
+      const [user, stats] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { bonusBalance: true },
+        }),
+        this.prisma.bonusTransaction.groupBy({
+          by: ['type'],
+          where: { userId },
+          _sum: { amount: true },
+        }),
+      ]);
 
-    if (!user) {
-      throw new BadRequestException('Пользователь не найден');
-    }
-
-    // Calculate statistics from grouped transactions
-    let lifetimeEarned = 0;
-    let lifetimeSpent = 0;
-
-    for (const stat of stats) {
-      const amount = Number(stat._sum.amount) || 0;
-      if (stat.type === BonusTransactionType.EARNED || stat.type === BonusTransactionType.ADJUSTMENT) {
-        if (amount > 0) lifetimeEarned += amount;
-      } else if (stat.type === BonusTransactionType.SPENT) {
-        lifetimeSpent += Math.abs(amount);
+      if (!user) {
+        throw new BadRequestException('Пользователь не найден');
       }
+
+      // Calculate statistics from grouped transactions
+      let lifetimeEarned = 0;
+      let lifetimeSpent = 0;
+
+      for (const stat of stats) {
+        const amount = Number(stat._sum?.amount) || 0;
+        if (stat.type === BonusTransactionType.EARNED || stat.type === BonusTransactionType.ADJUSTMENT) {
+          if (amount > 0) lifetimeEarned += amount;
+        } else if (stat.type === BonusTransactionType.SPENT) {
+          lifetimeSpent += Math.abs(amount);
+        }
+      }
+
+      // Calculate pending earnings (from pending partner commissions)
+      let pendingEarnings = 0;
+      try {
+        const pendingCommissions = await this.prisma.partnerCommission.aggregate({
+          where: {
+            partnerId: userId,
+            status: CommissionStatus.PENDING,
+          },
+          _sum: { amount: true },
+        });
+        pendingEarnings = Number(pendingCommissions._sum?.amount) || 0;
+      } catch (error) {
+        this.logger.warn(`Failed to fetch pending commissions for user ${userId}: ${error}`);
+      }
+
+      return {
+        balance: Number(user.bonusBalance),
+        pendingEarnings,
+        lifetimeEarned,
+        lifetimeSpent,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      this.logger.error(`Failed to get balance for user ${userId}: ${error}`);
+      throw error;
     }
-
-    // Calculate pending earnings (from pending partner commissions)
-    const pendingCommissions = await this.prisma.partnerCommission.aggregate({
-      where: {
-        partnerId: userId,
-        status: CommissionStatus.PENDING,
-      },
-      _sum: { amount: true },
-    });
-
-    return {
-      balance: Number(user.bonusBalance),
-      pendingEarnings: Number(pendingCommissions._sum.amount) || 0,
-      lifetimeEarned,
-      lifetimeSpent,
-    };
   }
 
   /**
    * Get detailed bonus statistics for a user.
    */
   async getStatistics(userId: string): Promise<BonusStatisticsDto> {
-    const balance = await this.getBalance(userId);
-    const expiring = await this.getExpiringBonuses(userId, 30);
+    try {
+      const balance = await this.getBalance(userId);
 
-    // Get this month's activity
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const monthlyStats = await this.prisma.bonusTransaction.groupBy({
-      by: ['type'],
-      where: {
-        userId,
-        createdAt: { gte: startOfMonth },
-      },
-      _sum: { amount: true },
-      _count: true,
-    });
-
-    let earnedThisMonth = 0;
-    let spentThisMonth = 0;
-    let transactionsThisMonth = 0;
-
-    for (const stat of monthlyStats) {
-      const amount = Number(stat._sum.amount) || 0;
-      transactionsThisMonth += (stat._count as any)?._all ?? 0;
-      if (stat.type === BonusTransactionType.EARNED) {
-        earnedThisMonth += amount;
-      } else if (stat.type === BonusTransactionType.SPENT) {
-        spentThisMonth += Math.abs(amount);
+      let expiringIn30Days = 0;
+      try {
+        const expiring = await this.getExpiringBonuses(userId, 30);
+        expiringIn30Days = expiring.totalExpiring;
+      } catch (error) {
+        this.logger.warn(`Failed to fetch expiring bonuses for user ${userId}: ${error}`);
       }
-    }
 
-    return {
-      balance: balance.balance,
-      pendingEarnings: balance.pendingEarnings,
-      lifetimeEarned: balance.lifetimeEarned,
-      lifetimeSpent: balance.lifetimeSpent,
-      expiringIn30Days: expiring.totalExpiring,
-      transactionsThisMonth,
-      earnedThisMonth,
-      spentThisMonth,
-    };
+      // Get this month's activity
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const monthlyStats = await this.prisma.bonusTransaction.groupBy({
+        by: ['type'],
+        where: {
+          userId,
+          createdAt: { gte: startOfMonth },
+        },
+        _sum: { amount: true },
+        _count: true,
+      });
+
+      let earnedThisMonth = 0;
+      let spentThisMonth = 0;
+      let transactionsThisMonth = 0;
+
+      for (const stat of monthlyStats) {
+        const amount = Number(stat._sum?.amount) || 0;
+        transactionsThisMonth += typeof stat._count === 'number' ? stat._count : 0;
+        if (stat.type === BonusTransactionType.EARNED) {
+          earnedThisMonth += amount;
+        } else if (stat.type === BonusTransactionType.SPENT) {
+          spentThisMonth += Math.abs(amount);
+        }
+      }
+
+      return {
+        balance: balance.balance,
+        pendingEarnings: balance.pendingEarnings,
+        lifetimeEarned: balance.lifetimeEarned,
+        lifetimeSpent: balance.lifetimeSpent,
+        expiringIn30Days,
+        transactionsThisMonth,
+        earnedThisMonth,
+        spentThisMonth,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      this.logger.error(`Failed to get statistics for user ${userId}: ${error}`);
+      throw error;
+    }
   }
 
   /**

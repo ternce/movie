@@ -745,7 +745,53 @@ describe('BonusesService', () => {
         pendingEarnings: 100,
         lifetimeEarned: 2000,
         lifetimeSpent: 800,
-        transactionsThisMonth: expect.any(Number),
+        transactionsThisMonth: 7,
+        earnedThisMonth: 500,
+        spentThisMonth: 200,
+      });
+    });
+
+    it('should return all-zero stats for user with no transactions', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        bonusBalance: new Decimal(0),
+      });
+      mockPrismaService.bonusTransaction.groupBy.mockResolvedValue([]);
+      mockPrismaService.partnerCommission.aggregate.mockResolvedValue({
+        _sum: { amount: null },
+      });
+      mockPrismaService.bonusTransaction.findMany.mockResolvedValue([]);
+
+      const result = await service.getStatistics('user-id');
+
+      expect(result).toMatchObject({
+        balance: 0,
+        pendingEarnings: 0,
+        lifetimeEarned: 0,
+        lifetimeSpent: 0,
+        expiringIn30Days: 0,
+        transactionsThisMonth: 0,
+        earnedThisMonth: 0,
+        spentThisMonth: 0,
+      });
+    });
+
+    it('should return balance even when partnerCommission.aggregate fails', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        bonusBalance: new Decimal(500),
+      });
+      mockPrismaService.bonusTransaction.groupBy.mockResolvedValue([]);
+      mockPrismaService.partnerCommission.aggregate.mockRejectedValue(
+        new Error('Connection failed'),
+      );
+      mockPrismaService.bonusTransaction.findMany.mockResolvedValue([]);
+
+      const result = await service.getBalance('user-id');
+
+      expect(result).toMatchObject({
+        balance: 500,
+        pendingEarnings: 0,
+        lifetimeEarned: 0,
+        lifetimeSpent: 0,
       });
     });
 
@@ -844,7 +890,7 @@ describe('BonusesService', () => {
 
       await expect(
         service.convertCommissionToBonus('user-id', 'comm-1'),
-      ).rejects.toThrow('Commission must be in APPROVED status to convert');
+      ).rejects.toThrow('Для конвертации комиссия должна иметь статус APPROVED');
     });
   });
 
@@ -1132,7 +1178,7 @@ describe('BonusesService', () => {
     it('should throw when below minimum withdrawal', async () => {
       await expect(
         service.previewWithdrawal('user-id', 100, TaxStatus.INDIVIDUAL),
-      ).rejects.toThrow('Minimum withdrawal amount');
+      ).rejects.toThrow('Минимальная сумма вывода');
     });
 
     it('should throw when insufficient balance', async () => {
@@ -1142,7 +1188,7 @@ describe('BonusesService', () => {
 
       await expect(
         service.previewWithdrawal('user-id', 2000, TaxStatus.INDIVIDUAL),
-      ).rejects.toThrow('Insufficient bonus balance');
+      ).rejects.toThrow('Недостаточно бонусов');
     });
 
     it('should apply correct tax rate for self-employed', async () => {

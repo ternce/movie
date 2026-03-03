@@ -266,6 +266,31 @@ async function seedLegalDocuments() {
       requiresAcceptance: true,
     },
     {
+      type: LegalDocumentType.OFFER,
+      title: 'Публичная оферта',
+      version: '1.0.0',
+      content: `# Публичная оферта
+
+## 1. Предмет оферты
+
+1.1. Настоящий документ является официальным предложением (публичной офертой) платформы MoviePlatform для заключения договора на оказание услуг.
+
+1.2. Акцептом оферты является оплата услуг и/или регистрация на Платформе.
+
+## 2. Условия оказания услуг
+
+2.1. Платформа предоставляет доступ к видеоконтенту на условиях подписки.
+
+2.2. Стоимость услуг определяется действующими тарифами.
+
+## 3. Порядок оплаты
+
+3.1. Оплата производится через платежные системы, интегрированные в Платформу.
+
+3.2. Возврат средств осуществляется в соответствии с законодательством РФ.`,
+      requiresAcceptance: false,
+    },
+    {
       type: LegalDocumentType.PARTNER_AGREEMENT,
       title: 'Партнерское соглашение',
       version: '1.0.0',
@@ -862,7 +887,7 @@ async function main() {
     console.log('   - 3 Product Categories');
     console.log('   - 4 Subscription Plans');
     console.log('   - 1 Bonus Rate');
-    console.log('   - 3 Legal Documents');
+    console.log('   - 4 Legal Documents');
     console.log('   - 6 Notification Templates');
     console.log('   - 5 Test Users');
     console.log('   - 10 Sample Content Items');

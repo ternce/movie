@@ -14,12 +14,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
-import { useIsMobile } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { useAuthStore } from '@/stores/auth.store';
-
-import { ADMIN_SIDEBAR_WIDTH } from './admin-sidebar';
 
 interface AdminHeaderProps {
   className?: string;
@@ -29,7 +26,6 @@ interface AdminHeaderProps {
  * Admin panel header with search, notifications, and user menu
  */
 export function AdminHeader({ className }: AdminHeaderProps) {
-  const isMobile = useIsMobile();
   const { logout } = useAuth();
   const { setMobileMenuOpen } = useUIStore();
   const user = useAuthStore((state) => state.user);
@@ -44,24 +40,19 @@ export function AdminHeader({ className }: AdminHeaderProps) {
   return (
     <header
       className={cn(
-        'fixed top-0 right-0 z-40 h-16 bg-mp-bg-secondary/80 backdrop-blur-xl border-b border-mp-border flex items-center justify-between px-4 md:px-6',
+        'fixed top-0 right-0 z-40 h-16 bg-mp-bg-secondary/80 backdrop-blur-xl border-b border-mp-border flex items-center justify-between px-4 md:px-6 left-0 md:left-[250px]',
         className
       )}
-      style={{
-        left: isMobile ? 0 : ADMIN_SIDEBAR_WIDTH,
-      }}
     >
       {/* Left section */}
       <div className="flex items-center gap-3">
-        {/* Mobile menu button */}
-        {isMobile && (
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="p-2 text-mp-text-secondary hover:text-mp-text-primary rounded-lg hover:bg-mp-surface transition-colors"
-          >
-            <List className="w-5 h-5" />
-          </button>
-        )}
+        {/* Mobile menu button - hidden on desktop via CSS */}
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="md:hidden p-2 text-mp-text-secondary hover:text-mp-text-primary rounded-lg hover:bg-mp-surface transition-colors"
+        >
+          <List className="w-5 h-5" />
+        </button>
 
         {/* Search */}
         <div className="relative hidden sm:block">

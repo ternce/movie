@@ -15,7 +15,6 @@ const CartDrawer = dynamic(
 import { SearchInputCompact } from '@/components/search/search-input';
 import { UserAvatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useIsMobile } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import {
@@ -32,7 +31,6 @@ interface AppHeaderProps {
  * Application header with content type tabs matching Figma design
  */
 export function AppHeader({ className }: AppHeaderProps) {
-  const isMobile = useIsMobile();
   const { user } = useAuthStore();
   const { setMobileMenuOpen, setSearchOpen } = useUIStore();
   const { activeContentType, setContentType } = useContentStore();
@@ -51,16 +49,14 @@ export function AppHeader({ className }: AppHeaderProps) {
       <div className="h-full flex items-center justify-between px-4 md:px-6 gap-4">
         {/* Left section - Mobile menu + Content type tabs */}
         <div className="flex items-center gap-6">
-          {/* Mobile menu button */}
-          {isMobile && (
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              aria-label="Открыть меню"
-              className="p-2 text-mp-text-secondary hover:text-mp-text-primary rounded-lg hover:bg-mp-surface transition-colors"
-            >
-              <List className="w-5 h-5" />
-            </button>
-          )}
+          {/* Mobile menu button - hidden on desktop via CSS */}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Открыть меню"
+            className="md:hidden p-2 text-mp-text-secondary hover:text-mp-text-primary rounded-lg hover:bg-mp-surface transition-colors"
+          >
+            <List className="w-5 h-5" />
+          </button>
 
           {/* Content type tabs - hidden on mobile */}
           <nav className="hidden lg:flex items-center gap-1">

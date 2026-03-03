@@ -158,7 +158,7 @@ export function LandingFooter() {
 
         {/* Bottom bar */}
         <div className="pt-8 border-t border-white/[0.06] flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-mp-text-disabled">
+          <p className="text-sm text-mp-text-disabled" suppressHydrationWarning>
             &copy; {new Date().getFullYear()} MoviePlatform. Все права защищены.
           </p>
           <div className="flex items-center gap-6">

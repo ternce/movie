@@ -23,8 +23,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-import { useIsMobile } from '@/hooks/use-media-query';
-
 import { DataTableCardView } from './data-table-card-view';
 import { DataTablePagination } from './data-table-pagination';
 import { DataTableToolbar } from './data-table-toolbar';
@@ -67,7 +65,6 @@ export function DataTable<TData, TValue>({
   manualFiltering = false,
   onSearch,
 }: DataTableProps<TData, TValue>) {
-  const isMobile = useIsMobile();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -113,78 +110,78 @@ export function DataTable<TData, TValue>({
       />
 
       {/* Mobile card view */}
-      {isMobile ? (
+      <div className="md:hidden">
         <DataTableCardView
           rows={table.getRowModel().rows}
           isLoading={isLoading}
         />
-      ) : (
-        /* Desktop table view */
-        <div className="rounded-lg border border-mp-border bg-mp-bg-secondary overflow-hidden">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden md:block rounded-lg border border-mp-border bg-mp-bg-secondary overflow-hidden">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow
+                key={headerGroup.id}
+                className="bg-mp-surface/50 hover:bg-mp-surface/50"
+              >
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              // Loading skeleton
+              Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index}>
+                  {columns.map((_, colIndex) => (
+                    <TableCell key={colIndex}>
+                      <div className="h-5 w-full animate-pulse bg-mp-surface rounded" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
                 <TableRow
-                  key={headerGroup.id}
-                  className="bg-mp-surface/50 hover:bg-mp-surface/50"
+                  key={row.id}
+                  data-state={row.getIsSelected() && 'selected'}
                 >
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    );
-                  })}
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
                 </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                // Loading skeleton
-                Array.from({ length: 5 }).map((_, index) => (
-                  <TableRow key={index}>
-                    {columns.map((_, colIndex) => (
-                      <TableCell key={colIndex}>
-                        <div className="h-5 w-full animate-pulse bg-mp-surface rounded" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && 'selected'}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center text-mp-text-secondary"
-                  >
-                    No results found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center text-mp-text-secondary"
+                >
+                  No results found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       {/* Pagination */}
       <DataTablePagination

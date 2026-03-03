@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   useDocuments,
   getDocumentTypeLabel,
+  getDocumentSlug,
   type DocumentSummary,
 } from '@/hooks/use-documents';
 import { formatDate } from '@/lib/utils';
@@ -75,7 +76,7 @@ export default function DocumentsPage() {
  */
 function DocumentCard({ document }: { document: DocumentSummary }) {
   return (
-    <Link href={`/documents/${document.type}`}>
+    <Link href={`/documents/${getDocumentSlug(document.type)}`}>
       <Card className="group h-full transition-colors hover:border-mp-accent-primary/30 hover:bg-mp-surface/80 cursor-pointer">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">

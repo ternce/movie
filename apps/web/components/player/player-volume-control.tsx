@@ -4,7 +4,6 @@ import * as React from 'react';
 import { SpeakerNone, SpeakerLow, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-media-query';
 import { usePlayerStore } from '@/stores/player.store';
 
 interface PlayerVolumeControlProps {
@@ -19,7 +18,6 @@ export function PlayerVolumeControl({ className }: PlayerVolumeControlProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isDragging, setIsDragging] = React.useState(false);
   const sliderRef = React.useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
 
   const displayVolume = isMuted ? 0 : volume;
 
@@ -127,10 +125,10 @@ export function PlayerVolumeControl({ className }: PlayerVolumeControlProps) {
     [volume, setVolume, toggleMute]
   );
 
-  // On mobile, show only mute/unmute toggle (phones have hardware volume)
-  if (isMobile) {
-    return (
-      <div className={cn('flex items-center', className)}>
+  return (
+    <>
+      {/* Mobile: mute-only toggle (phones have hardware volume) */}
+      <div className={cn('flex items-center md:hidden', className)}>
         <button
           onClick={toggleMute}
           className="p-2.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
@@ -139,57 +137,56 @@ export function PlayerVolumeControl({ className }: PlayerVolumeControlProps) {
           <VolumeIcon className="w-5 h-5 text-white" />
         </button>
       </div>
-    );
-  }
 
-  return (
-    <div
-      className={cn('flex items-center gap-2', className)}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => !isDragging && setIsExpanded(false)}
-    >
-      {/* Mute button */}
-      <button
-        onClick={toggleMute}
-        onKeyDown={handleKeyDown}
-        className="p-1.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
-        aria-label={isMuted ? 'Включить звук' : 'Выключить звук'}
-      >
-        <VolumeIcon className="w-5 h-5 text-white" />
-      </button>
-
-      {/* Volume slider */}
+      {/* Desktop: mute button + expandable slider */}
       <div
-        className={cn(
-          'overflow-hidden transition-all duration-200',
-          isExpanded || isDragging ? 'w-20 opacity-100' : 'w-0 opacity-0'
-        )}
+        className={cn('hidden md:flex items-center gap-2', className)}
+        onMouseEnter={() => setIsExpanded(true)}
+        onMouseLeave={() => !isDragging && setIsExpanded(false)}
       >
-        <div
-          ref={sliderRef}
-          className="relative h-1 bg-white/20 rounded-full cursor-pointer"
-          onClick={handleSliderClick}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
+        {/* Mute button */}
+        <button
+          onClick={toggleMute}
+          onKeyDown={handleKeyDown}
+          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
+          aria-label={isMuted ? 'Включить звук' : 'Выключить звук'}
         >
-          {/* Volume level */}
-          <div
-            className="absolute inset-y-0 left-0 bg-white rounded-full"
-            style={{ width: `${displayVolume * 100}%` }}
-          />
+          <VolumeIcon className="w-5 h-5 text-white" />
+        </button>
 
-          {/* Handle */}
+        {/* Volume slider */}
+        <div
+          className={cn(
+            'overflow-hidden transition-all duration-200',
+            isExpanded || isDragging ? 'w-20 opacity-100' : 'w-0 opacity-0'
+          )}
+        >
           <div
-            className={cn(
-              'absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg',
-              'transition-transform',
-              isDragging && 'scale-125'
-            )}
-            style={{ left: `calc(${displayVolume * 100}% - 6px)` }}
-          />
+            ref={sliderRef}
+            className="relative h-1 bg-white/20 rounded-full cursor-pointer"
+            onClick={handleSliderClick}
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+          >
+            {/* Volume level */}
+            <div
+              className="absolute inset-y-0 left-0 bg-white rounded-full"
+              style={{ width: `${displayVolume * 100}%` }}
+            />
+
+            {/* Handle */}
+            <div
+              className={cn(
+                'absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg',
+                'transition-transform',
+                isDragging && 'scale-125'
+              )}
+              style={{ left: `calc(${displayVolume * 100}% - 6px)` }}
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

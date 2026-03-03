@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { type AgeCategory } from '@/components/content';
-import { useIsMobile } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 
 export interface SearchFiltersState {
@@ -200,10 +199,9 @@ function FilterSelects({
 
 /**
  * Search filters bar - drawer on mobile, inline on desktop
+ * Renders both variants; CSS toggles visibility to avoid hydration mismatch.
  */
 export function SearchFilters({ filters, onFiltersChange, className }: SearchFiltersProps) {
-  const isMobile = useIsMobile();
-
   const hasActiveFilters =
     filters.type !== 'all' ||
     filters.category !== 'all' ||
@@ -222,10 +220,10 @@ export function SearchFilters({ filters, onFiltersChange, className }: SearchFil
     });
   };
 
-  // Mobile: "Filters" button that opens a bottom drawer
-  if (isMobile) {
-    return (
-      <div className={cn('flex items-center gap-3', className)}>
+  return (
+    <>
+      {/* Mobile: "Filters" button that opens a bottom drawer */}
+      <div className={cn('flex items-center gap-3 md:hidden', className)}>
         <Drawer>
           <DrawerTrigger asChild>
             <Button variant="outline" size="default" className="gap-2">
@@ -280,26 +278,24 @@ export function SearchFilters({ filters, onFiltersChange, className }: SearchFil
           </SelectContent>
         </Select>
       </div>
-    );
-  }
 
-  // Desktop: inline filter row
-  return (
-    <div className={cn('flex flex-wrap items-center gap-3', className)}>
-      <FilterSelects
-        filters={filters}
-        onFiltersChange={onFiltersChange}
-        layout="inline"
-      />
+      {/* Desktop: inline filter row */}
+      <div className={cn('hidden md:flex flex-wrap items-center gap-3', className)}>
+        <FilterSelects
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+          layout="inline"
+        />
 
-      {/* Clear filters */}
-      {hasActiveFilters && (
-        <Button variant="ghost" size="sm" onClick={handleClearFilters} className="gap-1">
-          <X className="w-4 h-4" />
-          Сбросить
-        </Button>
-      )}
-    </div>
+        {/* Clear filters */}
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={handleClearFilters} className="gap-1">
+            <X className="w-4 h-4" />
+            Сбросить
+          </Button>
+        )}
+      </div>
+    </>
   );
 }
 

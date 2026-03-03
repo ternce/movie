@@ -61,6 +61,24 @@ export function getDocumentTypeLabel(type: string): string {
   return documentTypeLabels[type] || type;
 }
 
+/**
+ * Map document types to URL-friendly slugs
+ */
+const TYPE_TO_SLUG: Record<string, string> = {
+  USER_AGREEMENT: 'terms',
+  PRIVACY_POLICY: 'privacy',
+  PARTNER_AGREEMENT: 'partner',
+  OFFER: 'offer',
+  SUPPLEMENTARY: 'rules',
+};
+
+/**
+ * Get URL slug for a document type
+ */
+export function getDocumentSlug(type: string): string {
+  return TYPE_TO_SLUG[type] || type;
+}
+
 // =============================================================================
 // Hooks
 // =============================================================================

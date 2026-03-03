@@ -29,7 +29,6 @@ import * as React from 'react';
 
 import { GenreList, AddGenreDialog } from '@/components/sidebar';
 import { useAuth } from '@/hooks/use-auth';
-import { useIsMobile } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -110,7 +109,6 @@ interface AppSidebarProps {
  */
 export function AppSidebar({ className }: AppSidebarProps) {
   const pathname = usePathname();
-  const isMobile = useIsMobile();
   const { logout } = useAuth();
   const { isMobileMenuOpen, setMobileMenuOpen } = useUIStore();
 
@@ -125,20 +123,18 @@ export function AppSidebar({ className }: AppSidebarProps) {
   };
 
   /**
-   * Handle navigation click on mobile
+   * Handle navigation click - close mobile menu (no-op on desktop)
    */
   const handleNavClick = () => {
-    if (isMobile) {
-      setMobileMenuOpen(false);
-    }
+    setMobileMenuOpen(false);
   };
 
   return (
     <>
       {/* Mobile overlay */}
-      {isMobile && isMobileMenuOpen && (
+      {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -147,11 +143,8 @@ export function AppSidebar({ className }: AppSidebarProps) {
       <aside
         className={cn(
           'fixed top-0 left-0 z-50 h-full bg-mp-bg-secondary flex flex-col transition-transform duration-300 ease-in-out',
-          isMobile
-            ? isMobileMenuOpen
-              ? 'translate-x-0'
-              : '-translate-x-full'
-            : 'translate-x-0',
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
+          'md:translate-x-0',
           className
         )}
         style={{ width: SIDEBAR_WIDTH }}
@@ -170,14 +163,12 @@ export function AppSidebar({ className }: AppSidebarProps) {
               Movie<span className="text-gradient">Platform</span>
             </span>
           </Link>
-          {isMobile && (
-            <button
-              onClick={() => setMobileMenuOpen(false)}
-              className="p-1.5 text-mp-text-secondary hover:text-mp-text-primary rounded-md hover:bg-mp-surface transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="md:hidden p-1.5 text-mp-text-secondary hover:text-mp-text-primary rounded-md hover:bg-mp-surface transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation groups */}
