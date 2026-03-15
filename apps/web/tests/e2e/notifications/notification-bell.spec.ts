@@ -22,7 +22,7 @@ const MOCK_NOTIFICATIONS_LIST = {
       id: 'notif-1',
       type: 'PAYMENT',
       title: 'Платёж успешно выполнен',
-      body: 'Оплата на сумму 499 \u20BD прошла успешно.',
+      body: 'Оплата на сумму 499 ₽ прошла успешно.',
       isRead: false,
       link: '/account/payments',
       metadata: { type: 'PAYMENT', amount: 499 },
@@ -190,7 +190,7 @@ async function setupNotificationBell(page: Page, unreadCount = 3) {
           id: 'notif-1',
           type: 'PAYMENT',
           title: 'Платёж успешно выполнен',
-          body: 'Оплата на сумму 499 \u20BD прошла успешно.',
+          body: 'Оплата на сумму 499 ₽ прошла успешно.',
           isRead: true,
           createdAt: new Date().toISOString(),
         }),
@@ -382,6 +382,28 @@ test.describe('Notification Bell', () => {
     await expect(dropdownHeading).toBeHidden();
   });
 
+  test('кнопка X в шапке дропдауна закрывает попповер (десктоп)', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupNotificationBell(page, 3);
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    const bellButton = page.getByRole('button', { name: 'Уведомления' });
+    await bellButton.click();
+
+    // Wait for dropdown to appear
+    const dropdownHeading = page.locator('h3:has-text("Уведомления")');
+    await expect(dropdownHeading).toBeVisible();
+
+    // Click X close button in the dropdown header
+    const closeButton = page.getByRole('button', { name: 'Закрыть' });
+    await expect(closeButton).toBeVisible();
+    await closeButton.click();
+
+    // Dropdown should close
+    await expect(dropdownHeading).toBeHidden();
+  });
+
   test('WebSocket уведомление обновляет счётчик в бейдже', async ({ page }) => {
     await setupNotificationBell(page, 3);
 
@@ -498,5 +520,120 @@ test.describe('Notification Bell', () => {
     await page.keyboard.press('Escape');
 
     await expect(dropdownHeading).toBeHidden();
+  });
+});
+
+// =============================================================================
+// Mobile Sheet Tests
+// =============================================================================
+
+test.describe('Notification Bell — Mobile Sheet', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+  });
+
+  test('клик по колокольчику открывает нижний Sheet на мобильном', async ({ page }) => {
+    await setupNotificationBell(page, 3);
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    const bellButton = page.getByRole('button', { name: 'Уведомления' });
+    await bellButton.click();
+
+    // Sheet overlay should be visible
+    const overlay = page.locator('[data-state="open"].fixed.inset-0');
+    await expect(overlay).toBeVisible();
+
+    // Notification heading should be visible inside the sheet
+    const dropdownHeading = page.locator('h3:has-text("Уведомления")');
+    await expect(dropdownHeading).toBeVisible();
+  });
+
+  test('Sheet показывает список уведомлений на мобильном', async ({ page }) => {
+    await setupNotificationBell(page, 3);
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    const bellButton = page.getByRole('button', { name: 'Уведомления' });
+    await bellButton.click();
+
+    await expect(page.getByText('Платёж успешно выполнен')).toBeVisible();
+    await expect(page.getByText('Подписка продлена')).toBeVisible();
+    await expect(page.getByText('Начислены бонусы')).toBeVisible();
+  });
+
+  test('тап по оверлею закрывает Sheet', async ({ page }) => {
+    await setupNotificationBell(page, 3);
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    const bellButton = page.getByRole('button', { name: 'Уведомления' });
+    await bellButton.click();
+
+    // Wait for sheet to open
+    const dropdownHeading = page.locator('h3:has-text("Уведомления")');
+    await expect(dropdownHeading).toBeVisible();
+
+    // Click on the overlay (top of the screen, above the sheet)
+    const overlay = page.locator('[data-state="open"].fixed.inset-0').first();
+    await overlay.click({ position: { x: 195, y: 50 }, force: true });
+
+    // Sheet should close
+    await expect(dropdownHeading).toBeHidden();
+  });
+
+  test('кнопка X в шапке дропдауна закрывает Sheet', async ({ page }) => {
+    await setupNotificationBell(page, 3);
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    const bellButton = page.getByRole('button', { name: 'Уведомления' });
+    await bellButton.click();
+
+    // Wait for sheet to open
+    const dropdownHeading = page.locator('h3:has-text("Уведомления")');
+    await expect(dropdownHeading).toBeVisible();
+
+    // Click X close button in the dropdown header
+    const closeButton = page.getByRole('button', { name: 'Закрыть' });
+    await expect(closeButton).toBeVisible();
+    await closeButton.click();
+
+    // Sheet should close
+    await expect(dropdownHeading).toBeHidden();
+  });
+
+  test('"Все уведомления" закрывает Sheet и переходит на страницу', async ({ page }) => {
+    await setupNotificationBell(page, 3);
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    const bellButton = page.getByRole('button', { name: 'Уведомления' });
+    await bellButton.click();
+
+    // Wait for notifications to load
+    await expect(page.getByText('Платёж успешно выполнен')).toBeVisible();
+
+    // Click "Все уведомления" link
+    const showAllLink = page.getByRole('link', { name: /Все уведомления/i });
+    await expect(showAllLink).toBeVisible();
+    await showAllLink.click();
+
+    // Verify navigation
+    await page.waitForURL('**/account/notifications');
+    expect(page.url()).toContain('/account/notifications');
+  });
+
+  test('пустое состояние с компактным отступом на мобильном', async ({ page }) => {
+    await setupNotificationBell(page, 0);
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    const bellButton = page.getByRole('button', { name: 'Уведомления' });
+    await bellButton.click();
+
+    // Empty state should be visible
+    const emptyMessage = page.getByText(/Нет новых уведомлений|Нет уведомлений/i);
+    await expect(emptyMessage).toBeVisible();
   });
 });
