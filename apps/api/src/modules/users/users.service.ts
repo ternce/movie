@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   ConflictException,
   BadRequestException,
@@ -7,17 +8,31 @@ import {
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { VerificationStatus, VerificationMethod } from '@movie-platform/shared';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  CreateBucketCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 
 import { PrismaService } from '../../config/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { VerificationSubmissionDto } from './dto/verification-submission.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
+const AVATAR_BUCKET = 'avatars';
+const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5MB
+
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+  private bucketEnsured = false;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly storageService: StorageService,
   ) {}
 
   /**
@@ -408,6 +423,112 @@ export class UsersService {
     const result = await this.prisma.userSession.deleteMany({ where });
 
     return { message: `${result.count} session(s) terminated` };
+  }
+
+  /**
+   * Upload user avatar image.
+   */
+  async uploadAvatar(userId: string, file: Express.Multer.File) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Validate file type
+    if (!ALLOWED_AVATAR_TYPES.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Допустимые форматы: JPEG, PNG, WebP',
+      );
+    }
+
+    // Validate file size
+    if (file.size > MAX_AVATAR_SIZE) {
+      throw new BadRequestException(
+        'Максимальный размер файла: 5 МБ',
+      );
+    }
+
+    // Ensure avatars bucket exists
+    await this.ensureBucket();
+
+    // Generate storage key
+    const ext = file.originalname?.split('.').pop() || 'jpg';
+    const key = `${userId}/${uuidv4()}.${ext}`;
+
+    // Upload to MinIO
+    const avatarUrl = await this.storageService.uploadFile(
+      AVATAR_BUCKET,
+      key,
+      file.buffer,
+      file.mimetype,
+    );
+
+    // Delete old avatar from storage if it's in our MinIO
+    if (user.avatarUrl) {
+      try {
+        const publicEndpoint = this.configService.get<string>(
+          'MINIO_PUBLIC_ENDPOINT',
+          'http://localhost:9000',
+        );
+        if (user.avatarUrl.startsWith(`${publicEndpoint}/${AVATAR_BUCKET}/`)) {
+          const oldKey = user.avatarUrl
+            .replace(`${publicEndpoint}/${AVATAR_BUCKET}/`, '');
+          await this.storageService.deleteFile(AVATAR_BUCKET, oldKey);
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to delete old avatar: ${err}`);
+      }
+    }
+
+    // Update user record
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl },
+    });
+
+    return this.sanitizeUser(updatedUser);
+  }
+
+  /**
+   * Ensure the avatars bucket exists in MinIO (idempotent).
+   */
+  private async ensureBucket(): Promise<void> {
+    if (this.bucketEnsured) return;
+
+    try {
+      const endpoint = this.configService.get<string>('MINIO_ENDPOINT', 'http://localhost:9000');
+      const accessKey = this.configService.get<string>('MINIO_ACCESS_KEY', 'minioadmin');
+      const secretKey = this.configService.get<string>('MINIO_SECRET_KEY', 'minioadmin123');
+
+      const s3 = new S3Client({
+        endpoint,
+        region: 'us-east-1',
+        forcePathStyle: true,
+        credentials: {
+          accessKeyId: accessKey,
+          secretAccessKey: secretKey,
+        },
+      });
+
+      await s3.send(new CreateBucketCommand({ Bucket: AVATAR_BUCKET }));
+      this.logger.log(`Created bucket: ${AVATAR_BUCKET}`);
+    } catch (err: any) {
+      // BucketAlreadyOwnedByYou / BucketAlreadyExists — safe to ignore
+      if (
+        err?.name === 'BucketAlreadyOwnedByYou' ||
+        err?.name === 'BucketAlreadyExists' ||
+        err?.Code === 'BucketAlreadyOwnedByYou'
+      ) {
+        // Bucket already exists
+      } else {
+        this.logger.warn(`ensureBucket error (non-critical): ${err?.message}`);
+      }
+    }
+
+    this.bucketEnsured = true;
   }
 
   /**

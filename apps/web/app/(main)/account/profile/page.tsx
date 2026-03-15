@@ -1,20 +1,20 @@
 'use client';
 
-import { Camera, Calendar, Key, FloppyDisk, User } from '@phosphor-icons/react';
+import { Calendar, Key, FloppyDisk, User } from '@phosphor-icons/react';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 
-import { AgeBadge, Badge } from '@/components/ui/badge';
+import { AgeBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserAvatar } from '@/components/ui/avatar';
+import { AvatarUpload } from '@/components/account/avatar-upload';
 import { useProfile, useUpdateProfile } from '@/hooks/use-account';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatDate } from '@/lib/utils';
@@ -37,7 +37,6 @@ const profileSchema = z.object({
     .regex(/^\+7\d{10}$/, 'Формат: +7XXXXXXXXXX')
     .or(z.literal(''))
     .optional(),
-  avatarUrl: z.string().url('Некорректный URL').or(z.literal('')).optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -60,8 +59,6 @@ export default function ProfilePage() {
   const { user } = useAuthStore();
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [avatarPreview, setAvatarPreview] = React.useState<string | null>(null);
 
   const {
     register,
@@ -74,7 +71,6 @@ export default function ProfilePage() {
       firstName: '',
       lastName: '',
       phone: '',
-      avatarUrl: '',
     },
   });
 
@@ -85,7 +81,6 @@ export default function ProfilePage() {
         firstName: profile.firstName || '',
         lastName: profile.lastName || '',
         phone: profile.phone || '',
-        avatarUrl: profile.avatarUrl || '',
       });
     }
   }, [profile, reset]);
@@ -96,49 +91,16 @@ export default function ProfilePage() {
         firstName: data.firstName,
         lastName: data.lastName,
         phone: data.phone || undefined,
-        avatarUrl: data.avatarUrl || undefined,
       },
       {
         onSuccess: () => {
           reset(data);
-          toast.success('Профиль успешно обновлён');
         },
         onError: () => {
           toast.error('Не удалось обновить профиль');
         },
       }
     );
-  };
-
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type and size
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      toast.error('Допустимые форматы: JPEG, PNG, WebP');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Максимальный размер файла: 5 МБ');
-      return;
-    }
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAvatarPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    // In a real implementation, upload the file and get URL back
-    // For now we show the preview
-    toast.info('Загрузка аватара будет доступна после подключения хранилища');
   };
 
   const displayName = [
@@ -189,34 +151,11 @@ export default function ProfilePage() {
 
       {/* Avatar section */}
       <Card className="mb-6">
-        <CardContent className="flex items-center gap-5 p-5">
-          <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
-            <UserAvatar
-              src={avatarPreview || profile?.avatarUrl || user?.avatarUrl}
-              name={displayName}
-              size="xl"
-              className="h-20 w-20"
-            />
-            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-              <Camera className="h-6 w-6 text-white" />
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </div>
-          <div>
-            <p className="font-medium text-mp-text-primary">{displayName}</p>
-            <p className="text-sm text-mp-text-secondary">
-              Нажмите на аватар, чтобы загрузить новое фото
-            </p>
-            <p className="text-xs text-mp-text-disabled mt-1">
-              JPEG, PNG, WebP. Максимум 5 МБ
-            </p>
-          </div>
+        <CardContent className="p-5">
+          <AvatarUpload
+            currentAvatarUrl={profile?.avatarUrl || user?.avatarUrl}
+            userName={displayName}
+          />
         </CardContent>
       </Card>
 
@@ -298,23 +237,6 @@ export default function ProfilePage() {
               <p className="text-xs text-mp-text-secondary">
                 Формат: +7XXXXXXXXXX
               </p>
-            </div>
-
-            {/* Avatar URL */}
-            <div className="space-y-2">
-              <Label htmlFor="avatarUrl">URL аватара</Label>
-              <Input
-                id="avatarUrl"
-                type="url"
-                placeholder="https://example.com/avatar.jpg"
-                error={!!errors.avatarUrl}
-                {...register('avatarUrl')}
-              />
-              {errors.avatarUrl && (
-                <p className="text-sm text-mp-error-text">
-                  {errors.avatarUrl.message}
-                </p>
-              )}
             </div>
 
             <Separator />

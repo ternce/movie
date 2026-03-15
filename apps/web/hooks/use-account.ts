@@ -33,7 +33,6 @@ export function useUpdateProfile() {
       firstName?: string;
       lastName?: string;
       phone?: string;
-      avatarUrl?: string;
     }) => {
       const response = await api.patch<any>(endpoints.users.me, data);
       return response.data;
@@ -45,6 +44,31 @@ export function useUpdateProfile() {
     },
     onError: (error: ApiError) => {
       toast.error(error.message || 'Ошибка обновления профиля');
+    },
+  });
+}
+
+export function useUploadAvatar() {
+  const queryClient = useQueryClient();
+  const { updateUser } = useAuthStore();
+
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await api.upload<{ avatarUrl: string }>(
+        endpoints.users.uploadAvatar,
+        formData,
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.profile() });
+      if (data) updateUser({ avatarUrl: data.avatarUrl });
+      toast.success('Аватар обновлён');
+    },
+    onError: () => {
+      toast.error('Не удалось загрузить аватар');
     },
   });
 }

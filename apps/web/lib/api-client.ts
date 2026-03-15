@@ -555,6 +555,7 @@ export const endpoints = {
     me: '/users/me',
     profile: '/users/me/profile',
     password: '/users/me/password',
+    uploadAvatar: '/users/me/avatar',
     verification: '/users/me/verification',
     verificationStatus: '/users/me/verification/status',
   },
