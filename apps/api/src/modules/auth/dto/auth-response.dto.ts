@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AgeCategory, UserRole, VerificationStatus } from '@movie-platform/shared';
 
 export class UserResponseDto {
@@ -66,6 +66,11 @@ export class LoginResponseDto {
     example: '2025-01-13T12:15:00.000Z',
   })
   expiresAt!: string;
+
+  @ApiPropertyOptional({
+    description: 'Current session ID for device identification',
+  })
+  sessionId?: string;
 }
 
 export class RefreshResponseDto {
@@ -86,6 +91,11 @@ export class RefreshResponseDto {
     example: '2025-01-13T12:15:00.000Z',
   })
   expiresAt!: string;
+
+  @ApiPropertyOptional({
+    description: 'Current session ID for device identification',
+  })
+  sessionId?: string;
 }
 
 export class MessageResponseDto {

@@ -36,6 +36,7 @@ import {
   useTerminateAllSessions,
 } from '@/hooks/use-account';
 import { useAuth } from '@/hooks/use-auth';
+import { useAuthStore } from '@/stores/auth.store';
 import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
@@ -378,15 +379,8 @@ function SessionsTab() {
 
   const sessionsList = Array.isArray(sessions) ? sessions : sessions?.items || [];
 
-  // Try to identify current session by checking if the session token matches
-  // We compare by checking if the session was created most recently and is from the same IP
-  const currentSessionId = React.useMemo(() => {
-    if (sessionsList.length === 0) return null;
-    // The current session is typically the most recently active one
-    // Since we don't have a direct way to identify it, we mark the first session
-    // (API typically returns current session first)
-    return sessionsList[0]?.id || null;
-  }, [sessionsList]);
+  // Use the stored sessionId from login/refresh to reliably identify the current session
+  const { sessionId: currentSessionId } = useAuthStore();
 
   const getDeviceIcon = (deviceInfo?: string) => {
     if (!deviceInfo) return Monitor;

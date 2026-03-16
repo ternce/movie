@@ -119,8 +119,11 @@ export class AuthController {
   })
   async refresh(
     @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+    @Ip() ip: string,
   ): Promise<RefreshResponseDto> {
-    return this.authService.refreshToken(dto.refreshToken);
+    const deviceInfo = req.headers['user-agent'];
+    return this.authService.refreshToken(dto.refreshToken, ip, deviceInfo);
   }
 
   /**

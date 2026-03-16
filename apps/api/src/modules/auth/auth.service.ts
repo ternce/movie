@@ -146,7 +146,7 @@ export class AuthService {
 
     // Generate tokens and create session
     const tokens = await this.generateTokens(user);
-    await this.sessionService.createSession(
+    const { sessionId } = await this.sessionService.createSession(
       user.id,
       tokens.refreshToken,
       deviceInfo,
@@ -171,6 +171,7 @@ export class AuthService {
       refreshToken: tokens.refreshToken,
       user: this.sanitizeUser(user),
       expiresAt: this.getExpiresAt(),
+      sessionId,
     };
   }
 
@@ -189,7 +190,7 @@ export class AuthService {
 
     // Generate tokens and create session
     const tokens = await this.generateTokens(fullUser);
-    await this.sessionService.createSession(
+    const { sessionId } = await this.sessionService.createSession(
       user.id,
       tokens.refreshToken,
       deviceInfo,
@@ -218,13 +219,18 @@ export class AuthService {
       refreshToken: tokens.refreshToken,
       user: this.sanitizeUser(fullUser),
       expiresAt: this.getExpiresAt(),
+      sessionId,
     };
   }
 
   /**
    * Refresh access token.
    */
-  async refreshToken(refreshToken: string): Promise<RefreshResponseDto> {
+  async refreshToken(
+    refreshToken: string,
+    ipAddress?: string,
+    deviceInfo?: string,
+  ): Promise<RefreshResponseDto> {
     // Validate session
     const session = await this.sessionService.validateSession(refreshToken);
     if (!session) {
@@ -241,18 +247,20 @@ export class AuthService {
     await this.sessionService.invalidateSession(refreshToken);
 
     // Generate new tokens and create new session
+    // Use current request IP/UA, fall back to old session values
     const tokens = await this.generateTokens(user);
-    await this.sessionService.createSession(
+    const { sessionId } = await this.sessionService.createSession(
       user.id,
       tokens.refreshToken,
-      session.deviceInfo,
-      session.ipAddress,
+      deviceInfo || session.deviceInfo,
+      ipAddress || session.ipAddress,
     );
 
     return {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresAt: this.getExpiresAt(),
+      sessionId,
     };
   }
 

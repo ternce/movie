@@ -144,7 +144,7 @@ function getRefreshToken(): string | null {
 /**
  * Update tokens in storage
  */
-function setTokens(accessToken: string, refreshToken?: string): void {
+function setTokens(accessToken: string, refreshToken?: string, sessionId?: string): void {
   if (typeof window === 'undefined') return;
 
   try {
@@ -155,6 +155,7 @@ function setTokens(accessToken: string, refreshToken?: string): void {
         ...parsed.state,
         accessToken,
         refreshToken: refreshToken || parsed.state?.refreshToken,
+        sessionId: sessionId || parsed.state?.sessionId,
       };
       localStorage.setItem('mp-auth-storage', JSON.stringify(parsed));
     }
@@ -177,6 +178,7 @@ function clearAuthState(): void {
         ...parsed.state,
         accessToken: null,
         refreshToken: null,
+        sessionId: null,
         isAuthenticated: false,
         user: null,
       };
@@ -221,7 +223,7 @@ async function attemptTokenRefresh(): Promise<boolean> {
 
       const data = await response.json();
       if (data.success && data.data?.accessToken) {
-        setTokens(data.data.accessToken, data.data.refreshToken);
+        setTokens(data.data.accessToken, data.data.refreshToken, data.data.sessionId);
         return true;
       }
 

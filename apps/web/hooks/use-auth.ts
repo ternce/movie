@@ -48,7 +48,7 @@ export function useAuth() {
       return response.data;
     },
     onSuccess: (data) => {
-      setAuth(data.user, data.accessToken, data.refreshToken);
+      setAuth(data.user, data.accessToken, data.refreshToken, data.sessionId);
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.all });
       toast.success('Добро пожаловать!');
       router.push('/dashboard');
@@ -70,7 +70,7 @@ export function useAuth() {
       return response.data;
     },
     onSuccess: (data) => {
-      setAuth(data.user, data.accessToken, data.refreshToken);
+      setAuth(data.user, data.accessToken, data.refreshToken, data.sessionId);
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.all });
       toast.success('Регистрация успешна! Добро пожаловать!');
       router.push('/dashboard');
@@ -96,7 +96,7 @@ export function useAuth() {
       return response.data;
     },
     onSuccess: (data) => {
-      setTokens(data.accessToken, data.refreshToken);
+      setTokens(data.accessToken, data.refreshToken, data.sessionId);
     },
     onError: () => {
       // If refresh fails, logout

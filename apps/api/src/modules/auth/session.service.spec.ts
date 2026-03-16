@@ -125,8 +125,9 @@ describe('SessionService', () => {
       const result = await service.createSession(mockUserId, mockRefreshToken);
 
       // Verify hash is SHA-256
-      expect(result).toBe(mockTokenHash);
-      expect(result.length).toBe(64); // SHA-256 produces 64 hex chars
+      expect(result.tokenHash).toBe(mockTokenHash);
+      expect(result.tokenHash.length).toBe(64); // SHA-256 produces 64 hex chars
+      expect(result.sessionId).toBe('session-1');
     });
   });
 

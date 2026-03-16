@@ -53,12 +53,12 @@ export class SessionService {
     refreshToken: string,
     deviceInfo?: string,
     ipAddress: string = '0.0.0.0',
-  ): Promise<string> {
+  ): Promise<{ tokenHash: string; sessionId: string }> {
     const tokenHash = this.hashToken(refreshToken);
     const expiresAt = new Date(Date.now() + this.SESSION_TTL_SECONDS * 1000);
 
     // Store in PostgreSQL for audit
-    await this.prisma.userSession.create({
+    const dbSession = await this.prisma.userSession.create({
       data: {
         userId,
         tokenHash,
@@ -83,7 +83,7 @@ export class SessionService {
       JSON.stringify(sessionData),
     );
 
-    return tokenHash;
+    return { tokenHash, sessionId: dbSession.id };
   }
 
   /**

@@ -25,13 +25,14 @@ interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
+  sessionId: string | null;
   isAuthenticated: boolean;
   isHydrated: boolean;
 
   // Actions
-  setAuth: (user: User, accessToken: string, refreshToken?: string) => void;
+  setAuth: (user: User, accessToken: string, refreshToken?: string, sessionId?: string) => void;
   setUser: (user: User) => void;
-  setTokens: (accessToken: string, refreshToken?: string) => void;
+  setTokens: (accessToken: string, refreshToken?: string, sessionId?: string) => void;
   updateUser: (updates: Partial<User>) => void;
   logout: () => void;
   setHydrated: (hydrated: boolean) => void;
@@ -48,16 +49,18 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       refreshToken: null,
+      sessionId: null,
       isAuthenticated: false,
       isHydrated: false,
 
       // Set full auth state (after login)
-      setAuth: (user, accessToken, refreshToken) => {
+      setAuth: (user, accessToken, refreshToken, sessionId) => {
         syncAuthCookies(accessToken, true);
         set({
           user,
           accessToken,
           refreshToken: refreshToken ?? get().refreshToken,
+          sessionId: sessionId ?? get().sessionId,
           isAuthenticated: true,
         });
       },
@@ -66,11 +69,12 @@ export const useAuthStore = create<AuthState>()(
       setUser: (user) => set({ user }),
 
       // Update tokens (after refresh)
-      setTokens: (accessToken, refreshToken) => {
+      setTokens: (accessToken, refreshToken, sessionId) => {
         syncAuthCookies(accessToken, true);
         set({
           accessToken,
           refreshToken: refreshToken ?? get().refreshToken,
+          sessionId: sessionId ?? get().sessionId,
         });
       },
 
@@ -87,6 +91,7 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           accessToken: null,
           refreshToken: null,
+          sessionId: null,
           isAuthenticated: false,
         });
       },
@@ -111,6 +116,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
+        sessionId: state.sessionId,
         isAuthenticated: state.isAuthenticated,
       }),
     }

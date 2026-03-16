@@ -58,6 +58,7 @@ export interface LoginResponse {
   refreshToken: string;
   user: import('@movie-platform/shared').User;
   expiresAt: string;
+  sessionId?: string;
 }
 
 /**
@@ -87,6 +88,7 @@ export interface RefreshTokenResponse {
   accessToken: string;
   refreshToken: string;
   expiresAt: string;
+  sessionId?: string;
 }
 
 /**
