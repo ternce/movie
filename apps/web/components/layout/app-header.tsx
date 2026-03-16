@@ -4,6 +4,8 @@ import { MagnifyingGlass, List } from '@phosphor-icons/react';
 import * as React from 'react';
 
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 import { ProfileDropdown } from '@/components/layout/profile-dropdown';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -15,11 +17,15 @@ const CartDrawer = dynamic(
 import { SearchInputCompact } from '@/components/search/search-input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import {
-  useContentStore,
-  CONTENT_TYPES,
-} from '@/stores/content.store';
 import { useUIStore } from '@/stores/ui.store';
+
+const NAV_ITEMS = [
+  { href: '/dashboard', label: 'Главная' },
+  { href: '/series', label: 'Сериалы' },
+  { href: '/clips', label: 'Клипы' },
+  { href: '/shorts', label: 'Шортсы' },
+  { href: '/tutorials', label: 'Обучение' },
+];
 
 interface AppHeaderProps {
   className?: string;
@@ -30,8 +36,13 @@ interface AppHeaderProps {
  */
 export function AppHeader({ className }: AppHeaderProps) {
   const { setMobileMenuOpen, setSearchOpen } = useUIStore();
-  const { activeContentType, setContentType } = useContentStore();
+  const pathname = usePathname();
   const [cartOpen, setCartOpen] = React.useState(false);
+
+  const isActive = (href: string) => {
+    if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   return (
     <header
@@ -52,28 +63,29 @@ export function AppHeader({ className }: AppHeaderProps) {
             <List className="w-5 h-5" />
           </button>
 
-          {/* Content type tabs - hidden on mobile */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {CONTENT_TYPES.map((type) => (
-              <button
-                key={type.id}
-                onClick={() => setContentType(type.id)}
+          {/* Navigation tabs - hidden on mobile */}
+          <nav aria-label="Основная навигация" className="hidden lg:flex items-center gap-1">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
                 className={cn(
                   'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-                  activeContentType === type.id
+                  isActive(item.href)
                     ? 'text-mp-accent-primary'
                     : 'text-mp-text-secondary hover:text-mp-text-primary'
                 )}
+                aria-current={isActive(item.href) ? 'page' : undefined}
               >
-                {type.labelRu}
-              </button>
+                {item.label}
+              </Link>
             ))}
           </nav>
         </div>
 
         {/* Center section - Search bar */}
         <div className="flex-1 max-w-md mx-auto hidden sm:block">
-          <SearchInputCompact placeholder="Поиск фильмов, сериалов..." />
+          <SearchInputCompact placeholder="Поиск сериалов, клипов..." />
         </div>
 
         {/* Right section - Notifications + Profile */}

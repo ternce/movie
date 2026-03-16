@@ -124,7 +124,7 @@ export default function SearchPage() {
       {/* Search input */}
       <div className="mb-6">
         <SearchInput
-          placeholder="Поиск фильмов, сериалов, курсов..."
+          placeholder="Поиск сериалов, клипов, курсов..."
           autoFocus
           isLoading={isLoading}
           onValueChange={setQuery}

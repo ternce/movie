@@ -66,7 +66,7 @@ test.describe('Mobile Bottom Navigation', () => {
     await page.getByLabel('Поиск').click();
 
     // Search overlay should appear
-    const searchInput = page.getByPlaceholder('Поиск фильмов, сериалов...');
+    const searchInput = page.getByPlaceholder('Поиск сериалов, клипов...');
     await expect(searchInput).toBeVisible();
   });
 
@@ -93,14 +93,14 @@ test.describe('Mobile Search Overlay', () => {
   test('should open from bottom nav search button', async ({ page }) => {
     await page.getByLabel('Поиск').click();
 
-    const searchInput = page.getByPlaceholder('Поиск фильмов, сериалов...');
+    const searchInput = page.getByPlaceholder('Поиск сериалов, клипов...');
     await expect(searchInput).toBeVisible();
   });
 
   test('should close on close button tap', async ({ page }) => {
     await page.getByLabel('Поиск').click();
 
-    const searchInput = page.getByPlaceholder('Поиск фильмов, сериалов...');
+    const searchInput = page.getByPlaceholder('Поиск сериалов, клипов...');
     await expect(searchInput).toBeVisible();
 
     await page.getByLabel('Закрыть поиск').click();
@@ -110,7 +110,7 @@ test.describe('Mobile Search Overlay', () => {
   test('should navigate to /search?q=... on submit', async ({ page }) => {
     await page.getByLabel('Поиск').click();
 
-    const searchInput = page.getByPlaceholder('Поиск фильмов, сериалов...');
+    const searchInput = page.getByPlaceholder('Поиск сериалов, клипов...');
     await searchInput.fill('тестовый запрос');
     await searchInput.press('Enter');
 
@@ -178,7 +178,7 @@ test.describe('Mobile Search Overlay', () => {
     await page.getByLabel('Поиск').click();
 
     await expect(
-      page.getByText('Начните вводить для поиска фильмов, сериалов и обучающих материалов')
+      page.getByText('Начните вводить для поиска сериалов, клипов и обучающих материалов')
     ).toBeVisible();
   });
 });

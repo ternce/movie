@@ -92,7 +92,7 @@ export function MobileSearchOverlay() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Поиск фильмов, сериалов..."
+            placeholder="Поиск сериалов, клипов..."
             className="w-full h-10 pl-10 pr-4 bg-mp-surface border border-mp-border rounded-lg text-base text-mp-text-primary placeholder:text-mp-text-disabled focus:outline-none focus:ring-2 focus:ring-mp-accent-primary/50"
             autoComplete="off"
             enterKeyHint="search"
@@ -147,7 +147,7 @@ export function MobileSearchOverlay() {
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
           <MagnifyingGlass className="w-12 h-12 text-mp-text-disabled mb-4" />
           <p className="text-mp-text-secondary text-sm">
-            Начните вводить для поиска фильмов, сериалов и обучающих материалов
+            Начните вводить для поиска сериалов, клипов и обучающих материалов
           </p>
         </div>
       )}

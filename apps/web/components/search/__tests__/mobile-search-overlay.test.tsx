@@ -60,25 +60,25 @@ describe('MobileSearchOverlay', () => {
     it('should render overlay when isOpen is true', () => {
       mockIsOpen = true;
       render(<MobileSearchOverlay />);
-      expect(screen.getByPlaceholderText('Поиск фильмов, сериалов...')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Поиск сериалов, клипов...')).toBeInTheDocument();
     });
   });
 
   describe('Input behavior', () => {
-    it('should render input with placeholder "Поиск фильмов, сериалов..."', () => {
+    it('should render input with placeholder "Поиск сериалов, клипов..."', () => {
       render(<MobileSearchOverlay />);
-      expect(screen.getByPlaceholderText('Поиск фильмов, сериалов...')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Поиск сериалов, клипов...')).toBeInTheDocument();
     });
 
     it('should have enterKeyHint="search"', () => {
       render(<MobileSearchOverlay />);
-      const input = screen.getByPlaceholderText('Поиск фильмов, сериалов...');
+      const input = screen.getByPlaceholderText('Поиск сериалов, клипов...');
       expect(input).toHaveAttribute('enterKeyHint', 'search');
     });
 
     it('should have autoComplete="off"', () => {
       render(<MobileSearchOverlay />);
-      const input = screen.getByPlaceholderText('Поиск фильмов, сериалов...');
+      const input = screen.getByPlaceholderText('Поиск сериалов, клипов...');
       expect(input).toHaveAttribute('autoComplete', 'off');
     });
   });
@@ -163,7 +163,7 @@ describe('MobileSearchOverlay', () => {
       mockSearchQuery = '';
       render(<MobileSearchOverlay />);
       expect(
-        screen.getByText('Начните вводить для поиска фильмов, сериалов и обучающих материалов')
+        screen.getByText('Начните вводить для поиска сериалов, клипов и обучающих материалов')
       ).toBeInTheDocument();
     });
   });
@@ -172,7 +172,7 @@ describe('MobileSearchOverlay', () => {
     it('should not navigate when query is empty/whitespace', () => {
       mockSearchQuery = '   ';
       render(<MobileSearchOverlay />);
-      const form = screen.getByPlaceholderText('Поиск фильмов, сериалов...').closest('form')!;
+      const form = screen.getByPlaceholderText('Поиск сериалов, клипов...').closest('form')!;
       fireEvent.submit(form);
       expect(window.location.href).toBe('');
     });
@@ -180,7 +180,7 @@ describe('MobileSearchOverlay', () => {
     it('should save query to recent searches on submit', async () => {
       mockSearchQuery = 'Новый фильм';
       render(<MobileSearchOverlay />);
-      const form = screen.getByPlaceholderText('Поиск фильмов, сериалов...').closest('form')!;
+      const form = screen.getByPlaceholderText('Поиск сериалов, клипов...').closest('form')!;
 
       await act(async () => {
         fireEvent.submit(form);
@@ -199,7 +199,7 @@ describe('MobileSearchOverlay', () => {
         render(<MobileSearchOverlay />);
       });
 
-      const form = screen.getByPlaceholderText('Поиск фильмов, сериалов...').closest('form')!;
+      const form = screen.getByPlaceholderText('Поиск сериалов, клипов...').closest('form')!;
       await act(async () => {
         fireEvent.submit(form);
       });
@@ -217,7 +217,7 @@ describe('MobileSearchOverlay', () => {
         render(<MobileSearchOverlay />);
       });
 
-      const form = screen.getByPlaceholderText('Поиск фильмов, сериалов...').closest('form')!;
+      const form = screen.getByPlaceholderText('Поиск сериалов, клипов...').closest('form')!;
       await act(async () => {
         fireEvent.submit(form);
       });

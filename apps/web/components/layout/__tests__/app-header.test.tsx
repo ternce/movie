@@ -10,6 +10,10 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/dashboard',
+}));
+
 // Mock hooks and stores
 const mockSetMobileMenuOpen = vi.fn();
 
@@ -24,17 +28,6 @@ vi.mock('@/stores/ui.store', () => ({
     setMobileMenuOpen: mockSetMobileMenuOpen,
     setSearchOpen: vi.fn(),
   })),
-}));
-
-vi.mock('@/stores/content.store', () => ({
-  useContentStore: vi.fn(() => ({
-    activeContentType: 'movies',
-    setContentType: vi.fn(),
-  })),
-  CONTENT_TYPES: [
-    { id: 'movies', label: 'Movies', labelRu: 'Фильмы' },
-    { id: 'series', label: 'Series', labelRu: 'Сериалы' },
-  ],
 }));
 
 // Mock SearchInputCompact
@@ -111,11 +104,30 @@ describe('AppHeader', () => {
     });
   });
 
-  describe('Content type tabs', () => {
-    it('should render content type tabs', () => {
+  describe('Navigation tabs', () => {
+    it('should render all navigation tabs', () => {
       render(<AppHeader />);
-      expect(screen.getByText('Фильмы')).toBeInTheDocument();
+      expect(screen.getByText('Главная')).toBeInTheDocument();
       expect(screen.getByText('Сериалы')).toBeInTheDocument();
+      expect(screen.getByText('Клипы')).toBeInTheDocument();
+      expect(screen.getByText('Шортсы')).toBeInTheDocument();
+      expect(screen.getByText('Обучение')).toBeInTheDocument();
+    });
+
+    it('should render tabs as links with correct hrefs', () => {
+      render(<AppHeader />);
+      expect(screen.getByText('Главная').closest('a')).toHaveAttribute('href', '/dashboard');
+      expect(screen.getByText('Сериалы').closest('a')).toHaveAttribute('href', '/series');
+      expect(screen.getByText('Клипы').closest('a')).toHaveAttribute('href', '/clips');
+      expect(screen.getByText('Шортсы').closest('a')).toHaveAttribute('href', '/shorts');
+      expect(screen.getByText('Обучение').closest('a')).toHaveAttribute('href', '/tutorials');
+    });
+
+    it('should mark active tab with aria-current="page"', () => {
+      render(<AppHeader />);
+      // usePathname returns '/dashboard', so Главная should be active
+      expect(screen.getByText('Главная').closest('a')).toHaveAttribute('aria-current', 'page');
+      expect(screen.getByText('Сериалы').closest('a')).not.toHaveAttribute('aria-current');
     });
   });
 });
