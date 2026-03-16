@@ -350,6 +350,32 @@ export class EmailService {
   }
 
   /**
+   * Send email change OTP code.
+   */
+  async sendEmailChangeCode(
+    email: string,
+    firstName: string,
+    newEmail: string,
+    code: string,
+  ): Promise<void> {
+    await this.queueEmail({
+      to: newEmail,
+      subject: 'Подтверждение смены email',
+      template: EMAIL_TEMPLATES.EMAIL_CHANGE_CODE,
+      context: {
+        firstName,
+        newEmail,
+        code,
+        appName: this.appName,
+        expiresIn: '10 минут',
+        supportEmail: this.supportEmail,
+        year: new Date().getFullYear(),
+      },
+      priority: 'high',
+    });
+  }
+
+  /**
    * Queue email for async sending.
    */
   private async queueEmail(options: SendEmailOptions): Promise<void> {

@@ -94,6 +94,33 @@ export const ThrottleAuth = {
         keyGenerator: 'ip',
       } as ThrottleConfig),
     ),
+
+  /**
+   * Email Change Request: 3 per minute per user, 10 min block.
+   */
+  EmailChangeRequest: () =>
+    applyDecorators(
+      Throttle({ default: { limit: 3, ttl: 60000 } }),
+      SetMetadata(THROTTLE_CONFIG_KEY, {
+        limit: 3,
+        ttl: 60000,
+        blockDuration: 600000,
+        keyGenerator: 'user',
+      } as ThrottleConfig),
+    ),
+
+  /**
+   * Email Change Confirm: 5 per minute per user.
+   */
+  EmailChangeConfirm: () =>
+    applyDecorators(
+      Throttle({ default: { limit: 5, ttl: 60000 } }),
+      SetMetadata(THROTTLE_CONFIG_KEY, {
+        limit: 5,
+        ttl: 60000,
+        keyGenerator: 'user',
+      } as ThrottleConfig),
+    ),
 };
 
 /**

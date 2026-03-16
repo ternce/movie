@@ -31,6 +31,8 @@ import {
   VerificationStatusDto,
   UserSessionDto,
   ChangePasswordDto,
+  RequestEmailChangeDto,
+  ConfirmEmailChangeDto,
 } from './dto';
 import { AddToWatchlistDto } from './dto/watchlist.dto';
 
@@ -126,6 +128,55 @@ export class UsersController {
   ): Promise<{ message: string }> {
     await this.usersService.changePassword(userId, dto);
     return { message: 'Password changed successfully' };
+  }
+
+  /**
+   * Request email change — sends OTP code to new email.
+   */
+  @Post('me/email/request-code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request email change OTP code' })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP code sent to new email',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid email or same as current',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Email already in use',
+  })
+  async requestEmailChange(
+    @CurrentUser('id') userId: string,
+    @Body() dto: RequestEmailChangeDto,
+  ) {
+    const result = await this.usersService.requestEmailChange(userId, dto.newEmail);
+    return { success: true, message: result.message };
+  }
+
+  /**
+   * Confirm email change with OTP code.
+   */
+  @Post('me/email/confirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirm email change with OTP code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Email updated successfully',
+    type: UserProfileDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid or expired code',
+  })
+  async confirmEmailChange(
+    @CurrentUser('id') userId: string,
+    @Body() dto: ConfirmEmailChangeDto,
+  ) {
+    const user = await this.usersService.confirmEmailChange(userId, dto.code);
+    return { success: true, data: user };
   }
 
   /**

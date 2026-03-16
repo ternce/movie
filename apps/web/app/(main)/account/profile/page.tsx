@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AvatarUpload } from '@/components/account/avatar-upload';
+import { EmailChangeSection } from '@/components/account/email-change-section';
 import { useProfile, useUpdateProfile } from '@/hooks/use-account';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatDate } from '@/lib/utils';
@@ -202,20 +203,10 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Email (read-only) */}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={user?.email || profile?.email || ''}
-                disabled
-                className="cursor-not-allowed opacity-60"
-              />
-              <p className="text-xs text-mp-text-secondary">
-                Email нельзя изменить
-              </p>
-            </div>
+            {/* Email change */}
+            <EmailChangeSection
+              currentEmail={user?.email || profile?.email || ''}
+            />
 
             <Separator />
 

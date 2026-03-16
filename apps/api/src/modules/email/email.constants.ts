@@ -16,4 +16,5 @@ export const EMAIL_TEMPLATES = {
   PAYMENT_SUCCESSFUL: 'payment-successful',
   PAYMENT_FAILED: 'payment-failed',
   REFUND_PROCESSED: 'refund-processed',
+  EMAIL_CHANGE_CODE: 'email-change-code',
 } as const;

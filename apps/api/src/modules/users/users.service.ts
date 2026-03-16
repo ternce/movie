@@ -16,6 +16,8 @@ import {
 
 import { PrismaService } from '../../config/prisma.service';
 import { StorageService } from '../storage/storage.service';
+import { TokenService } from '../auth/token.service';
+import { EmailService } from '../email/email.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { VerificationSubmissionDto } from './dto/verification-submission.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -33,6 +35,8 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly storageService: StorageService,
+    private readonly tokenService: TokenService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -423,6 +427,66 @@ export class UsersService {
     const result = await this.prisma.userSession.deleteMany({ where });
 
     return { message: `${result.count} session(s) terminated` };
+  }
+
+  /**
+   * Request email change — sends OTP code to the new email.
+   */
+  async requestEmailChange(userId: string, newEmail: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const normalized = newEmail.toLowerCase().trim();
+
+    if (normalized === user.email) {
+      throw new BadRequestException('Новый email совпадает с текущим');
+    }
+
+    // Check if email is already taken
+    const existing = await this.prisma.user.findUnique({
+      where: { email: normalized },
+    });
+    if (existing) {
+      throw new ConflictException('Этот email уже используется');
+    }
+
+    const code = await this.tokenService.generateEmailChangeCode(userId, normalized);
+
+    await this.emailService.sendEmailChangeCode(
+      user.email,
+      user.firstName || 'Пользователь',
+      normalized,
+      code,
+    );
+
+    return { message: 'Код подтверждения отправлен на новый email' };
+  }
+
+  /**
+   * Confirm email change with OTP code.
+   */
+  async confirmEmailChange(userId: string, code: string) {
+    const newEmail = await this.tokenService.validateEmailChangeCode(userId, code);
+
+    // Double-check email not taken (race condition guard)
+    const existing = await this.prisma.user.findUnique({
+      where: { email: newEmail },
+    });
+    if (existing) {
+      throw new ConflictException('Этот email уже используется');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { email: newEmail },
+    });
+
+    return this.sanitizeUser(updatedUser);
   }
 
   /**

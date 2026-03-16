@@ -74,6 +74,51 @@ export function useUploadAvatar() {
 }
 
 // ==============================
+// Email Change
+// ==============================
+
+export function useRequestEmailChange() {
+  return useMutation({
+    mutationFn: async (newEmail: string) => {
+      const response = await api.post<{ message: string }>(
+        endpoints.users.requestEmailChange,
+        { newEmail },
+      );
+      return response;
+    },
+    onSuccess: () => {
+      toast.success('Код подтверждения отправлен на новый email');
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.message || 'Ошибка отправки кода');
+    },
+  });
+}
+
+export function useConfirmEmailChange() {
+  const queryClient = useQueryClient();
+  const { updateUser } = useAuthStore();
+
+  return useMutation({
+    mutationFn: async (code: string) => {
+      const response = await api.post<any>(
+        endpoints.users.confirmEmailChange,
+        { code },
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.profile() });
+      if (data) updateUser(data);
+      toast.success('Email успешно изменён');
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.message || 'Ошибка подтверждения кода');
+    },
+  });
+}
+
+// ==============================
 // Verification
 // ==============================
 

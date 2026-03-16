@@ -7,8 +7,15 @@ import { REDIS_CLIENT } from '../../config/redis.module';
 
 export interface TokenData {
   userId: string;
-  type: 'password_reset' | 'email_verification';
+  type: 'password_reset' | 'email_verification' | 'email_change';
   createdAt: Date;
+}
+
+export interface EmailChangeCodeData {
+  code: string;
+  newEmail: string;
+  attempts: number;
+  createdAt: string;
 }
 
 /**
@@ -23,6 +30,12 @@ export interface TokenData {
  * - Password reset: token:password_reset:{token}
  * - Email verification: token:email_verification:{token}
  */
+// Email change OTP constants
+const EMAIL_CHANGE_CODE_TTL = 600; // 10 minutes
+const EMAIL_CHANGE_MAX_ATTEMPTS = 5;
+const EMAIL_CHANGE_RATE_LIMIT = 3;
+const EMAIL_CHANGE_RATE_TTL = 3600; // 1 hour
+
 @Injectable()
 export class TokenService {
   private readonly TOKEN_PREFIX = 'token:';
@@ -203,6 +216,110 @@ export class TokenService {
    */
   private getUserTokenKey(userId: string, type: string): string {
     return `${this.TOKEN_PREFIX}user:${userId}:${type}`;
+  }
+
+  // ===========================
+  // Email Change OTP Methods
+  // ===========================
+
+  /**
+   * Generate a 6-digit OTP code for email change.
+   *
+   * @param userId - User ID
+   * @param newEmail - New email address
+   * @returns The generated 6-digit code
+   * @throws BadRequestException if rate limit exceeded
+   */
+  async generateEmailChangeCode(userId: string, newEmail: string): Promise<string> {
+    const rateKey = `email_change:rate:${userId}`;
+
+    // Check rate limit
+    const rateCount = await this.redis.get(rateKey);
+    if (rateCount && parseInt(rateCount, 10) >= EMAIL_CHANGE_RATE_LIMIT) {
+      throw new BadRequestException(
+        'Слишком много запросов на смену email. Попробуйте через час.',
+      );
+    }
+
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Delete any existing code for this user
+    await this.redis.del(`email_change:code:${userId}`);
+
+    // Store code data
+    const codeData: EmailChangeCodeData = {
+      code,
+      newEmail,
+      attempts: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    await this.redis.setex(
+      `email_change:code:${userId}`,
+      EMAIL_CHANGE_CODE_TTL,
+      JSON.stringify(codeData),
+    );
+
+    // Increment rate counter
+    const currentRate = await this.redis.incr(rateKey);
+    if (currentRate === 1) {
+      await this.redis.expire(rateKey, EMAIL_CHANGE_RATE_TTL);
+    }
+
+    return code;
+  }
+
+  /**
+   * Validate an email change OTP code.
+   *
+   * @param userId - User ID
+   * @param code - 6-digit code to validate
+   * @returns The new email address if code is valid
+   * @throws BadRequestException if code is invalid, expired, or too many attempts
+   */
+  async validateEmailChangeCode(userId: string, code: string): Promise<string> {
+    const key = `email_change:code:${userId}`;
+    const data = await this.redis.get(key);
+
+    if (!data) {
+      throw new BadRequestException('Код подтверждения истёк или не найден');
+    }
+
+    const codeData = JSON.parse(data) as EmailChangeCodeData;
+
+    // Check max attempts
+    if (codeData.attempts >= EMAIL_CHANGE_MAX_ATTEMPTS) {
+      await this.redis.del(key);
+      throw new BadRequestException(
+        'Превышено количество попыток. Запросите новый код.',
+      );
+    }
+
+    // Check code match
+    if (codeData.code !== code) {
+      // Increment attempts and re-store with remaining TTL
+      codeData.attempts += 1;
+      const remainingTtl = await this.redis.ttl(key);
+      if (remainingTtl > 0) {
+        await this.redis.setex(key, remainingTtl, JSON.stringify(codeData));
+      }
+      throw new BadRequestException('Неверный код подтверждения');
+    }
+
+    // Code is valid — delete it (single-use)
+    await this.redis.del(key);
+
+    return codeData.newEmail;
+  }
+
+  /**
+   * Invalidate an email change code for a user.
+   *
+   * @param userId - User ID
+   */
+  async invalidateEmailChangeCode(userId: string): Promise<void> {
+    await this.redis.del(`email_change:code:${userId}`);
   }
 
   /**

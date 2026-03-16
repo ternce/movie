@@ -560,6 +560,8 @@ export const endpoints = {
     uploadAvatar: '/users/me/avatar',
     verification: '/users/me/verification',
     verificationStatus: '/users/me/verification/status',
+    requestEmailChange: '/users/me/email/request-code',
+    confirmEmailChange: '/users/me/email/confirm',
   },
 
   // Content
