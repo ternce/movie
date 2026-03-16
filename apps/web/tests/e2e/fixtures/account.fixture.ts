@@ -305,12 +305,12 @@ export async function mockAccountApi(page: Page) {
     }
   });
 
-  // Password change
-  await page.route('**/api/v1/auth/change-password', async (route) => {
+  // Forgot password (password reset via email)
+  await page.route('**/api/v1/auth/forgot-password', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ success: true }),
+      body: JSON.stringify({ success: true, data: { message: 'Ссылка для сброса пароля отправлена' } }),
     });
   });
 

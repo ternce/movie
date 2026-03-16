@@ -32,54 +32,62 @@ test.describe('Account Settings', () => {
   });
 
   test.describe('Security Tab', () => {
-    test('should switch to security tab', async ({ page }) => {
+    test('should switch to security tab and show "Сброс пароля"', async ({ page }) => {
       await page.getByRole('tab', { name: /безопасность/i }).click();
-      await expect(page.getByText('Смена пароля')).toBeVisible();
+      await expect(page.getByText('Сброс пароля')).toBeVisible();
     });
 
-    test('should show password form fields', async ({ page }) => {
+    test('should show email input field', async ({ page }) => {
       await page.getByRole('tab', { name: /безопасность/i }).click();
-
-      await expect(page.locator('input[type="password"]').first()).toBeVisible();
+      await expect(page.locator('input[type="email"]')).toBeVisible();
     });
 
-    test('should validate matching passwords', async ({ page }) => {
+    test('should show info about session termination', async ({ page }) => {
+      await page.getByRole('tab', { name: /безопасность/i }).click();
+      await expect(page.getByText(/все активные сессии будут завершены/i)).toBeVisible();
+    });
+
+    test('should validate empty email', async ({ page }) => {
       await page.getByRole('tab', { name: /безопасность/i }).click();
 
-      // Fill passwords that don't match
-      const inputs = page.locator('input[type="password"]');
-      await inputs.nth(0).fill('OldPass123!');
-      await inputs.nth(1).fill('NewPass123!');
-      await inputs.nth(2).fill('DifferentPass123!');
-
-      const submitButton = page.getByRole('button', { name: /изменить пароль|сменить/i });
+      const submitButton = page.getByRole('button', { name: /отправить ссылку/i });
       await submitButton.click();
 
-      await expect(page.getByText(/не совпадают/i)).toBeVisible();
+      await expect(page.getByText('Email обязателен')).toBeVisible();
     });
 
-    test('should validate minimum password length', async ({ page }) => {
+    test('should validate invalid email format', async ({ page }) => {
       await page.getByRole('tab', { name: /безопасность/i }).click();
 
-      const inputs = page.locator('input[type="password"]');
-      await inputs.nth(0).fill('OldPass123!');
-      await inputs.nth(1).fill('short');
-      await inputs.nth(2).fill('short');
-
-      const submitButton = page.getByRole('button', { name: /изменить пароль|сменить/i });
+      await page.locator('input[type="email"]').fill('not-an-email');
+      const submitButton = page.getByRole('button', { name: /отправить ссылку/i });
       await submitButton.click();
 
-      await expect(page.getByText(/минимум 8/i)).toBeVisible();
+      await expect(page.getByText('Введите корректный email')).toBeVisible();
     });
 
-    test('should show password strength indicator', async ({ page }) => {
+    test('should show success state after submission', async ({ page }) => {
       await page.getByRole('tab', { name: /безопасность/i }).click();
 
-      const inputs = page.locator('input[type="password"]');
-      await inputs.nth(1).fill('Aa1!Bb2@Cc3#');
+      await page.locator('input[type="email"]').fill('test@example.com');
+      const submitButton = page.getByRole('button', { name: /отправить ссылку/i });
+      await submitButton.click();
 
-      // Strength indicator should be visible
-      await expect(page.getByText(/сильный|средний|слабый/i)).toBeVisible();
+      await expect(page.getByText('Проверьте почту')).toBeVisible();
+      await expect(page.getByText(/ссылку для сброса пароля/i)).toBeVisible();
+    });
+
+    test('should show cooldown timer on resend button', async ({ page }) => {
+      await page.getByRole('tab', { name: /безопасность/i }).click();
+
+      await page.locator('input[type="email"]').fill('test@example.com');
+      await page.getByRole('button', { name: /отправить ссылку/i }).click();
+
+      await expect(page.getByText('Проверьте почту')).toBeVisible();
+      const resendButton = page.getByRole('button', { name: /отправить повторно/i });
+      await expect(resendButton).toBeVisible();
+      await expect(resendButton).toBeDisabled();
+      await expect(resendButton).toContainText(/\d+с/);
     });
   });
 

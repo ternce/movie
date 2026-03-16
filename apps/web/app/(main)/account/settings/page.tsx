@@ -2,7 +2,10 @@
 
 import {
   Bell,
+  CheckCircle,
+  Envelope,
   Globe,
+  Info,
   Key,
   Laptop,
   SpinnerGap,
@@ -28,11 +31,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  useChangePassword,
   useActiveSessions,
   useTerminateSession,
   useTerminateAllSessions,
 } from '@/hooks/use-account';
+import { useAuth } from '@/hooks/use-auth';
 import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
@@ -41,25 +44,14 @@ import { formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 // ==============================
-// Password Zod schema
+// Reset email schema
 // ==============================
 
-const passwordSchema = z
-  .object({
-    currentPassword: z.string().min(1, 'Введите текущий пароль'),
-    newPassword: z
-      .string()
-      .min(8, 'Минимум 8 символов')
-      .regex(/[A-Z]/, 'Должна быть хотя бы одна заглавная буква')
-      .regex(/[0-9]/, 'Должна быть хотя бы одна цифра'),
-    confirmPassword: z.string().min(1, 'Подтвердите новый пароль'),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: 'Пароли не совпадают',
-    path: ['confirmPassword'],
-  });
+const resetEmailSchema = z.object({
+  email: z.string().min(1, 'Email обязателен').email('Введите корректный email'),
+});
 
-type PasswordFormValues = z.infer<typeof passwordSchema>;
+type ResetEmailFormValues = z.infer<typeof resetEmailSchema>;
 
 // ==============================
 // Notification toggle config
@@ -85,27 +77,6 @@ const NOTIFICATION_TOGGLES = [
     icon: Bell,
   },
 ];
-
-// ==============================
-// Password strength
-// ==============================
-
-function getPasswordStrength(password: string): {
-  score: number;
-  label: string;
-  color: string;
-} {
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (password.length >= 12) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-
-  if (score <= 1) return { score: 1, label: 'Слабый', color: 'bg-red-500' };
-  if (score <= 3) return { score: 2, label: 'Средний', color: 'bg-yellow-500' };
-  return { score: 3, label: 'Надёжный', color: 'bg-green-500' };
-}
 
 /**
  * Settings page with tabs
@@ -252,159 +223,142 @@ function NotificationsTab() {
 // ==============================
 
 function SecurityTab() {
-  const changePassword = useChangePassword();
+  const { forgotPassword, isSendingResetEmail } = useAuth();
+  const [isSubmitted, setIsSubmitted] = React.useState(false);
+  const [cooldown, setCooldown] = React.useState(0);
 
   const {
     register,
     handleSubmit,
-    watch,
-    reset,
+    getValues,
     formState: { errors },
-  } = useForm<PasswordFormValues>({
-    resolver: zodResolver(passwordSchema),
-    defaultValues: {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    },
+  } = useForm<ResetEmailFormValues>({
+    resolver: zodResolver(resetEmailSchema),
+    defaultValues: { email: '' },
   });
 
-  const newPassword = watch('newPassword');
-  const strength = newPassword ? getPasswordStrength(newPassword) : null;
+  React.useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
-  const onSubmit = (data: PasswordFormValues) => {
-    changePassword.mutate(
+  const onSubmit = (data: ResetEmailFormValues) => {
+    forgotPassword(
+      { email: data.email },
       {
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
-      },
-      {
-        onSuccess: () => {
-          reset();
-          toast.success('Пароль успешно изменён');
-        },
-        onError: () => {
-          toast.error('Не удалось изменить пароль');
+        onSettled: () => {
+          setIsSubmitted(true);
+          setCooldown(60);
         },
       }
     );
   };
+
+  const handleResend = () => {
+    const email = getValues('email');
+    forgotPassword(
+      { email },
+      {
+        onSettled: () => {
+          setCooldown(60);
+        },
+      }
+    );
+  };
+
+  if (isSubmitted) {
+    return (
+      <Card>
+        <CardContent className="py-10">
+          <div className="mx-auto max-w-md text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-mp-success-bg">
+              <CheckCircle className="h-8 w-8 text-mp-success-text" weight="fill" />
+            </div>
+            <h2 className="mb-2 text-xl font-semibold text-mp-text-primary">
+              Проверьте почту
+            </h2>
+            <p className="mb-6 text-sm text-mp-text-secondary">
+              Если аккаунт с указанным email существует, мы отправили ссылку для сброса пароля.
+              Проверьте папку «Спам», если письмо не пришло.
+            </p>
+
+            <Button
+              variant="outline"
+              onClick={handleResend}
+              disabled={cooldown > 0 || isSendingResetEmail}
+              isLoading={isSendingResetEmail}
+            >
+              {cooldown > 0
+                ? `Отправить повторно (${cooldown}с)`
+                : 'Отправить повторно'}
+            </Button>
+
+            <Separator className="my-6" />
+
+            <div className="flex items-start gap-3 rounded-lg border border-mp-border bg-mp-surface/50 p-4 text-left">
+              <Info className="mt-0.5 h-5 w-5 shrink-0 text-mp-text-secondary" />
+              <p className="text-sm text-mp-text-secondary">
+                После сброса пароля все активные сессии будут завершены и потребуется заново войти в аккаунт
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Key className="h-5 w-5 text-mp-accent-primary" />
-          Смена пароля
+          Сброс пароля
         </CardTitle>
         <CardDescription>
-          Регулярно меняйте пароль для обеспечения безопасности аккаунта
+          Введите ваш email, и мы отправим ссылку для сброса пароля
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Current password */}
           <div className="space-y-2">
-            <Label htmlFor="currentPassword">
-              Текущий пароль <span className="text-mp-accent-tertiary">*</span>
+            <Label htmlFor="resetEmail">
+              Email <span className="text-mp-accent-tertiary">*</span>
             </Label>
-            <Input
-              id="currentPassword"
-              type="password"
-              placeholder="Введите текущий пароль"
-              error={!!errors.currentPassword}
-              {...register('currentPassword')}
-            />
-            {errors.currentPassword && (
+            <div className="relative">
+              <Envelope className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mp-text-disabled" />
+              <Input
+                id="resetEmail"
+                type="email"
+                placeholder="Введите ваш email"
+                className="pl-10"
+                error={!!errors.email}
+                {...register('email')}
+              />
+            </div>
+            {errors.email && (
               <p className="text-sm text-mp-error-text">
-                {errors.currentPassword.message}
+                {errors.email.message}
               </p>
             )}
           </div>
 
-          <Separator />
-
-          {/* New password */}
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">
-              Новый пароль <span className="text-mp-accent-tertiary">*</span>
-            </Label>
-            <Input
-              id="newPassword"
-              type="password"
-              placeholder="Введите новый пароль"
-              error={!!errors.newPassword}
-              {...register('newPassword')}
-            />
-            {errors.newPassword && (
-              <p className="text-sm text-mp-error-text">
-                {errors.newPassword.message}
-              </p>
-            )}
-
-            {/* Password strength indicator */}
-            {strength && (
-              <div className="space-y-1.5">
-                <div className="flex h-1.5 gap-1 rounded-full overflow-hidden">
-                  {[1, 2, 3].map((level) => (
-                    <div
-                      key={level}
-                      className={cn(
-                        'h-full flex-1 rounded-full transition-colors',
-                        level <= strength.score
-                          ? strength.color
-                          : 'bg-mp-border'
-                      )}
-                    />
-                  ))}
-                </div>
-                <p className={cn(
-                  'text-xs',
-                  strength.score === 1 && 'text-red-400',
-                  strength.score === 2 && 'text-yellow-400',
-                  strength.score === 3 && 'text-green-400',
-                )}>
-                  {strength.label}
-                </p>
-              </div>
-            )}
-
-            <p className="text-xs text-mp-text-secondary">
-              Минимум 8 символов, заглавная буква и цифра
+          <div className="flex items-start gap-3 rounded-lg border border-mp-border bg-mp-surface/50 p-4">
+            <Info className="mt-0.5 h-5 w-5 shrink-0 text-mp-text-secondary" />
+            <p className="text-sm text-mp-text-secondary">
+              После сброса пароля все активные сессии будут завершены и потребуется заново войти в аккаунт
             </p>
           </div>
 
-          {/* Confirm password */}
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">
-              Подтвердите пароль <span className="text-mp-accent-tertiary">*</span>
-            </Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              placeholder="Повторите новый пароль"
-              error={!!errors.confirmPassword}
-              {...register('confirmPassword')}
-            />
-            {errors.confirmPassword && (
-              <p className="text-sm text-mp-error-text">
-                {errors.confirmPassword.message}
-              </p>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Submit */}
           <div className="flex justify-end">
             <Button
               type="submit"
               variant="gradient"
-              disabled={changePassword.isPending}
-              isLoading={changePassword.isPending}
+              disabled={isSendingResetEmail}
+              isLoading={isSendingResetEmail}
             >
-              <Key className="mr-2 h-4 w-4" />
-              Изменить пароль
+              <Envelope className="mr-2 h-4 w-4" />
+              Отправить ссылку для сброса
             </Button>
           </div>
         </form>

@@ -97,7 +97,6 @@ export {
 export {
   useProfile,
   useUpdateProfile,
-  useChangePassword,
   useVerificationStatus,
   useSubmitVerification,
   useWatchlist,

@@ -73,21 +73,6 @@ export function useUploadAvatar() {
   });
 }
 
-export function useChangePassword() {
-  return useMutation({
-    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
-      const response = await api.post<any>(endpoints.users.password, data);
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success('Пароль изменён');
-    },
-    onError: (error: ApiError) => {
-      toast.error(error.message || 'Ошибка смены пароля');
-    },
-  });
-}
-
 // ==============================
 // Verification
 // ==============================
