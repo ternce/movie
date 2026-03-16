@@ -1,11 +1,11 @@
 'use client';
 
-import { MagnifyingGlass, CaretDown, List } from '@phosphor-icons/react';
+import { MagnifyingGlass, List } from '@phosphor-icons/react';
 import * as React from 'react';
-import Link from 'next/link';
 
 import dynamic from 'next/dynamic';
 
+import { ProfileDropdown } from '@/components/layout/profile-dropdown';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { CartBadge } from '@/components/store';
 
@@ -13,10 +13,8 @@ const CartDrawer = dynamic(
   () => import('@/components/store/cart-drawer').then((m) => m.CartDrawer),
 );
 import { SearchInputCompact } from '@/components/search/search-input';
-import { UserAvatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/stores/auth.store';
 import {
   useContentStore,
   CONTENT_TYPES,
@@ -31,13 +29,9 @@ interface AppHeaderProps {
  * Application header with content type tabs matching Figma design
  */
 export function AppHeader({ className }: AppHeaderProps) {
-  const { user } = useAuthStore();
   const { setMobileMenuOpen, setSearchOpen } = useUIStore();
   const { activeContentType, setContentType } = useContentStore();
   const [cartOpen, setCartOpen] = React.useState(false);
-
-  const fullName = user ? `${user.firstName} ${user.lastName}` : 'Гость';
-  const email = user?.email || '';
 
   return (
     <header
@@ -102,26 +96,8 @@ export function AppHeader({ className }: AppHeaderProps) {
           {/* Notifications */}
           <NotificationBell />
 
-          {/* User profile */}
-          <Link
-            href="/account/profile"
-            className="flex items-center gap-3 hover:opacity-90 transition-opacity"
-          >
-            <UserAvatar
-              src={user?.avatarUrl}
-              name={fullName}
-              size="sm"
-            />
-            <div className="hidden lg:block text-left">
-              <p className="text-sm font-medium text-mp-text-primary leading-tight">
-                {fullName}
-              </p>
-              <p className="text-xs text-mp-text-secondary leading-tight">
-                {email}
-              </p>
-            </div>
-            <CaretDown className="hidden lg:block w-4 h-4 text-mp-text-secondary" />
-          </Link>
+          {/* User profile dropdown */}
+          <ProfileDropdown />
         </div>
       </div>
     </header>
