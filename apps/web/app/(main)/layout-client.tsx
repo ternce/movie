@@ -17,25 +17,22 @@ export default function MainLayoutClient({
 }: {
   children: React.ReactNode;
 }) {
-  // Safety net: clear stale pointer-events:none on body when no Radix modals are open
+  // Safety net: periodically clear stale pointer-events:none left by Radix modals.
+  // Uses setInterval (not MutationObserver) to avoid race conditions with
+  // Radix's synchronous pointer-events lifecycle during open/close transitions.
   useEffect(() => {
-    const observer = new MutationObserver(() => {
-      if (document.body.style.pointerEvents === 'none') {
-        const hasOpenModal = document.querySelector(
-          '[data-state="open"][role="dialog"], [data-state="open"][role="menu"]'
-        );
-        if (!hasOpenModal) {
-          document.body.style.pointerEvents = '';
-        }
+    const id = setInterval(() => {
+      if (
+        document.body.style.pointerEvents === 'none' &&
+        !document.querySelector(
+          '[data-state="open"][role="dialog"], [data-state="open"][role="menu"], [data-state="open"][role="alertdialog"]'
+        )
+      ) {
+        document.body.style.pointerEvents = '';
       }
-    });
+    }, 500);
 
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['style'],
-    });
-
-    return () => observer.disconnect();
+    return () => clearInterval(id);
   }, []);
 
   return (
