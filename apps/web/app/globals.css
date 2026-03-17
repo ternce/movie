@@ -372,13 +372,14 @@
 }
 
 /*
- * Fix: Radix Dialog/Sheet sets pointer-events:auto as inline style on content.
- * When the dialog closes (data-state="closed"), the element stays in the DOM
- * during the exit animation but should not intercept pointer events.
- * !important is needed to override Radix's inline style.
+ * Fix: Radix Dialog/Sheet keeps elements in the DOM during exit animations.
+ * Content has inline pointer-events:auto from DismissableLayer, and overlays
+ * remain as fixed fullscreen divs. Both block clicks on elements behind them.
+ * !important overrides Radix's inline styles and any Tailwind specificity issues.
  */
 [data-state="closed"][role="dialog"],
-[data-state="closed"][role="alertdialog"] {
+[data-state="closed"][role="alertdialog"],
+[data-state="closed"][aria-hidden] {
   pointer-events: none !important;
 }
 
