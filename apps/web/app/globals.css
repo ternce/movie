@@ -371,6 +371,17 @@
   }
 }
 
+/*
+ * Fix: Radix Dialog/Sheet sets pointer-events:auto as inline style on content.
+ * When the dialog closes (data-state="closed"), the element stays in the DOM
+ * during the exit animation but should not intercept pointer events.
+ * !important is needed to override Radix's inline style.
+ */
+[data-state="closed"][role="dialog"],
+[data-state="closed"][role="alertdialog"] {
+  pointer-events: none !important;
+}
+
 /* Shimmer effect for skeletons */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
