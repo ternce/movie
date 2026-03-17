@@ -55,7 +55,7 @@ export function NotificationDropdown({ onClose, showCloseButton = true }: Notifi
   }
 
   return (
-    <div className="w-full sm:w-[380px]">
+    <div className="w-full sm:w-[380px] flex flex-col max-h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-mp-border">
         <h3 className="text-sm font-semibold text-mp-text-primary">
@@ -78,16 +78,16 @@ export function NotificationDropdown({ onClose, showCloseButton = true }: Notifi
             <button
               onClick={onClose}
               aria-label="Закрыть"
-              className="p-1 rounded-md text-mp-text-secondary hover:text-mp-text-primary hover:bg-mp-surface transition-colors"
+              className="p-1.5 rounded-lg bg-mp-surface text-mp-text-primary hover:text-mp-text-primary hover:bg-mp-surface-elevated transition-colors"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           )}
         </div>
       </div>
 
       {/* Content */}
-      <ScrollArea className="max-h-[60vh] sm:max-h-[400px]">
+      <ScrollArea className="flex-1 min-h-0">
         {/* Loading state */}
         {isLoading && (
           <div className="divide-y divide-mp-border/50">

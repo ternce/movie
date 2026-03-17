@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+
 import { AppHeader } from '@/components/layout/app-header';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
@@ -15,6 +17,27 @@ export default function MainLayoutClient({
 }: {
   children: React.ReactNode;
 }) {
+  // Safety net: clear stale pointer-events:none on body when no Radix modals are open
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      if (document.body.style.pointerEvents === 'none') {
+        const hasOpenModal = document.querySelector(
+          '[data-state="open"][role="dialog"], [data-state="open"][role="menu"]'
+        );
+        if (!hasOpenModal) {
+          document.body.style.pointerEvents = '';
+        }
+      }
+    });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['style'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="min-h-screen bg-mp-bg-primary">
       {/* Sidebar */}

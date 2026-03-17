@@ -69,14 +69,15 @@ export function NotificationBell() {
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetContent
             side="bottom"
-            className={cn(
-              'rounded-t-2xl bg-mp-bg-secondary border-mp-border p-0 max-h-[85vh]',
-              '[&>button:first-of-type]:hidden'
-            )}
+            className="rounded-t-2xl bg-mp-bg-secondary border-mp-border p-0 max-h-[85vh] flex flex-col"
           >
             <SheetHeader className="sr-only">
               <SheetTitle>Уведомления</SheetTitle>
             </SheetHeader>
+            {/* Drag handle indicator */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-mp-text-disabled/40" />
+            </div>
             <NotificationDropdown onClose={() => setOpen(false)} showCloseButton={true} />
           </SheetContent>
         </Sheet>

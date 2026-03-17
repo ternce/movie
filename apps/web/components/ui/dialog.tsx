@@ -21,7 +21,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm',
+      'fixed inset-0 z-60 bg-black/60 backdrop-blur-sm pointer-events-auto',
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className
@@ -40,7 +40,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-[50%] top-[50%] z-50 grid w-[calc(100vw-2rem)] sm:w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4',
+        'fixed left-[50%] top-[50%] z-60 grid w-[calc(100vw-2rem)] sm:w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4',
         'bg-mp-surface border border-mp-border p-6 shadow-lg duration-200 rounded-xl',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
