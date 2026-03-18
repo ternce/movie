@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/stores/auth.store';
 
 const navLinks = [
   { label: 'Сериалы', href: '/series' },
@@ -17,6 +18,8 @@ const navLinks = [
 export function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -86,12 +89,20 @@ export function LandingNav() {
 
           {/* Auth buttons + Mobile hamburger */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <Button variant="ghost" size="sm" className="hidden sm:inline-flex" asChild>
-              <Link href="/login">Войти</Link>
-            </Button>
-            <Button variant="gradient" size="sm" className="hidden sm:inline-flex" asChild>
-              <Link href="/register">Начать</Link>
-            </Button>
+            {isHydrated && isAuthenticated ? (
+              <Button variant="gradient" size="sm" className="hidden sm:inline-flex" asChild>
+                <Link href="/dashboard">Личный кабинет</Link>
+              </Button>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" className="hidden sm:inline-flex" asChild>
+                  <Link href="/login">Войти</Link>
+                </Button>
+                <Button variant="gradient" size="sm" className="hidden sm:inline-flex" asChild>
+                  <Link href="/register">Начать</Link>
+                </Button>
+              </>
+            )}
 
             {/* Mobile hamburger */}
             <button
@@ -134,16 +145,26 @@ export function LandingNav() {
             </nav>
 
             <div className="mt-8 flex flex-col gap-3">
-              <Button variant="ghost" size="default" className="w-full justify-center" asChild>
-                <Link href="/login" onClick={() => setMobileOpen(false)}>
-                  Войти
-                </Link>
-              </Button>
-              <Button variant="gradient" size="default" className="w-full justify-center" asChild>
-                <Link href="/register" onClick={() => setMobileOpen(false)}>
-                  Начать бесплатно
-                </Link>
-              </Button>
+              {isHydrated && isAuthenticated ? (
+                <Button variant="gradient" size="default" className="w-full justify-center" asChild>
+                  <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
+                    Личный кабинет
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  <Button variant="ghost" size="default" className="w-full justify-center" asChild>
+                    <Link href="/login" onClick={() => setMobileOpen(false)}>
+                      Войти
+                    </Link>
+                  </Button>
+                  <Button variant="gradient" size="default" className="w-full justify-center" asChild>
+                    <Link href="/register" onClick={() => setMobileOpen(false)}>
+                      Начать бесплатно
+                    </Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -170,6 +170,10 @@ function setTokens(accessToken: string, refreshToken?: string, sessionId?: strin
 function clearAuthState(): void {
   if (typeof window === 'undefined') return;
 
+  // Clear auth cookies so middleware knows user is unauthenticated
+  document.cookie = 'mp-auth-token=;path=/;max-age=0';
+  document.cookie = 'mp-authenticated=;path=/;max-age=0';
+
   try {
     const storage = localStorage.getItem('mp-auth-storage');
     if (storage) {
@@ -246,6 +250,10 @@ async function attemptTokenRefresh(): Promise<boolean> {
  */
 function redirectToLogin(): void {
   if (typeof window === 'undefined') return;
+
+  // Ensure cookies are cleared before redirecting to prevent middleware redirect loop
+  document.cookie = 'mp-auth-token=;path=/;max-age=0';
+  document.cookie = 'mp-authenticated=;path=/;max-age=0';
 
   // Store current URL for redirect after login
   const currentPath = window.location.pathname + window.location.search;

@@ -34,11 +34,22 @@ function matchesRoute(pathname: string, routes: string[]): boolean {
 function hasAuthToken(request: NextRequest): boolean {
   // Check cookie first (set by Zustand persist middleware)
   const authCookie = request.cookies.get('mp-auth-token');
-  if (authCookie?.value) return true;
+  if (authCookie?.value) {
+    // Lightweight JWT expiry check (decode payload without verification)
+    try {
+      const payload = JSON.parse(atob(authCookie.value.split('.')[1]));
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        // Token expired — treat as unauthenticated
+        return false;
+      }
+    } catch {
+      // Malformed token — treat as unauthenticated
+      return false;
+    }
+    return true;
+  }
 
   // Fallback: check localStorage-backed cookie
-  // The auth store persists to localStorage with key 'mp-auth-storage'
-  // We also check for a lightweight cookie marker
   const storageCookie = request.cookies.get('mp-authenticated');
   if (storageCookie?.value === 'true') return true;
 
@@ -49,6 +60,18 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isAuthenticated = hasAuthToken(request);
+
+  // If not authenticated but stale cookies remain, clear them proactively
+  if (!isAuthenticated) {
+    const authCookie = request.cookies.get('mp-auth-token');
+    const markerCookie = request.cookies.get('mp-authenticated');
+    if (authCookie?.value || markerCookie?.value === 'true') {
+      const response = NextResponse.next();
+      response.cookies.delete('mp-auth-token');
+      response.cookies.delete('mp-authenticated');
+      return response;
+    }
+  }
 
   // Protected routes: redirect to login if not authenticated
   if (matchesRoute(pathname, PROTECTED_ROUTES) && !isAuthenticated) {
