@@ -14,6 +14,7 @@ import {
   Gear,
   Shield,
   DeviceMobile,
+  Warning,
 } from '@phosphor-icons/react';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
@@ -21,6 +22,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -376,6 +387,10 @@ function SessionsTab() {
   const { data: sessions, isLoading } = useActiveSessions();
   const terminateSession = useTerminateSession();
   const terminateAllSessions = useTerminateAllSessions();
+  const { logout } = useAuth();
+
+  const [showTerminateCurrentDialog, setShowTerminateCurrentDialog] = React.useState(false);
+  const [pendingSessionId, setPendingSessionId] = React.useState<string | null>(null);
 
   const sessionsList = Array.isArray(sessions) ? sessions : sessions?.items || [];
 
@@ -512,14 +527,16 @@ function SessionsTab() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className={cn(
-                      'shrink-0',
-                      isCurrentSession
-                        ? 'cursor-not-allowed opacity-50'
-                        : 'text-mp-accent-tertiary hover:border-mp-accent-tertiary/50 hover:text-mp-accent-tertiary'
-                    )}
-                    onClick={() => terminateSession.mutate(session.id)}
-                    disabled={isTerminating || isCurrentSession}
+                    className="shrink-0 text-mp-accent-tertiary hover:border-mp-accent-tertiary/50 hover:text-mp-accent-tertiary"
+                    onClick={() => {
+                      if (isCurrentSession) {
+                        setPendingSessionId(session.id);
+                        setShowTerminateCurrentDialog(true);
+                      } else {
+                        terminateSession.mutate(session.id);
+                      }
+                    }}
+                    disabled={isTerminating}
                   >
                     {isTerminating ? (
                       <SpinnerGap className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -534,6 +551,36 @@ function SessionsTab() {
           </div>
         )}
       </CardContent>
+
+      <AlertDialog open={showTerminateCurrentDialog} onOpenChange={setShowTerminateCurrentDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Warning className="h-5 w-5 text-mp-accent-tertiary" />
+              Завершить текущую сессию?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы будете выйдены из аккаунта на этом устройстве. Для продолжения работы потребуется повторный вход.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-mp-accent-tertiary text-white hover:bg-mp-accent-tertiary/90"
+              onClick={() => {
+                if (!pendingSessionId) return;
+                terminateSession.mutate(pendingSessionId, {
+                  onSuccess: () => {
+                    logout();
+                  },
+                });
+              }}
+            >
+              Завершить сессию
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

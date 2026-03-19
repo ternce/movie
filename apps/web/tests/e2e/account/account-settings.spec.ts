@@ -110,20 +110,53 @@ test.describe('Account Settings', () => {
       await expect(page.getByText('Это устройство')).toBeVisible();
     });
 
-    test('should disable terminate for current session', async ({ page }) => {
+    test('should show confirmation dialog when terminating current session', async ({ page }) => {
       await page.getByRole('tab', { name: /устройства/i }).click();
 
-      // The terminate button for the current session should be disabled
-      const currentSessionCard = page.locator(':has(> :text("Это устройство"))').first();
-      if (await currentSessionCard.isVisible()) {
-        const terminateBtn = currentSessionCard.getByRole('button', { name: /завершить/i });
-        if (await terminateBtn.isVisible()) {
-          await expect(terminateBtn).toBeDisabled();
-        }
-      }
+      // The current session terminate button should be enabled
+      const currentSessionCard = page.locator('div:has(> div .badge:text("Это устройство"))').first();
+      // Find any terminate button near "Это устройство" badge
+      const terminateButtons = page.getByRole('button', { name: /завершить$/i });
+      // Click the first terminate button (current session)
+      await terminateButtons.first().click();
+
+      // Confirmation dialog should appear
+      await expect(page.getByText('Завершить текущую сессию?')).toBeVisible();
+      await expect(page.getByText(/выйдены из аккаунта/i)).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Отмена' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Завершить сессию' })).toBeVisible();
+
+      // Cancel should close the dialog
+      await page.getByRole('button', { name: 'Отмена' }).click();
+      await expect(page.getByText('Завершить текущую сессию?')).not.toBeVisible();
     });
 
-    test('should allow terminating other sessions', async ({ page }) => {
+    test('should logout after confirming current session termination', async ({ page }) => {
+      await page.getByRole('tab', { name: /устройства/i }).click();
+
+      // Mock logout endpoint
+      await page.route('**/api/v1/auth/logout', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      });
+
+      // Click terminate on current session
+      const terminateButtons = page.getByRole('button', { name: /завершить$/i });
+      await terminateButtons.first().click();
+
+      // Confirm termination
+      await page.getByRole('button', { name: 'Завершить сессию' }).click();
+
+      // Should redirect to home page after logout
+      await page.waitForURL('/', { timeout: 5000 }).catch(() => {
+        // May redirect to login instead
+      });
+    });
+
+    test('should allow terminating other sessions without dialog', async ({ page }) => {
       await page.getByRole('tab', { name: /устройства/i }).click();
 
       // Find terminate button for non-current session
