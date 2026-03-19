@@ -1,6 +1,6 @@
 'use client';
 
-import { House, Television, MagnifyingGlass, FilmStrip, User } from '@phosphor-icons/react';
+import { House, Television, MagnifyingGlass, DeviceMobile, User } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { href: '/dashboard', icon: House, label: 'Главная' },
   { href: '/series', icon: Television, label: 'Сериалы' },
   { href: '#search', icon: MagnifyingGlass, label: 'Поиск' },
-  { href: '/clips', icon: FilmStrip, label: 'Клипы' },
+  { href: '/shorts', icon: DeviceMobile, label: 'Шортсы' },
   { href: '/account', icon: User, label: 'Аккаунт' },
 ] as const;
 

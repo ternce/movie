@@ -32,9 +32,9 @@ test.describe('Mobile Bottom Navigation', () => {
     await expect(page).toHaveURL(/\/series/);
   });
 
-  test('should navigate to /clips on tap', async ({ page }) => {
-    await page.getByLabel('Клипы').click();
-    await expect(page).toHaveURL(/\/clips/);
+  test('should navigate to /shorts on tap', async ({ page }) => {
+    await page.getByLabel('Шортсы').click();
+    await expect(page).toHaveURL(/\/shorts/);
   });
 
   test('should navigate to /account on tap', async ({ page }) => {

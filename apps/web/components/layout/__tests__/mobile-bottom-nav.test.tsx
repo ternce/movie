@@ -34,8 +34,8 @@ vi.mock('lucide-react', () => ({
   Search: ({ className }: { className?: string }) => (
     <svg data-testid="icon-search" className={className} />
   ),
-  Film: ({ className }: { className?: string }) => (
-    <svg data-testid="icon-film" className={className} />
+  Smartphone: ({ className }: { className?: string }) => (
+    <svg data-testid="icon-device-mobile" className={className} />
   ),
   User: ({ className }: { className?: string }) => (
     <svg data-testid="icon-user" className={className} />
@@ -63,20 +63,20 @@ describe('MobileBottomNav', () => {
       expect(screen.getByRole('navigation')).toBeInTheDocument();
     });
 
-    it('should render 5 items: Главная, Сериалы, Поиск, Клипы, Аккаунт', () => {
+    it('should render 5 items: Главная, Сериалы, Поиск, Шортсы, Аккаунт', () => {
       render(<MobileBottomNav />);
       expect(screen.getByText('Главная')).toBeInTheDocument();
       expect(screen.getByText('Сериалы')).toBeInTheDocument();
       expect(screen.getByText('Поиск')).toBeInTheDocument();
-      expect(screen.getByText('Клипы')).toBeInTheDocument();
+      expect(screen.getByText('Шортсы')).toBeInTheDocument();
       expect(screen.getByText('Аккаунт')).toBeInTheDocument();
     });
 
-    it('should render links to /dashboard, /series, /clips, /account', () => {
+    it('should render links to /dashboard, /series, /shorts, /account', () => {
       render(<MobileBottomNav />);
       expect(screen.getByRole('link', { name: 'Главная' })).toHaveAttribute('href', '/dashboard');
       expect(screen.getByRole('link', { name: 'Сериалы' })).toHaveAttribute('href', '/series');
-      expect(screen.getByRole('link', { name: 'Клипы' })).toHaveAttribute('href', '/clips');
+      expect(screen.getByRole('link', { name: 'Шортсы' })).toHaveAttribute('href', '/shorts');
       expect(screen.getByRole('link', { name: 'Аккаунт' })).toHaveAttribute('href', '/account');
     });
 
@@ -102,7 +102,7 @@ describe('MobileBottomNav', () => {
       mockUsePathname.mockReturnValue('/dashboard');
       render(<MobileBottomNav />);
       expect(screen.getByRole('link', { name: 'Сериалы' })).not.toHaveAttribute('aria-current');
-      expect(screen.getByRole('link', { name: 'Клипы' })).not.toHaveAttribute('aria-current');
+      expect(screen.getByRole('link', { name: 'Шортсы' })).not.toHaveAttribute('aria-current');
       expect(screen.getByRole('link', { name: 'Аккаунт' })).not.toHaveAttribute('aria-current');
     });
 
@@ -116,10 +116,10 @@ describe('MobileBottomNav', () => {
       expect(screen.getByRole('link', { name: 'Главная' })).not.toHaveAttribute('aria-current');
     });
 
-    it('should activate correct link for /clips path', () => {
-      mockUsePathname.mockReturnValue('/clips');
+    it('should activate correct link for /shorts path', () => {
+      mockUsePathname.mockReturnValue('/shorts');
       render(<MobileBottomNav />);
-      expect(screen.getByRole('link', { name: 'Клипы' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: 'Шортсы' })).toHaveAttribute(
         'aria-current',
         'page'
       );
@@ -193,7 +193,7 @@ describe('MobileBottomNav', () => {
       expect(screen.getByLabelText('Главная')).toBeInTheDocument();
       expect(screen.getByLabelText('Сериалы')).toBeInTheDocument();
       expect(screen.getByLabelText('Поиск')).toBeInTheDocument();
-      expect(screen.getByLabelText('Клипы')).toBeInTheDocument();
+      expect(screen.getByLabelText('Шортсы')).toBeInTheDocument();
       expect(screen.getByLabelText('Аккаунт')).toBeInTheDocument();
     });
   });
