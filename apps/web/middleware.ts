@@ -10,6 +10,7 @@ const PROTECTED_ROUTES = [
   '/store/checkout',
   '/store/orders',
   '/bonuses',
+  '/studio',
 ];
 
 /**
@@ -100,6 +101,7 @@ export const config = {
     '/store/checkout',
     '/store/orders/:path*',
     '/bonuses/:path*',
+    '/studio/:path*',
     '/login',
     '/register',
     '/forgot-password',

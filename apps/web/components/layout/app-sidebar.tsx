@@ -22,6 +22,8 @@ import {
   FileText,
   Bag,
   Package,
+  Plus,
+  VideoCamera,
 } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -30,6 +32,7 @@ import * as React from 'react';
 import { GenreList, AddGenreDialog } from '@/components/sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/stores/auth.store';
 import { useUIStore } from '@/stores/ui.store';
 
 /**
@@ -49,7 +52,7 @@ interface NavItem {
 /**
  * Navigation groups matching Figma design
  */
-const navGroups: NavGroup[] = [
+const baseNavGroups: NavGroup[] = [
   {
     label: 'МЕНЮ',
     items: [
@@ -82,17 +85,26 @@ const navGroups: NavGroup[] = [
       { href: '/documents', icon: FileText, label: 'Документы' },
     ],
   },
-  {
-    label: 'ПАРТНЁРАМ',
-    items: [
-      { href: '/partner', icon: Users, label: 'Дашборд' },
-      { href: '/partner/referrals', icon: GitBranch, label: 'Рефералы' },
-      { href: '/partner/commissions', icon: Coins, label: 'Комиссии' },
-      { href: '/partner/withdrawals', icon: Wallet, label: 'Выводы' },
-      { href: '/partner/invite', icon: ShareNetwork, label: 'Пригласить' },
-    ],
-  },
 ];
+
+const studioNavGroup: NavGroup = {
+  label: 'СТУДИЯ',
+  items: [
+    { href: '/studio', icon: VideoCamera, label: 'Мой контент' },
+    { href: '/studio/create', icon: Plus, label: 'Создать' },
+  ],
+};
+
+const partnerNavGroup: NavGroup = {
+  label: 'ПАРТНЁРАМ',
+  items: [
+    { href: '/partner', icon: Users, label: 'Дашборд' },
+    { href: '/partner/referrals', icon: GitBranch, label: 'Рефералы' },
+    { href: '/partner/commissions', icon: Coins, label: 'Комиссии' },
+    { href: '/partner/withdrawals', icon: Wallet, label: 'Выводы' },
+    { href: '/partner/invite', icon: ShareNetwork, label: 'Пригласить' },
+  ],
+};
 
 /**
  * Sidebar width constants
@@ -110,7 +122,16 @@ interface AppSidebarProps {
 export function AppSidebar({ className }: AppSidebarProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
+  const { user } = useAuthStore();
   const { isMobileMenuOpen, setMobileMenuOpen } = useUIStore();
+
+  const isAdmin = user?.role === 'ADMIN';
+  const navGroups = React.useMemo(() => {
+    const groups = [...baseNavGroups];
+    if (isAdmin) groups.push(studioNavGroup);
+    groups.push(partnerNavGroup);
+    return groups;
+  }, [isAdmin]);
 
   // State for add genre dialog
   const [isAddGenreDialogOpen, setAddGenreDialogOpen] = React.useState(false);
