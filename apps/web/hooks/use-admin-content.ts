@@ -39,6 +39,8 @@ export interface CreateContentInput {
   isFree?: boolean;
   individualPrice?: number;
   status?: string;
+  tagIds?: string[];
+  genreIds?: string[];
 }
 
 export interface UpdateContentInput extends Partial<CreateContentInput> {

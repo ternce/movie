@@ -374,4 +374,10 @@ export const queryKeys = {
     all: ['userGenres'] as const,
     list: () => [...queryKeys.userGenres.all, 'list'] as const,
   },
+
+  // Tags
+  tags: {
+    all: ['tags'] as const,
+    list: () => [...queryKeys.tags.all, 'list'] as const,
+  },
 } as const;

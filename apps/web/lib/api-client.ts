@@ -837,4 +837,9 @@ export const endpoints = {
     remove: (preferenceId: string) => `/users/me/genres/${preferenceId}`,
     reorder: '/users/me/genres/reorder',
   },
+
+  // Tags
+  tags: {
+    list: '/tags',
+  },
 } as const;

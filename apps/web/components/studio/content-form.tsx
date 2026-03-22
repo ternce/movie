@@ -1,27 +1,38 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, SpinnerGap } from '@phosphor-icons/react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Plus,
+  SpinnerGap,
+} from '@phosphor-icons/react';
 import Link from 'next/link';
 import * as React from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { ImageUpload } from '@/components/admin/content/image-upload';
 import { VideoUpload } from '@/components/admin/content/video-upload';
+import { AgeRatingSelector } from '@/components/studio/age-rating-selector';
+import { CategorySelect } from '@/components/studio/category-select';
+import { ContentTypeCards } from '@/components/studio/content-type-cards';
+import { GenreSelect } from '@/components/studio/genre-select';
+import { TagInput } from '@/components/studio/tag-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  useContentCategories,
+  useContentTags,
+  useContentGenres,
+} from '@/hooks/use-studio-data';
+import { cn } from '@/lib/utils';
 
 // ============ Schema ============
 
@@ -41,9 +52,34 @@ const contentFormSchema = z.object({
   previewUrl: z.string().optional().or(z.literal('')),
   isFree: z.boolean().default(false),
   individualPrice: z.coerce.number().min(0).optional(),
+  tagIds: z.array(z.string()).optional().default([]),
+  genreIds: z.array(z.string()).optional().default([]),
 });
 
 export type ContentFormValues = z.infer<typeof contentFormSchema>;
+
+// ============ Constants ============
+
+const STEPS = [
+  { id: 1, label: 'Основное' },
+  { id: 2, label: 'Детали и медиа' },
+  { id: 3, label: 'Публикация' },
+] as const;
+
+const STEP_FIELDS: Record<number, (keyof ContentFormValues)[]> = {
+  1: ['contentType', 'title', 'description', 'slug'],
+  2: ['categoryId', 'genreIds', 'tagIds', 'thumbnailUrl', 'previewUrl'],
+  3: ['ageCategory', 'isFree', 'individualPrice', 'status'],
+};
+
+const DRAFT_STORAGE_KEY = 'studio-draft';
+
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+  SERIES: 'Сериал',
+  CLIP: 'Клип',
+  SHORT: 'Шорт',
+  TUTORIAL: 'Туториал',
+};
 
 // ============ Helpers ============
 
@@ -64,6 +100,146 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+// ============ Step Indicator ============
+
+function StepIndicator({
+  steps,
+  currentStep,
+  onStepClick,
+}: {
+  steps: typeof STEPS;
+  currentStep: number;
+  onStepClick: (step: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-8">
+      {steps.map((step, index) => {
+        const isCompleted = currentStep > step.id;
+        const isCurrent = currentStep === step.id;
+        const isClickable = step.id < currentStep;
+
+        return (
+          <React.Fragment key={step.id}>
+            {index > 0 && (
+              <div
+                className={cn(
+                  'h-px flex-1 transition-colors duration-300',
+                  isCompleted ? 'bg-[#c94bff]' : 'bg-mp-border'
+                )}
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => isClickable && onStepClick(step.id)}
+              disabled={!isClickable}
+              className={cn(
+                'flex items-center gap-2 rounded-full transition-all duration-300',
+                isClickable && 'cursor-pointer hover:opacity-80',
+                !isClickable && !isCurrent && 'cursor-default'
+              )}
+            >
+              <span
+                className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-semibold transition-all duration-300',
+                  isCompleted && 'bg-[#c94bff] border-[#c94bff] text-white',
+                  isCurrent && 'border-[#c94bff] text-[#c94bff] bg-[#c94bff]/10',
+                  !isCompleted && !isCurrent && 'border-mp-border text-mp-text-disabled'
+                )}
+              >
+                {isCompleted ? <Check weight="bold" className="h-4 w-4" /> : step.id}
+              </span>
+              <span
+                className={cn(
+                  'text-sm font-medium hidden sm:inline transition-colors duration-300',
+                  isCurrent && 'text-mp-text-primary',
+                  isCompleted && 'text-[#c94bff]',
+                  !isCompleted && !isCurrent && 'text-mp-text-disabled'
+                )}
+              >
+                {step.label}
+              </span>
+            </button>
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============ Character Counter ============
+
+function CharCounter({ current, max }: { current: number; max: number }) {
+  const isNearLimit = current > max * 0.9;
+  const isOverLimit = current > max;
+
+  return (
+    <span
+      className={cn(
+        'text-xs transition-colors',
+        isOverLimit && 'text-mp-error-text',
+        isNearLimit && !isOverLimit && 'text-[#F97316]',
+        !isNearLimit && 'text-mp-text-disabled'
+      )}
+    >
+      {current}/{max}
+    </span>
+  );
+}
+
+// ============ Summary Card ============
+
+function SummaryCard({
+  values,
+  categories,
+  tags,
+  genres,
+}: {
+  values: ContentFormValues;
+  categories: Array<{ id: string; name: string; depth: number }>;
+  tags: Array<{ id: string; name: string }>;
+  genres: Array<{ id: string; name: string }>;
+}) {
+  const categoryName = categories.find((c) => c.id === values.categoryId)?.name;
+  const selectedTags = tags.filter((t) => values.tagIds?.includes(t.id));
+  const selectedGenres = genres.filter((g) => values.genreIds?.includes(g.id));
+
+  return (
+    <Card className="border-mp-border bg-mp-surface/50">
+      <CardHeader>
+        <CardTitle className="text-lg">Предпросмотр</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <SummaryRow label="Тип" value={CONTENT_TYPE_LABELS[values.contentType] || '—'} />
+        <SummaryRow label="Название" value={values.title || '—'} />
+        <SummaryRow
+          label="Описание"
+          value={values.description ? `${values.description.slice(0, 80)}${values.description.length > 80 ? '...' : ''}` : '—'}
+        />
+        <SummaryRow label="Категория" value={categoryName || '—'} />
+        <SummaryRow
+          label="Жанры"
+          value={selectedGenres.length > 0 ? selectedGenres.map((g) => g.name).join(', ') : '—'}
+        />
+        <SummaryRow
+          label="Теги"
+          value={selectedTags.length > 0 ? selectedTags.map((t) => t.name).join(', ') : '—'}
+        />
+        <SummaryRow label="Возраст" value={values.ageCategory || '—'} />
+        <SummaryRow label="Цена" value={values.isFree ? 'Бесплатно' : values.individualPrice ? `${values.individualPrice} ₽` : '—'} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <span className="text-mp-text-secondary shrink-0">{label}</span>
+      <span className="text-mp-text-primary text-right truncate">{value}</span>
+    </div>
+  );
+}
+
 // ============ Component ============
 
 interface ContentFormProps {
@@ -74,6 +250,8 @@ interface ContentFormProps {
   submitIcon?: React.ReactNode;
   cancelHref: string;
   contentId?: string;
+  /** When true, skip draft restore (used in edit mode) */
+  isEditMode?: boolean;
 }
 
 export function ContentForm({
@@ -84,13 +262,29 @@ export function ContentForm({
   submitIcon,
   cancelHref,
   contentId,
+  isEditMode = false,
 }: ContentFormProps) {
+  const [currentStep, setCurrentStep] = React.useState(1);
+  const [showSlug, setShowSlug] = React.useState(false);
+  const [draftRestored, setDraftRestored] = React.useState(false);
+
+  // Fetch reference data
+  const { flat: categoriesFlat } = useContentCategories();
+  const { data: tagsData } = useContentTags();
+  const { data: genresData } = useContentGenres();
+
+  const availableTags = tagsData ?? [];
+  const availableGenres = genresData ?? [];
+
   const {
     register,
     handleSubmit,
     control,
     watch,
     setValue,
+    trigger,
+    getValues,
+    reset,
     formState: { errors },
   } = useForm<ContentFormValues>({
     resolver: zodResolver(contentFormSchema),
@@ -106,28 +300,122 @@ export function ContentForm({
       previewUrl: '',
       isFree: false,
       individualPrice: undefined,
+      tagIds: [],
+      genreIds: [],
       ...defaultValues,
     },
   });
 
   const title = watch('title');
+  const description = watch('description');
   const isFree = watch('isFree');
   const slug = watch('slug');
+  const allValues = watch();
 
-  // Auto-generate slug from title (only if slug is empty or matches previous auto-slug)
+  // Auto-generate slug from title
   const prevAutoSlug = React.useRef('');
   React.useEffect(() => {
     if (!title) return;
     const autoSlug = slugify(title);
-    // Only auto-fill if slug is empty or matches the previous auto-generated value
     if (!slug || slug === prevAutoSlug.current) {
       setValue('slug', autoSlug);
       prevAutoSlug.current = autoSlug;
     }
   }, [title, slug, setValue]);
 
+  // ---- Draft auto-save (create mode only) ----
+  const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Restore draft on mount
+  React.useEffect(() => {
+    if (isEditMode || draftRestored) return;
+    setDraftRestored(true);
+
+    try {
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!saved) return;
+
+      const draft = JSON.parse(saved) as Partial<ContentFormValues>;
+      if (draft.title || draft.description || draft.contentType) {
+        // Only restore if there's meaningful data
+        toast('Найден несохранённый черновик', {
+          description: 'Хотите восстановить?',
+          action: {
+            label: 'Восстановить',
+            onClick: () => {
+              reset({ ...getValues(), ...draft });
+              toast.success('Черновик восстановлен');
+            },
+          },
+          cancel: {
+            label: 'Нет',
+            onClick: () => {
+              localStorage.removeItem(DRAFT_STORAGE_KEY);
+            },
+          },
+          duration: 10000,
+        });
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }, [isEditMode, draftRestored, reset, getValues]);
+
+  // Auto-save draft with debounce
+  React.useEffect(() => {
+    if (isEditMode) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      try {
+        const values = getValues();
+        if (values.title || values.description || values.contentType) {
+          localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(values));
+        }
+      } catch {
+        // Ignore storage errors
+      }
+    }, 3000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [allValues, isEditMode, getValues]);
+
+  // ---- Step navigation ----
+  const handleNext = async () => {
+    const fieldsToValidate = STEP_FIELDS[currentStep];
+    const isValid = await trigger(fieldsToValidate);
+    if (isValid) {
+      setCurrentStep((prev) => Math.min(prev + 1, 3));
+    }
+  };
+
+  const handleBack = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleStepClick = (step: number) => {
+    if (step < currentStep) {
+      setCurrentStep(step);
+    }
+  };
+
+  const onFormSubmit = (values: ContentFormValues) => {
+    // Clear draft on successful submit
+    if (!isEditMode) {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    }
+    onSubmit(values);
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form onSubmit={handleSubmit(onFormSubmit)}>
       {/* Back link */}
       <div className="mb-6">
         <Button variant="ghost" size="sm" asChild>
@@ -138,21 +426,54 @@ export function ContentForm({
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main fields — left 2/3 */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Basic info */}
+      {/* Step indicator */}
+      <StepIndicator
+        steps={STEPS}
+        currentStep={currentStep}
+        onStepClick={handleStepClick}
+      />
+
+      {/* ==================== STEP 1: Basic Info ==================== */}
+      {currentStep === 1 && (
+        <div className="space-y-6 max-w-3xl">
+          {/* Content Type */}
+          <Card className="border-mp-border bg-mp-surface/50">
+            <CardHeader>
+              <CardTitle className="text-lg">Тип контента *</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Controller
+                name="contentType"
+                control={control}
+                render={({ field }) => (
+                  <ContentTypeCards
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              {errors.contentType && (
+                <p className="mt-2 text-xs text-mp-error-text">{errors.contentType.message}</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Title & Description */}
           <Card className="border-mp-border bg-mp-surface/50">
             <CardHeader>
               <CardTitle className="text-lg">Основная информация</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Название *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="title">Название *</Label>
+                  <CharCounter current={title?.length ?? 0} max={200} />
+                </div>
                 <Input
                   id="title"
                   {...register('title')}
                   placeholder="Введите название"
+                  className="border-mp-border bg-mp-surface/50"
                 />
                 {errors.title && (
                   <p className="text-xs text-mp-error-text">{errors.title.message}</p>
@@ -160,29 +481,111 @@ export function ContentForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="slug">Slug (URL)</Label>
-                <Input
-                  id="slug"
-                  {...register('slug')}
-                  placeholder="Автоматически из названия"
-                />
-                <p className="text-xs text-mp-text-disabled">
-                  Оставьте пустым для автоматической генерации
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Описание</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="description">Описание</Label>
+                  <CharCounter current={description?.length ?? 0} max={5000} />
+                </div>
                 <Textarea
                   id="description"
                   {...register('description')}
-                  placeholder="Введите описание контента..."
-                  rows={5}
+                  placeholder="Расскажите о вашем контенте..."
+                  rows={8}
+                  className="border-mp-border bg-mp-surface/50 resize-none"
                 />
                 {errors.description && (
                   <p className="text-xs text-mp-error-text">{errors.description.message}</p>
                 )}
               </div>
+
+              {/* Slug — collapsible */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowSlug(!showSlug)}
+                  className="text-xs text-mp-text-secondary hover:text-mp-text-primary transition-colors"
+                >
+                  {showSlug ? 'Скрыть URL' : 'Настроить URL (slug)'}
+                </button>
+                {showSlug && (
+                  <div className="mt-2 space-y-1">
+                    <Input
+                      id="slug"
+                      {...register('slug')}
+                      placeholder="Автоматически из названия"
+                      className="border-mp-border bg-mp-surface/50"
+                    />
+                    <p className="text-xs text-mp-text-disabled">
+                      Оставьте пустым для автоматической генерации
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ==================== STEP 2: Details & Media ==================== */}
+      {currentStep === 2 && (
+        <div className="space-y-6 max-w-3xl">
+          {/* Category */}
+          <Card className="border-mp-border bg-mp-surface/50">
+            <CardHeader>
+              <CardTitle className="text-lg">Категория</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Controller
+                name="categoryId"
+                control={control}
+                render={({ field }) => (
+                  <CategorySelect
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    categories={categoriesFlat}
+                  />
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Genres */}
+          <Card className="border-mp-border bg-mp-surface/50">
+            <CardHeader>
+              <CardTitle className="text-lg">Жанры</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Controller
+                name="genreIds"
+                control={control}
+                render={({ field }) => (
+                  <GenreSelect
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    availableGenres={availableGenres}
+                  />
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Tags */}
+          <Card className="border-mp-border bg-mp-surface/50">
+            <CardHeader>
+              <CardTitle className="text-lg">Теги</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Controller
+                name="tagIds"
+                control={control}
+                render={({ field }) => (
+                  <TagInput
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    availableTags={availableTags}
+                    maxTags={20}
+                  />
+                )}
+              />
             </CardContent>
           </Card>
 
@@ -239,156 +642,205 @@ export function ContentForm({
             </Card>
           )}
         </div>
+      )}
 
-        {/* Sidebar fields — right 1/3 */}
-        <div className="space-y-6">
-          {/* Settings */}
-          <Card className="border-mp-border bg-mp-surface/50">
-            <CardHeader>
-              <CardTitle className="text-lg">Настройки</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Тип контента *</Label>
-                <Controller
-                  name="contentType"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите тип" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SERIES">Сериал</SelectItem>
-                        <SelectItem value="CLIP">Клип</SelectItem>
-                        <SelectItem value="SHORT">Шорт</SelectItem>
-                        <SelectItem value="TUTORIAL">Туториал</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.contentType && (
-                  <p className="text-xs text-mp-error-text">{errors.contentType.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Категория возраста *</Label>
+      {/* ==================== STEP 3: Publishing ==================== */}
+      {currentStep === 3 && (
+        <div className="grid gap-6 lg:grid-cols-3 max-w-5xl">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Age Rating */}
+            <Card className="border-mp-border bg-mp-surface/50">
+              <CardHeader>
+                <CardTitle className="text-lg">Возрастное ограничение *</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <Controller
                   name="ageCategory"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите возраст" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0+">0+</SelectItem>
-                        <SelectItem value="6+">6+</SelectItem>
-                        <SelectItem value="12+">12+</SelectItem>
-                        <SelectItem value="16+">16+</SelectItem>
-                        <SelectItem value="18+">18+</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <AgeRatingSelector
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
                   )}
                 />
                 {errors.ageCategory && (
-                  <p className="text-xs text-mp-error-text">{errors.ageCategory.message}</p>
+                  <p className="mt-2 text-xs text-mp-error-text">{errors.ageCategory.message}</p>
                 )}
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="space-y-2">
-                <Label>Статус</Label>
+            {/* Monetization */}
+            <Card className="border-mp-border bg-mp-surface/50">
+              <CardHeader>
+                <CardTitle className="text-lg">Монетизация</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Controller
+                  name="isFree"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="isFree"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                      <Label htmlFor="isFree">Бесплатный контент</Label>
+                    </div>
+                  )}
+                />
+
+                {!isFree && (
+                  <div className="space-y-2">
+                    <Label htmlFor="individualPrice">Цена (руб.)</Label>
+                    <Input
+                      id="individualPrice"
+                      type="number"
+                      {...register('individualPrice')}
+                      placeholder="0"
+                      min="0"
+                      step="1"
+                      className="border-mp-border bg-mp-surface/50 max-w-[200px]"
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Status */}
+            <Card className="border-mp-border bg-mp-surface/50">
+              <CardHeader>
+                <CardTitle className="text-lg">Статус публикации</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <Controller
                   name="status"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите статус" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DRAFT">Черновик</SelectItem>
-                        <SelectItem value="PUBLISHED">Опубликован</SelectItem>
-                        <SelectItem value="PENDING">На модерацию</SelectItem>
-                        <SelectItem value="REJECTED">Отклонён</SelectItem>
-                        <SelectItem value="ARCHIVED">Архив</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex flex-wrap gap-3">
+                      <StatusCard
+                        label="Черновик"
+                        description="Сохранить как черновик"
+                        value="DRAFT"
+                        selected={field.value === 'DRAFT'}
+                        onClick={() => field.onChange('DRAFT')}
+                      />
+                      <StatusCard
+                        label="На модерацию"
+                        description="Отправить на проверку"
+                        value="PENDING"
+                        selected={field.value === 'PENDING'}
+                        onClick={() => field.onChange('PENDING')}
+                      />
+                      {isEditMode && (
+                        <>
+                          <StatusCard
+                            label="Опубликован"
+                            description="Доступен всем"
+                            value="PUBLISHED"
+                            selected={field.value === 'PUBLISHED'}
+                            onClick={() => field.onChange('PUBLISHED')}
+                          />
+                          <StatusCard
+                            label="Архив"
+                            description="Скрыть контент"
+                            value="ARCHIVED"
+                            selected={field.value === 'ARCHIVED'}
+                            onClick={() => field.onChange('ARCHIVED')}
+                          />
+                        </>
+                      )}
+                    </div>
                   )}
                 />
-              </div>
+              </CardContent>
+            </Card>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="categoryId">ID категории</Label>
-                <Input
-                  id="categoryId"
-                  {...register('categoryId')}
-                  placeholder="UUID категории"
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {/* Summary sidebar */}
+          <div>
+            <SummaryCard
+              values={allValues}
+              categories={categoriesFlat}
+              tags={availableTags}
+              genres={availableGenres}
+            />
+          </div>
+        </div>
+      )}
 
-          {/* Monetization */}
-          <Card className="border-mp-border bg-mp-surface/50">
-            <CardHeader>
-              <CardTitle className="text-lg">Монетизация</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Controller
-                name="isFree"
-                control={control}
-                render={({ field }) => (
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isFree"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                    <Label htmlFor="isFree">Бесплатный контент</Label>
-                  </div>
-                )}
-              />
+      {/* ==================== Navigation ==================== */}
+      <div className="mt-8 flex items-center justify-between max-w-3xl">
+        <div>
+          {currentStep > 1 && (
+            <Button type="button" variant="outline" onClick={handleBack}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Назад
+            </Button>
+          )}
+        </div>
 
-              {!isFree && (
-                <div className="space-y-2">
-                  <Label htmlFor="individualPrice">Цена (руб.)</Label>
-                  <Input
-                    id="individualPrice"
-                    type="number"
-                    {...register('individualPrice')}
-                    placeholder="0"
-                    min="0"
-                    step="1"
-                  />
-                </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" asChild>
+            <Link href={cancelHref}>Отмена</Link>
+          </Button>
+
+          {currentStep < 3 ? (
+            <Button type="button" onClick={handleNext}>
+              Далее
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                submitIcon || <Plus className="mr-2 h-4 w-4" />
               )}
-            </CardContent>
-          </Card>
-
-          {/* Actions */}
-          <Card className="border-mp-border bg-mp-surface/50">
-            <CardContent className="p-4 space-y-2">
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  submitIcon
-                )}
-                {submitLabel}
-              </Button>
-              <Button variant="outline" className="w-full" asChild>
-                <Link href={cancelHref}>Отмена</Link>
-              </Button>
-            </CardContent>
-          </Card>
+              {submitLabel}
+            </Button>
+          )}
         </div>
       </div>
     </form>
+  );
+}
+
+// ============ Status Card ============
+
+function StatusCard({
+  label,
+  description,
+  selected,
+  onClick,
+}: {
+  label: string;
+  description: string;
+  value: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex flex-col items-start rounded-lg border p-3 text-left transition-all duration-200 min-w-[140px]',
+        selected
+          ? 'border-[#c94bff] bg-[#c94bff]/10'
+          : 'border-mp-border bg-mp-surface/50 hover:border-mp-text-disabled'
+      )}
+    >
+      <span
+        className={cn(
+          'text-sm font-medium',
+          selected ? 'text-[#c94bff]' : 'text-mp-text-primary'
+        )}
+      >
+        {label}
+      </span>
+      <span className="text-xs text-mp-text-secondary mt-0.5">{description}</span>
+    </button>
   );
 }

@@ -51,6 +51,8 @@ export default function StudioEditPage() {
       isFree: values.isFree,
       individualPrice: values.individualPrice || undefined,
       status: values.status,
+      tagIds: values.tagIds?.length ? values.tagIds : undefined,
+      genreIds: values.genreIds?.length ? values.genreIds : undefined,
     });
   };
 
@@ -160,6 +162,12 @@ export default function StudioEditPage() {
             previewUrl: content.previewUrl || '',
             isFree: content.isFree || false,
             individualPrice: content.individualPrice ? Number(content.individualPrice) : undefined,
+            tagIds: (content as unknown as { tags?: Array<{ id: string }> }).tags
+              ? (content as unknown as { tags: Array<{ id: string }> }).tags.map((t) => t.id)
+              : [],
+            genreIds: (content as unknown as { genres?: Array<{ id: string }> }).genres
+              ? (content as unknown as { genres: Array<{ id: string }> }).genres.map((g) => g.id)
+              : [],
           }}
           onSubmit={handleSubmit}
           isSubmitting={updateContent.isPending}
@@ -167,6 +175,7 @@ export default function StudioEditPage() {
           submitIcon={<FloppyDisk className="mr-2 h-4 w-4" />}
           cancelHref="/studio"
           contentId={contentId}
+          isEditMode
         />
       </div>
     </div>

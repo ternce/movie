@@ -7,3 +7,8 @@ export { StudioContentCard, StudioContentCardSkeleton } from './content-card';
 export { ContentFilters } from './content-filters';
 export { ContentForm } from './content-form';
 export type { ContentFormValues } from './content-form';
+export { CategorySelect } from './category-select';
+export { TagInput } from './tag-input';
+export { GenreSelect } from './genre-select';
+export { ContentTypeCards } from './content-type-cards';
+export { AgeRatingSelector } from './age-rating-selector';

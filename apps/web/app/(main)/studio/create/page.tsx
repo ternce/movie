@@ -26,6 +26,8 @@ export default function StudioCreatePage() {
         isFree: values.isFree,
         individualPrice: values.individualPrice || undefined,
         status: values.status,
+        tagIds: values.tagIds?.length ? values.tagIds : undefined,
+        genreIds: values.genreIds?.length ? values.genreIds : undefined,
       },
       {
         onSuccess: (data) => {
