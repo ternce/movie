@@ -142,5 +142,104 @@ export default defineConfig({
       },
       dependencies: ['auth'],
     },
+
+    // Phase 10: Access Control — depends on auth, uses multiple role states
+    {
+      name: 'access-control',
+      testDir: './phase-10-access-control',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: path.join(AUTH_DIR, 'user-state.json'),
+      },
+      dependencies: ['auth'],
+    },
+
+    // Phase 11: Bonuses — depends on auth, uses user state
+    {
+      name: 'bonuses',
+      testDir: './phase-11-bonuses',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: path.join(AUTH_DIR, 'user-state.json'),
+      },
+      dependencies: ['auth'],
+    },
+
+    // Phase 12: Studio — depends on auth, uses admin state
+    {
+      name: 'studio',
+      testDir: './phase-12-studio',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: path.join(AUTH_DIR, 'admin-state.json'),
+      },
+      dependencies: ['auth'],
+    },
+
+    // Phase 13: Payments — depends on auth, uses user state
+    {
+      name: 'payments',
+      testDir: './phase-13-payments',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: path.join(AUTH_DIR, 'user-state.json'),
+      },
+      dependencies: ['auth'],
+    },
+
+    // Phase 14: Documents — depends on auth, uses user state
+    {
+      name: 'documents',
+      testDir: './phase-14-documents',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: path.join(AUTH_DIR, 'user-state.json'),
+      },
+      dependencies: ['auth'],
+    },
+
+    // Phase 15: Errors — depends on smoke, no auth needed
+    {
+      name: 'errors',
+      testDir: './phase-15-errors',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+      dependencies: ['smoke'],
+    },
+
+    // Phase 16: UI Interactions — depends on auth, uses user state (specs override for admin)
+    {
+      name: 'ui-interactions',
+      testDir: './phase-16-ui-interactions',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: path.join(AUTH_DIR, 'user-state.json'),
+      },
+      dependencies: ['auth'],
+    },
+
+    // Phase 17: UI Responsive — depends on auth, tests across 3 viewports
+    {
+      name: 'ui-responsive',
+      testDir: './phase-17-ui-responsive',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: path.join(AUTH_DIR, 'user-state.json'),
+      },
+      dependencies: ['auth'],
+    },
+
+    // Phase 18: User Types — comprehensive role-based authorization tests
+    // Uses multiple storage states per spec (specs override as needed)
+    {
+      name: 'user-types',
+      testDir: './phase-18-user-types',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: path.join(AUTH_DIR, 'user-state.json'),
+      },
+      dependencies: ['auth'],
+    },
   ],
 });

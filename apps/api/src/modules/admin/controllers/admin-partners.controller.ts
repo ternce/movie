@@ -67,30 +67,10 @@ export class AdminPartnersController {
     return this.partnersService.getPartnersStats();
   }
 
-  /**
-   * Get partners list with pagination and filters.
-   */
-  @Get()
-  @ApiOperation({ summary: 'Get partners list' })
-  @ApiResponse({ status: 200, type: AdminPartnerListDto })
-  async getPartners(
-    @Query() query: AdminPartnersQueryDto,
-  ): Promise<AdminPartnerListDto> {
-    return this.partnersService.getPartnersList(query);
-  }
-
-  /**
-   * Get partner details by user ID.
-   */
-  @Get(':userId')
-  @ApiOperation({ summary: 'Get partner details' })
-  @ApiParam({ name: 'userId', description: 'User ID' })
-  @ApiResponse({ status: 200, type: AdminPartnerDetailDto })
-  async getPartner(@Param('userId') userId: string): Promise<AdminPartnerDetailDto> {
-    return this.partnersService.getPartnerById(userId);
-  }
-
   // ============ Commission Endpoints ============
+  // NOTE: Static routes (commissions, withdrawals) MUST come before
+  // the parameterized :userId route, otherwise NestJS treats
+  // "commissions" / "withdrawals" as a userId value.
 
   /**
    * Get all commissions with pagination and filters.
@@ -247,5 +227,32 @@ export class AdminPartnersController {
       message: 'Withdrawal completed successfully',
       withdrawal,
     };
+  }
+
+  // ============ Partner List & Detail ============
+  // These parameterized routes MUST come last so that static routes
+  // like /commissions, /withdrawals, /stats are matched first.
+
+  /**
+   * Get partners list with pagination and filters.
+   */
+  @Get()
+  @ApiOperation({ summary: 'Get partners list' })
+  @ApiResponse({ status: 200, type: AdminPartnerListDto })
+  async getPartners(
+    @Query() query: AdminPartnersQueryDto,
+  ): Promise<AdminPartnerListDto> {
+    return this.partnersService.getPartnersList(query);
+  }
+
+  /**
+   * Get partner details by user ID.
+   */
+  @Get(':userId')
+  @ApiOperation({ summary: 'Get partner details' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({ status: 200, type: AdminPartnerDetailDto })
+  async getPartner(@Param('userId') userId: string): Promise<AdminPartnerDetailDto> {
+    return this.partnersService.getPartnerById(userId);
   }
 }

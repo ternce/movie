@@ -165,12 +165,9 @@ export class AdminPartnersService {
   async getPartnersList(query: AdminPartnersQueryDto): Promise<AdminPartnerListDto> {
     const { level, search, minEarnings, minReferrals, page = 1, limit = 20 } = query;
 
-    // Base query: users who are partners (have referrals or commissions)
+    // Users who have a referral code (potential partners)
     const where: Prisma.UserWhereInput = {
-      OR: [
-        { partnerRelationships: { some: { level: 1 } } },
-        { partnerCommissions: { some: {} } },
-      ],
+      referralCode: { not: { equals: '' } },
     };
 
     if (search) {
@@ -204,10 +201,37 @@ export class AdminPartnersService {
       }),
     ]);
 
-    // Get statistics for each partner
-    const items = await Promise.all(
-      users.map(async (user) => this.getPartnerStats(user)),
-    );
+    // Get statistics for each partner (with error handling per-user)
+    const items: AdminPartnerDto[] = [];
+    for (const user of users) {
+      try {
+        const stats = await this.getPartnerStats(user);
+        items.push(stats);
+      } catch (err) {
+        this.logger.warn(`Failed to get stats for partner ${user.id}: ${err}`);
+        // Return basic info without stats on failure
+        items.push({
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName || 'Unknown',
+            lastName: user.lastName,
+            referralCode: user.referralCode || '',
+            createdAt: user.createdAt,
+          },
+          currentLevel: 1,
+          levelName: 'Стартер',
+          directReferrals: 0,
+          activeReferrals: 0,
+          teamSize: 0,
+          teamVolume: 0,
+          totalEarnings: 0,
+          pendingEarnings: 0,
+          totalWithdrawn: 0,
+          availableBalance: 0,
+        });
+      }
+    }
 
     // Filter by level and earnings if specified
     let filteredItems = items;
@@ -221,11 +245,11 @@ export class AdminPartnersService {
       filteredItems = filteredItems.filter(p => p.directReferrals >= minReferrals);
     }
 
-    const totalPages = Math.ceil(filteredItems.length / limit);
+    const totalPages = Math.ceil(total / limit);
 
     return {
       items: filteredItems,
-      total: filteredItems.length,
+      total,
       page,
       limit,
       totalPages,
