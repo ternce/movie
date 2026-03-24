@@ -14,7 +14,6 @@ import { PrismaService } from '../../config/prisma.service';
 import {
   createMockUser,
   createAdultUser,
-  DEFAULT_PASSWORD_HASH,
 } from '../../../test/factories/user.factory';
 
 jest.mock('bcrypt');

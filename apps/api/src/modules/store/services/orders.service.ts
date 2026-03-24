@@ -21,6 +21,14 @@ import {
 } from '../dto';
 import { PaymentResultDto } from '../../payments/dto';
 
+/** Order with included items and their products, as returned by Prisma findMany/findFirst */
+type OrderWithItems = Prisma.OrderGetPayload<{
+  include: { items: { include: { product: true } } };
+}>;
+
+/** Order item with included product */
+type OrderItemWithProduct = OrderWithItems['items'][number];
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -85,7 +93,7 @@ export class OrdersService {
           status: OrderStatus.PENDING,
           totalAmount,
           bonusAmountUsed: bonusAmount,
-          shippingAddress: dto.shippingAddress as any,
+          shippingAddress: dto.shippingAddress as unknown as Prisma.JsonValue,
         },
       });
 
@@ -297,8 +305,8 @@ export class OrdersService {
   /**
    * Map order to DTO.
    */
-  private mapToDto(order: any): OrderDto {
-    const items: OrderItemDto[] = order.items.map((item: any) => ({
+  private mapToDto(order: OrderWithItems): OrderDto {
+    const items: OrderItemDto[] = order.items.map((item: OrderItemWithProduct) => ({
       productId: item.productId,
       productName: item.product.name,
       productImage: (item.product.images as string[])?.[0],

@@ -2,7 +2,7 @@
 
 import { CaretRight, CaretLeft } from '@phosphor-icons/react';
 import Link from 'next/link';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -43,14 +43,14 @@ export function ContentRow({
   /**
    * Check scroll position and update button states
    */
-  const checkScrollPosition = () => {
+  const checkScrollPosition = useCallback(() => {
     const container = scrollRef.current;
     if (!container) return;
 
     const { scrollLeft, scrollWidth, clientWidth } = container;
     setCanScrollLeft(scrollLeft > 0);
     setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-  };
+  }, []);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -64,12 +64,12 @@ export function ContentRow({
       container.removeEventListener('scroll', checkScrollPosition);
       window.removeEventListener('resize', checkScrollPosition);
     };
-  }, []);
+  }, [checkScrollPosition]);
 
   /**
    * Scroll by card width
    */
-  const scroll = (direction: 'left' | 'right') => {
+  const scroll = useCallback((direction: 'left' | 'right') => {
     const container = scrollRef.current;
     if (!container) return;
 
@@ -81,7 +81,7 @@ export function ContentRow({
       left: newPosition,
       behavior: 'smooth',
     });
-  };
+  }, []);
 
   return (
     <section className={cn('relative', className)}>

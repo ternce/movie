@@ -3,6 +3,7 @@
 import { Play, Television } from '@phosphor-icons/react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { memo } from 'react';
 
 import { AgeBadge, type AgeCategory } from '@/components/content/age-badge';
 import { RatingBadge } from '@/components/ui/rating-badge';
@@ -38,7 +39,7 @@ function formatSeriesInfo(seasons: number, episodes: number): string {
  * Series card with season/episode count and age badge
  * Features: hover zoom, gradient overlay, play button reveal
  */
-export function SeriesCard({ content, className }: SeriesCardProps) {
+export const SeriesCard = memo(function SeriesCard({ content, className }: SeriesCardProps) {
   return (
     <Link
       href={`/series/${content.slug}`}
@@ -106,10 +107,10 @@ export function SeriesCard({ content, className }: SeriesCardProps) {
       </div>
     </Link>
   );
-}
+});
 
 // Compact variant for smaller grids
-export function SeriesCardCompact({ content, className }: SeriesCardProps) {
+export const SeriesCardCompact = memo(function SeriesCardCompact({ content, className }: SeriesCardProps) {
   return (
     <Link
       href={`/series/${content.slug}`}
@@ -149,4 +150,4 @@ export function SeriesCardCompact({ content, className }: SeriesCardProps) {
       </p>
     </Link>
   );
-}
+});

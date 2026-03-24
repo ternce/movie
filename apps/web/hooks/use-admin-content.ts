@@ -8,6 +8,29 @@ import { queryKeys } from '@/lib/query-client';
 import { useAuthStore } from '@/stores/auth.store';
 import type { Content } from '@movie-platform/shared';
 
+// ============ Age Category Mapping ============
+// Frontend uses display values (0+, 6+, etc.) but backend Prisma enum expects ZERO_PLUS, SIX_PLUS, etc.
+const AGE_CATEGORY_TO_BACKEND: Record<string, string> = {
+  '0+': 'ZERO_PLUS',
+  '6+': 'SIX_PLUS',
+  '12+': 'TWELVE_PLUS',
+  '16+': 'SIXTEEN_PLUS',
+  '18+': 'EIGHTEEN_PLUS',
+};
+
+export const AGE_CATEGORY_FROM_BACKEND: Record<string, string> = {
+  ZERO_PLUS: '0+',
+  SIX_PLUS: '6+',
+  TWELVE_PLUS: '12+',
+  SIXTEEN_PLUS: '16+',
+  EIGHTEEN_PLUS: '18+',
+};
+
+function mapAgeCategoryToBackend(value?: string): string | undefined {
+  if (!value) return undefined;
+  return AGE_CATEGORY_TO_BACKEND[value] || value;
+}
+
 // ============ Types ============
 
 export interface AdminContentQueryParams {
@@ -97,7 +120,11 @@ export function useCreateContent() {
 
   return useMutation({
     mutationFn: async (data: CreateContentInput) => {
-      const response = await api.post<Content>(endpoints.adminContent.create, data);
+      const payload = {
+        ...data,
+        ageCategory: mapAgeCategoryToBackend(data.ageCategory),
+      };
+      const response = await api.post<Content>(endpoints.adminContent.create, payload);
       return response.data;
     },
     onSuccess: () => {
@@ -118,9 +145,13 @@ export function useUpdateContent() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: UpdateContentInput) => {
+      const payload = {
+        ...data,
+        ...(data.ageCategory ? { ageCategory: mapAgeCategoryToBackend(data.ageCategory) } : {}),
+      };
       const response = await api.patch<Content>(
         endpoints.adminContent.update(id),
-        data
+        payload
       );
       return response.data;
     },

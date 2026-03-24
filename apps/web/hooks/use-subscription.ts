@@ -4,6 +4,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { api, ApiError, endpoints } from '@/lib/api-client';
+import {
+  normalizeSubscriptionPlanFeatures,
+  normalizeSubscriptionPlans,
+} from '@/lib/api/normalizers';
 import { queryKeys } from '@/lib/query-client';
 import { useAuthStore } from '@/stores/auth.store';
 import type {
@@ -25,15 +29,7 @@ export function useSubscriptionPlans() {
     queryKey: queryKeys.subscriptions.plans(),
     queryFn: async () => {
       const response = await api.get<SubscriptionPlan[]>(endpoints.subscriptions.plans, { skipAuth: true });
-      // API may return features as a JSON string — normalize to array
-      return (response.data ?? []).map((plan) => ({
-        ...plan,
-        features: Array.isArray(plan.features)
-          ? plan.features
-          : typeof plan.features === 'string'
-            ? JSON.parse(plan.features)
-            : [],
-      }));
+      return normalizeSubscriptionPlans(response.data ?? []);
     },
     staleTime: 10 * 60 * 1000, // 10 minutes - plans don't change often
   });
@@ -48,18 +44,10 @@ export function useSubscriptionPlan(planId: string | undefined) {
     queryFn: async () => {
       if (!planId) throw new Error('Plan ID required');
       const response = await api.get<SubscriptionPlan>(endpoints.subscriptions.plan(planId), { skipAuth: true });
-      const plan = response.data;
-      // API may return features as a JSON string — normalize to array
-      return {
-        ...plan,
-        features: Array.isArray(plan.features)
-          ? plan.features
-          : typeof plan.features === 'string'
-            ? JSON.parse(plan.features)
-            : [],
-      };
+      return normalizeSubscriptionPlanFeatures(response.data);
     },
     enabled: !!planId,
+    staleTime: 10 * 60 * 1000, // 10 minutes - individual plans don't change often
   });
 }
 

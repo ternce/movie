@@ -1,326 +1,71 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
-import { toast } from 'sonner';
-
-import { api, ApiError, endpoints } from '@/lib/api-client';
-import { queryKeys } from '@/lib/query-client';
-import { useAuthStore } from '@/stores/auth.store';
-
 /**
- * Bonus-specific error codes
+ * Re-export all bonus hooks from split modules.
+ * This file exists for backward compatibility -- new code should import
+ * directly from '@/hooks/bonus' or the specific sub-module.
  */
-export type BonusErrorCode =
-  | 'INSUFFICIENT_BONUS_BALANCE'
-  | 'BONUS_EXPIRED'
-  | 'MAX_BONUS_EXCEEDED'
-  | 'MINIMUM_WITHDRAWAL_NOT_MET'
-  | 'WITHDRAWAL_LIMIT_EXCEEDED'
-  | 'BONUS_SYSTEM_UNAVAILABLE';
 
-/**
- * Map API error codes to user-friendly Russian messages
- */
-export const bonusErrorMessages: Record<BonusErrorCode, string> = {
-  INSUFFICIENT_BONUS_BALANCE: 'Недостаточно бонусов на балансе',
-  BONUS_EXPIRED: 'Срок действия бонусов истёк',
-  MAX_BONUS_EXCEEDED: 'Превышен максимум оплаты бонусами (50% от заказа)',
-  MINIMUM_WITHDRAWAL_NOT_MET: 'Минимальная сумма вывода — 1000 бонусов',
-  WITHDRAWAL_LIMIT_EXCEEDED: 'Превышен лимит на вывод средств',
-  BONUS_SYSTEM_UNAVAILABLE: 'Система бонусов временно недоступна',
-};
+// Re-export everything from bonus barrel
+export {
+  // Balance hooks
+  useBonusBalance,
+  useBonusStatistics,
+  useBonusRate,
+  useExpiringBonuses,
+  useMaxApplicable,
+  // Transaction hooks
+  useBonusHistory,
+  useWithdrawalPreview,
+  useWithdrawBonus,
+  useInvalidateBonusQueries,
+  // Error handling
+  bonusErrorMessages,
+  getBonusErrorMessage,
+  // Helpers
+  formatBonusAmount,
+  getBonusTypeLabel,
+  getBonusSourceLabel,
+  getBonusTypeColor,
+} from './bonus';
 
-/**
- * Get user-friendly error message from API error
- */
-export function getBonusErrorMessage(error: ApiError | Error | unknown): string {
-  if (error instanceof ApiError) {
-    const code = error.code as BonusErrorCode;
-    if (code && bonusErrorMessages[code]) {
-      return bonusErrorMessages[code];
-    }
-    return error.message || 'Произошла ошибка при работе с бонусами';
-  }
+// Re-export types
+export type {
+  BonusBalance,
+  BonusStatistics,
+  BonusRate,
+  ExpiringBonus,
+  ExpiringBonusSummary,
+  MaxApplicableBonus,
+  BonusTransaction,
+  BonusQueryParams,
+  PaginatedTransactions,
+  WithdrawalPreview,
+  WithdrawBonusRequest,
+  WithdrawalResult,
+  BonusErrorCode,
+} from './bonus';
 
-  if (error instanceof Error) {
-    return error.message || 'Произошла неизвестная ошибка';
-  }
+// ============ Combined Hook ============
 
-  return 'Произошла неизвестная ошибка';
-}
-
-// Types
-export interface BonusBalance {
-  balance: number;
-  pendingEarnings: number;
-  lifetimeEarned: number;
-  lifetimeSpent: number;
-}
-
-export interface BonusStatistics extends BonusBalance {
-  expiringIn30Days: number;
-  transactionsThisMonth: number;
-  earnedThisMonth: number;
-  spentThisMonth: number;
-}
-
-export interface BonusTransaction {
-  id: string;
-  type: 'EARNED' | 'SPENT' | 'WITHDRAWN' | 'EXPIRED' | 'ADJUSTMENT';
-  amount: number;
-  source: 'PARTNER' | 'PROMO' | 'REFUND' | 'REFERRAL_BONUS' | 'ACTIVITY';
-  referenceId?: string;
-  referenceType?: string;
-  description: string;
-  expiresAt?: string;
-  metadata?: Record<string, unknown>;
-  createdAt: string;
-}
-
-export interface BonusRate {
-  fromCurrency: string;
-  toCurrency: string;
-  rate: number;
-  effectiveFrom: string;
-  effectiveTo?: string;
-}
-
-export interface ExpiringBonus {
-  amount: number;
-  expiresAt: string;
-  daysRemaining: number;
-  transactionId: string;
-}
-
-export interface ExpiringBonusSummary {
-  expiringBonuses: ExpiringBonus[];
-  totalExpiring: number;
-  withinDays: number;
-}
-
-export interface MaxApplicableBonus {
-  maxAmount: number;
-  balance: number;
-  maxPercent: number;
-}
-
-export interface WithdrawalPreview {
-  bonusAmount: number;
-  currencyAmount: number;
-  rate: number;
-  estimatedTax: number;
-  estimatedNet: number;
-  taxRate: number;
-}
-
-export interface WithdrawBonusRequest {
-  amount: number;
-  taxStatus: 'INDIVIDUAL' | 'SELF_EMPLOYED' | 'ENTREPRENEUR' | 'COMPANY';
-  paymentDetails?: Record<string, unknown>;
-}
-
-export interface WithdrawalResult {
-  success: boolean;
-  bonusAmount: number;
-  currencyAmount: number;
-  rate: number;
-  taxAmount: number;
-  netAmount: number;
-  withdrawalId?: string;
-  message?: string;
-}
-
-export interface BonusQueryParams {
-  type?: string;
-  source?: string;
-  fromDate?: string;
-  toDate?: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface PaginatedTransactions {
-  items: BonusTransaction[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-/**
- * Hook to fetch user's bonus balance
- */
-export function useBonusBalance() {
-  const { isAuthenticated, isHydrated } = useAuthStore();
-
-  return useQuery({
-    queryKey: queryKeys.bonuses.balance(),
-    queryFn: async () => {
-      const response = await api.get<BonusBalance>(endpoints.bonuses.balance);
-      return response.data;
-    },
-    enabled: isAuthenticated && isHydrated,
-    staleTime: 30 * 1000, // 30 seconds
-  });
-}
-
-/**
- * Hook to fetch detailed bonus statistics
- */
-export function useBonusStatistics() {
-  const { isAuthenticated, isHydrated } = useAuthStore();
-
-  return useQuery({
-    queryKey: queryKeys.bonuses.statistics(),
-    queryFn: async () => {
-      const response = await api.get<BonusStatistics>(endpoints.bonuses.statistics);
-      return response.data;
-    },
-    enabled: isAuthenticated && isHydrated,
-    staleTime: 60 * 1000, // 1 minute
-  });
-}
-
-/**
- * Hook to fetch bonus transaction history
- */
-export function useBonusHistory(params?: BonusQueryParams) {
-  const { isAuthenticated, isHydrated } = useAuthStore();
-
-  return useQuery({
-    queryKey: queryKeys.bonuses.transactions(params as Record<string, unknown>),
-    queryFn: async () => {
-      const response = await api.get<PaginatedTransactions>(endpoints.bonuses.transactions, {
-        params: params as Record<string, string | number | boolean | null | undefined>,
-      });
-      return response.data;
-    },
-    enabled: isAuthenticated && isHydrated,
-    staleTime: 30 * 1000, // 30 seconds
-  });
-}
-
-/**
- * Hook to fetch current bonus conversion rate
- */
-export function useBonusRate() {
-  return useQuery({
-    queryKey: queryKeys.bonuses.rate(),
-    queryFn: async () => {
-      const response = await api.get<BonusRate>(endpoints.bonuses.rate);
-      return response.data;
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes - rate doesn't change often
-  });
-}
-
-/**
- * Hook to fetch bonuses expiring within specified days
- */
-export function useExpiringBonuses(withinDays: number = 30) {
-  const { isAuthenticated, isHydrated } = useAuthStore();
-
-  return useQuery({
-    queryKey: queryKeys.bonuses.expiring(withinDays),
-    queryFn: async () => {
-      const response = await api.get<ExpiringBonusSummary>(endpoints.bonuses.expiring, {
-        params: { withinDays },
-      });
-      return response.data;
-    },
-    enabled: isAuthenticated && isHydrated,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-}
-
-/**
- * Hook to calculate max applicable bonus for checkout
- */
-export function useMaxApplicable(orderTotal: number) {
-  const { isAuthenticated, isHydrated } = useAuthStore();
-
-  return useQuery({
-    queryKey: queryKeys.bonuses.maxApplicable(orderTotal),
-    queryFn: async () => {
-      const response = await api.get<MaxApplicableBonus>(endpoints.bonuses.maxApplicable, {
-        params: { orderTotal },
-      });
-      return response.data;
-    },
-    enabled: isAuthenticated && isHydrated && orderTotal > 0,
-    staleTime: 30 * 1000, // 30 seconds
-  });
-}
-
-/**
- * Hook to preview bonus withdrawal
- */
-export function useWithdrawalPreview(
-  amount: number,
-  taxStatus: 'INDIVIDUAL' | 'SELF_EMPLOYED' | 'ENTREPRENEUR' | 'COMPANY',
-) {
-  const { isAuthenticated, isHydrated } = useAuthStore();
-
-  return useQuery({
-    queryKey: ['bonuses', 'withdrawalPreview', { amount, taxStatus }],
-    queryFn: async () => {
-      const response = await api.get<WithdrawalPreview>(endpoints.bonuses.withdrawalPreview, {
-        params: { amount, taxStatus },
-      });
-      return response.data;
-    },
-    enabled: isAuthenticated && isHydrated && amount >= 1000,
-    staleTime: 60 * 1000, // 1 minute
-  });
-}
-
-/**
- * Hook to withdraw bonuses
- */
-export function useWithdrawBonus() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: WithdrawBonusRequest) => {
-      const response = await api.post<WithdrawalResult>(endpoints.bonuses.withdraw, data);
-      return response.data;
-    },
-    onSuccess: (data) => {
-      // Invalidate bonus queries
-      queryClient.invalidateQueries({ queryKey: queryKeys.bonuses.all });
-
-      if (data.success) {
-        toast.success(data.message || 'Заявка на вывод успешно создана');
-      }
-    },
-    onError: (error: ApiError) => {
-      const message = getBonusErrorMessage(error);
-      toast.error(message);
-    },
-  });
-}
-
-/**
- * Hook to invalidate bonus queries after purchase
- * Call this after successful checkout to update bonus balance
- */
-export function useInvalidateBonusQueries() {
-  const queryClient = useQueryClient();
-
-  return useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.bonuses.all });
-  }, [queryClient]);
-}
+// Import from sub-modules directly (not from barrel re-exports above)
+import {
+  useBonusBalance as _useBonusBalance,
+  useBonusStatistics as _useBonusStatistics,
+  useBonusRate as _useBonusRate,
+  useExpiringBonuses as _useExpiringBonuses,
+} from './bonus/use-bonus-balance';
+import { useWithdrawBonus as _useWithdrawBonus } from './bonus/use-bonus-transactions';
 
 /**
  * Combined hook for easy bonus management
  */
 export function useBonus() {
-  const balance = useBonusBalance();
-  const statistics = useBonusStatistics();
-  const rate = useBonusRate();
-  const expiring = useExpiringBonuses(30);
-  const withdrawMutation = useWithdrawBonus();
+  const balance = _useBonusBalance();
+  const statistics = _useBonusStatistics();
+  const rate = _useBonusRate();
+  const expiring = _useExpiringBonuses(30);
+  const withdrawMutation = _useWithdrawBonus();
 
   return {
     // Balance
@@ -356,53 +101,4 @@ export function useBonus() {
     // Combined loading state
     isLoading: balance.isLoading || rate.isLoading,
   };
-}
-
-/**
- * Helper to format bonus amount for display
- */
-export function formatBonusAmount(amount: number): string {
-  return new Intl.NumberFormat('ru-RU').format(Math.round(amount));
-}
-
-/**
- * Helper to get bonus type label in Russian
- */
-export function getBonusTypeLabel(type: BonusTransaction['type']): string {
-  const labels: Record<BonusTransaction['type'], string> = {
-    EARNED: 'Начислено',
-    SPENT: 'Списано',
-    WITHDRAWN: 'Выведено',
-    EXPIRED: 'Истекло',
-    ADJUSTMENT: 'Корректировка',
-  };
-  return labels[type] || type;
-}
-
-/**
- * Helper to get bonus source label in Russian
- */
-export function getBonusSourceLabel(source: BonusTransaction['source']): string {
-  const labels: Record<BonusTransaction['source'], string> = {
-    PARTNER: 'Партнёрская программа',
-    PROMO: 'Промо-акция',
-    REFUND: 'Возврат',
-    REFERRAL_BONUS: 'Реферальный бонус',
-    ACTIVITY: 'Активность',
-  };
-  return labels[source] || source;
-}
-
-/**
- * Helper to get color for bonus type
- */
-export function getBonusTypeColor(type: BonusTransaction['type']): string {
-  const colors: Record<BonusTransaction['type'], string> = {
-    EARNED: 'text-green-400',
-    SPENT: 'text-red-400',
-    WITHDRAWN: 'text-blue-400',
-    EXPIRED: 'text-yellow-400',
-    ADJUSTMENT: 'text-purple-400',
-  };
-  return colors[type] || 'text-gray-400';
 }

@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { SanitizePipe } from './common/pipes/sanitize.pipe';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -21,8 +22,12 @@ async function bootstrap() {
 
   // CORS
   const corsOrigins = configService.get<string>('CORS_ORIGINS', 'http://localhost:3000');
+  const origins = corsOrigins.split(',').map(o => o.trim());
+  if (origins.includes('*') && configService.get('NODE_ENV') === 'production') {
+    throw new Error('Wildcard CORS origins are not allowed in production');
+  }
   app.enableCors({
-    origin: corsOrigins.split(','),
+    origin: origins,
     credentials: true,
   });
 
@@ -33,8 +38,9 @@ async function bootstrap() {
     defaultVersion: '1',
   });
 
-  // Global pipes
+  // Global pipes (SanitizePipe runs first to strip HTML/XSS before validation)
   app.useGlobalPipes(
+    new SanitizePipe(),
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,

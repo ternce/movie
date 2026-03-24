@@ -47,8 +47,9 @@ export default function StudioPage() {
   const updateContent = useUpdateContent();
 
   const items = data?.items || [];
-  const total = data?.total || 0;
-  const totalPages = data?.totalPages || 1;
+  const meta = (data as unknown as { meta?: { total: number; totalPages: number } })?.meta;
+  const total = meta?.total || data?.total || 0;
+  const totalPages = meta?.totalPages || data?.totalPages || 1;
 
   // Compute stats from current data (simplified — ideally a separate endpoint)
   const publishedCount = items.filter((c) => c.status === 'PUBLISHED').length;

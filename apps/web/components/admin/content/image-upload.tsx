@@ -1,6 +1,7 @@
 'use client';
 
 import { UploadSimple, X, Image as ImageIcon, Link as LinkIcon } from '@phosphor-icons/react';
+import NextImage from 'next/image';
 import * as React from 'react';
 import { toast } from 'sonner';
 
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { endpoints } from '@/lib/api-client';
+import { endpoints, getAuthToken } from '@/lib/api-client';
 
 interface ImageUploadProps {
   value?: string;
@@ -121,10 +122,13 @@ export function ImageUpload({
 
       {value ? (
         <div className="relative rounded-lg border border-mp-border overflow-hidden">
-          <img
+          <NextImage
             src={value}
             alt="Preview"
+            width={400}
+            height={160}
             className="w-full h-40 object-cover bg-mp-surface"
+            unoptimized
           />
           <div className="absolute top-2 right-2 flex gap-1">
             <Button
@@ -215,16 +219,3 @@ export function ImageUpload({
   );
 }
 
-function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const storage = localStorage.getItem('mp-auth-storage');
-    if (storage) {
-      const parsed = JSON.parse(storage);
-      return parsed.state?.accessToken || null;
-    }
-  } catch {
-    // ignore
-  }
-  return null;
-}

@@ -163,7 +163,7 @@ export function useCategoryDetail(slug: string) {
       return response.data;
     },
     enabled: !!slug,
-    staleTime: 5 * 60_000,
+    staleTime: Infinity, // Categories rarely change
   });
 }
 

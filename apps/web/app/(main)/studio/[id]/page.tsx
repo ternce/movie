@@ -1,16 +1,29 @@
 'use client';
 
 import { FloppyDisk, Trash } from '@phosphor-icons/react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 
 import { StudioPageHeader } from '@/components/studio/studio-page-header';
-import { ContentForm } from '@/components/studio/content-form';
 import type { ContentFormValues } from '@/components/studio/content-form';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+
+const ContentForm = dynamic(
+  () => import('@/components/studio/content-form').then((m) => ({ default: m.ContentForm })),
+  {
+    loading: () => (
+      <div className="animate-pulse space-y-4">
+        <div className="h-10 bg-mp-surface rounded" />
+        <div className="h-40 bg-mp-surface rounded" />
+        <div className="h-10 bg-mp-surface rounded" />
+      </div>
+    ),
+  }
+);
+import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +39,7 @@ import {
   useAdminContentDetail,
   useUpdateContent,
   useDeleteContent,
+  AGE_CATEGORY_FROM_BACKEND,
 } from '@/hooks/use-admin-content';
 
 export default function StudioEditPage() {
@@ -41,7 +55,6 @@ export default function StudioEditPage() {
     updateContent.mutate({
       id: contentId,
       title: values.title,
-      slug: values.slug || undefined,
       description: values.description || undefined,
       contentType: values.contentType,
       categoryId: values.categoryId || undefined,
@@ -155,18 +168,18 @@ export default function StudioEditPage() {
             slug: content.slug || '',
             description: content.description || '',
             contentType: content.contentType as ContentFormValues['contentType'],
-            ageCategory: content.ageCategory as ContentFormValues['ageCategory'],
+            ageCategory: (AGE_CATEGORY_FROM_BACKEND[content.ageCategory] || content.ageCategory) as ContentFormValues['ageCategory'],
             status: content.status as ContentFormValues['status'],
-            categoryId: content.categoryId || '',
+            categoryId: content.categoryId || (content as unknown as { category?: { id: string } }).category?.id || '',
             thumbnailUrl: content.thumbnailUrl || '',
             previewUrl: content.previewUrl || '',
             isFree: content.isFree || false,
             individualPrice: content.individualPrice ? Number(content.individualPrice) : undefined,
-            tagIds: (content as unknown as { tags?: Array<{ id: string }> }).tags
-              ? (content as unknown as { tags: Array<{ id: string }> }).tags.map((t) => t.id)
+            tagIds: Array.isArray((content as unknown as { tags?: unknown[] }).tags)
+              ? ((content as unknown as { tags: Array<{ id?: string; tag?: { id: string } }> }).tags).map((t) => t.id || t.tag?.id || '')
               : [],
-            genreIds: (content as unknown as { genres?: Array<{ id: string }> }).genres
-              ? (content as unknown as { genres: Array<{ id: string }> }).genres.map((g) => g.id)
+            genreIds: Array.isArray((content as unknown as { genres?: unknown[] }).genres)
+              ? ((content as unknown as { genres: Array<{ id?: string; genre?: { id: string } }> }).genres).map((g) => g.id || g.genre?.id || '')
               : [],
           }}
           onSubmit={handleSubmit}

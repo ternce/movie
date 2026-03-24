@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowLeft, Check, Shield, Lock } from '@phosphor-icons/react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -14,8 +15,21 @@ import {
 import {
   CartItemRow,
   CheckoutStepIndicator,
-  ShippingAddressForm,
 } from '@/components/store';
+
+const ShippingAddressForm = dynamic(
+  () => import('@/components/store/shipping-address-form').then((m) => ({ default: m.ShippingAddressForm })),
+  {
+    loading: () => (
+      <div className="animate-pulse space-y-4">
+        <div className="h-10 bg-mp-surface rounded" />
+        <div className="h-10 bg-mp-surface rounded" />
+        <div className="h-10 bg-mp-surface rounded" />
+        <div className="h-10 bg-mp-surface rounded" />
+      </div>
+    ),
+  }
+);
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';

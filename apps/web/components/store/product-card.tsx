@@ -3,6 +3,7 @@
 import { ShoppingCart, Package } from '@phosphor-icons/react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { memo } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { cn, formatPrice } from '@/lib/utils';
@@ -28,7 +29,7 @@ interface ProductCardProps {
  * Product card for the store
  * Vertical layout: image + info + price + add-to-cart button
  */
-export function ProductCard({ product, onAddToCart, className }: ProductCardProps) {
+export const ProductCard = memo(function ProductCard({ product, onAddToCart, className }: ProductCardProps) {
   const isOutOfStock = product.stockQuantity === 0 || product.status === 'OUT_OF_STOCK';
   const safeImages = Array.isArray(product.images)
     ? product.images
@@ -110,4 +111,4 @@ export function ProductCard({ product, onAddToCart, className }: ProductCardProp
       </div>
     </div>
   );
-}
+});

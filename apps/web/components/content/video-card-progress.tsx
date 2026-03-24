@@ -3,6 +3,7 @@
 import { Play } from '@phosphor-icons/react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { memo } from 'react';
 
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { cn } from '@/lib/utils';
@@ -38,7 +39,7 @@ function formatRemainingTime(minutes: number): string {
 /**
  * Video card with progress bar matching Figma "Continue Watch" design
  */
-export function VideoCardProgress({ content, className }: VideoCardProgressProps) {
+export const VideoCardProgress = memo(function VideoCardProgress({ content, className }: VideoCardProgressProps) {
   return (
     <Link
       href={`/watch/${content.id}`}
@@ -94,4 +95,4 @@ export function VideoCardProgress({ content, className }: VideoCardProgressProps
       </div>
     </Link>
   );
-}
+});

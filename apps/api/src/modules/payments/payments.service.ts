@@ -166,7 +166,7 @@ export class PaymentsService {
         status: t.status,
         createdAt: t.createdAt,
         completedAt: t.completedAt || undefined,
-        metadata: t.metadata as Record<string, any>,
+        metadata: t.metadata as Record<string, unknown>,
       })),
       total,
       page,
@@ -384,7 +384,7 @@ export class PaymentsService {
             amount,
             currency: 'RUB',
             dueDate: invoice.dueDate,
-            bankDetails: invoice.bankDetails as any,
+            bankDetails: invoice.bankDetails as unknown as Prisma.JsonValue,
             qrCodeUrl: this.bankTransferService.generateQrCode(invoice),
             status: InvoiceStatus.PENDING,
           },
@@ -437,7 +437,7 @@ export class PaymentsService {
           referenceId: transactionId,
           referenceType: 'Transaction',
         },
-        tx as any,
+        tx as unknown as Prisma.TransactionClient,
       );
 
       // Mark transaction as completed
@@ -483,7 +483,7 @@ export class PaymentsService {
             referenceId: transactionId,
             referenceType: 'Transaction',
           },
-          tx as any,
+          tx as unknown as Prisma.TransactionClient,
         );
       }
 

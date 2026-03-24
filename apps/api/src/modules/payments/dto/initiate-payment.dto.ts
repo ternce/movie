@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Min } from 'class-validator';
 import { PaymentMethodType, TransactionType } from '@prisma/client';
 
 export class InitiatePaymentDto {
@@ -29,7 +29,7 @@ export class InitiatePaymentDto {
 
   @ApiPropertyOptional({ description: 'Return URL after payment completion' })
   @IsOptional()
-  @IsString()
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true }, { message: 'returnUrl must be a valid HTTP or HTTPS URL' })
   returnUrl?: string;
 
   @ApiPropertyOptional({ description: 'Additional metadata for the payment' })

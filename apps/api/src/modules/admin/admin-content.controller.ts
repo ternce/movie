@@ -48,6 +48,8 @@ export class AdminContentController {
     required: false,
     description: 'Filter by status (DRAFT, PENDING, PUBLISHED, REJECTED, ARCHIVED)',
   })
+  @ApiQuery({ name: 'contentType', required: false, description: 'Filter by content type (SERIES, CLIP, SHORT, TUTORIAL)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Search by title' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default: 20)' })
   @ApiResponse({ status: 200, description: 'Paginated content list with all statuses' })
@@ -55,11 +57,15 @@ export class AdminContentController {
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   async findAll(
     @Query('status') status?: string,
+    @Query('contentType') contentType?: string,
+    @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.contentService.findAllAdmin({
       status,
+      contentType,
+      search,
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
     });

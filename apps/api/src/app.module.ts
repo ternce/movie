@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import { CacheModule } from './common/cache/cache.module';
+import { HealthModule } from './common/health/health.module';
 import { PrismaModule } from './config/prisma.module';
 import { RedisModule } from './config/redis.module';
 import { StorageModule } from './modules/storage/storage.module';
@@ -54,6 +55,9 @@ import { UsersModule } from './modules/users/users.module';
     PrismaModule,
     RedisModule,
     CacheModule,
+
+    // Health checks
+    HealthModule,
 
     // Infrastructure
     StorageModule,

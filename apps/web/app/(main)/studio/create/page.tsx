@@ -1,12 +1,25 @@
 'use client';
 
 import { Plus } from '@phosphor-icons/react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 
 import { StudioPageHeader } from '@/components/studio/studio-page-header';
-import { ContentForm } from '@/components/studio/content-form';
 import type { ContentFormValues } from '@/components/studio/content-form';
 import { useCreateContent } from '@/hooks/use-admin-content';
+
+const ContentForm = dynamic(
+  () => import('@/components/studio/content-form').then((m) => ({ default: m.ContentForm })),
+  {
+    loading: () => (
+      <div className="animate-pulse space-y-4">
+        <div className="h-10 bg-mp-surface rounded" />
+        <div className="h-40 bg-mp-surface rounded" />
+        <div className="h-10 bg-mp-surface rounded" />
+      </div>
+    ),
+  }
+);
 
 export default function StudioCreatePage() {
   const router = useRouter();
@@ -16,7 +29,6 @@ export default function StudioCreatePage() {
     createContent.mutate(
       {
         title: values.title,
-        slug: values.slug || undefined,
         description: values.description || undefined,
         contentType: values.contentType,
         categoryId: values.categoryId || undefined,
@@ -25,7 +37,6 @@ export default function StudioCreatePage() {
         previewUrl: values.previewUrl || undefined,
         isFree: values.isFree,
         individualPrice: values.individualPrice || undefined,
-        status: values.status,
         tagIds: values.tagIds?.length ? values.tagIds : undefined,
         genreIds: values.genreIds?.length ? values.genreIds : undefined,
       },

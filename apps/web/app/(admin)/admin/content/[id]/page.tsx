@@ -26,7 +26,9 @@ import { VideoUpload } from '@/components/admin/content/video-upload';
 import {
   useAdminContentDetail,
   useUpdateContent,
+  AGE_CATEGORY_FROM_BACKEND,
 } from '@/hooks/use-admin-content';
+import { useContentCategories } from '@/hooks/use-studio-data';
 
 /**
  * Admin content edit page
@@ -38,6 +40,7 @@ export default function AdminContentEditPage() {
 
   const { data: content, isLoading } = useAdminContentDetail(contentId);
   const updateContent = useUpdateContent();
+  const { flat: categories } = useContentCategories();
 
   // Form state
   const [title, setTitle] = React.useState('');
@@ -59,8 +62,8 @@ export default function AdminContentEditPage() {
       setSlug(content.slug || '');
       setDescription(content.description || '');
       setContentType(content.contentType || '');
-      setCategoryId(content.categoryId || '');
-      setAgeCategory(content.ageCategory || '');
+      setCategoryId(content.categoryId || (content as unknown as { category?: { id: string } }).category?.id || '');
+      setAgeCategory(AGE_CATEGORY_FROM_BACKEND[content.ageCategory] || content.ageCategory || '');
       setThumbnailUrl(content.thumbnailUrl || '');
       setPreviewUrl(content.previewUrl || '');
       setIsFree(content.isFree || false);
@@ -76,7 +79,6 @@ export default function AdminContentEditPage() {
       {
         id: contentId,
         title,
-        slug: slug || undefined,
         description: description || undefined,
         contentType: contentType || undefined,
         categoryId: categoryId || undefined,
@@ -287,13 +289,19 @@ export default function AdminContentEditPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="categoryId">ID категории</Label>
-                  <Input
-                    id="categoryId"
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    placeholder="UUID категории"
-                  />
+                  <Label>Тематика</Label>
+                  <Select value={categoryId} onValueChange={setCategoryId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите тематику" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.depth > 0 ? `${'— '.repeat(cat.depth)}${cat.name}` : cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>

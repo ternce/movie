@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ImageUpload } from '@/components/admin/content/image-upload';
 import { VideoUpload } from '@/components/admin/content/video-upload';
 import { useCreateContent } from '@/hooks/use-admin-content';
+import { useContentCategories } from '@/hooks/use-studio-data';
 
 /**
  * Admin content creation page
@@ -30,6 +31,7 @@ import { useCreateContent } from '@/hooks/use-admin-content';
 export default function AdminContentNewPage() {
   const router = useRouter();
   const createContent = useCreateContent();
+  const { flat: categories } = useContentCategories();
 
   // Form state
   const [title, setTitle] = React.useState('');
@@ -42,12 +44,11 @@ export default function AdminContentNewPage() {
   const [previewUrl, setPreviewUrl] = React.useState('');
   const [isFree, setIsFree] = React.useState(false);
   const [individualPrice, setIndividualPrice] = React.useState('');
-  const [status, setStatus] = React.useState('DRAFT');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!title || !contentType || !ageCategory) {
+    if (!title || !contentType || !ageCategory || !description || !categoryId) {
       return;
     }
 
@@ -55,15 +56,14 @@ export default function AdminContentNewPage() {
       {
         title,
         slug: slug || undefined,
-        description: description || undefined,
+        description,
         contentType,
-        categoryId: categoryId || undefined,
+        categoryId,
         ageCategory,
         thumbnailUrl: thumbnailUrl || undefined,
         previewUrl: previewUrl || undefined,
         isFree,
         individualPrice: individualPrice ? Number(individualPrice) : undefined,
-        status,
       },
       {
         onSuccess: () => {
@@ -127,7 +127,7 @@ export default function AdminContentNewPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Описание</Label>
+                  <Label htmlFor="description">Описание *</Label>
                   <Textarea
                     id="description"
                     value={description}
@@ -200,27 +200,19 @@ export default function AdminContentNewPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Статус</Label>
-                  <Select value={status} onValueChange={setStatus}>
+                  <Label>Тематика *</Label>
+                  <Select value={categoryId} onValueChange={setCategoryId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Выберите статус" />
+                      <SelectValue placeholder="Выберите тематику" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="DRAFT">Черновик</SelectItem>
-                      <SelectItem value="PENDING">На модерацию</SelectItem>
-                      <SelectItem value="PUBLISHED">Опубликован</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.depth > 0 ? `${'— '.repeat(cat.depth)}${cat.name}` : cat.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="categoryId">ID категории</Label>
-                  <Input
-                    id="categoryId"
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    placeholder="UUID категории"
-                  />
                 </div>
               </CardContent>
             </Card>
@@ -262,7 +254,7 @@ export default function AdminContentNewPage() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={createContent.isPending || !title || !contentType || !ageCategory}
+                  disabled={createContent.isPending || !title || !contentType || !ageCategory || !description || !categoryId}
                 >
                   {createContent.isPending ? (
                     <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />
@@ -271,6 +263,9 @@ export default function AdminContentNewPage() {
                   )}
                   Создать контент
                 </Button>
+                <p className="text-xs text-center text-mp-text-disabled">
+                  Новый контент сохраняется как черновик
+                </p>
                 <Button variant="outline" className="w-full" asChild>
                   <Link href="/admin/content">Отмена</Link>
                 </Button>

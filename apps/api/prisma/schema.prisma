@@ -355,6 +355,7 @@ model WatchHistory {
   @@unique([userId, contentId])
   @@index([userId])
   @@index([lastWatchedAt])
+  @@index([userId, lastWatchedAt])
   @@map("watch_history")
 }
 
@@ -530,6 +531,7 @@ model Transaction {
   @@index([userId, status, createdAt])
   @@index([userId, type, status])
   @@index([status, createdAt])
+  @@index([type, status, createdAt])
   @@map("transactions")
 }
 

@@ -38,6 +38,10 @@ export class YooKassaService {
       );
     }
 
+    if (!isMockMode && !webhookSecret) {
+      this.logger.warn('YOOKASSA_WEBHOOK_SECRET is not set - webhook signature verification will be ineffective');
+    }
+
     this.config = {
       shopId: shopId || '',
       secretKey: secretKey || '',

@@ -62,11 +62,14 @@ async function seedCategories() {
   console.log('🎯 Seeding Content Categories...');
 
   const categories = [
-    { name: 'Сериалы', slug: 'series', order: 1 },
-    { name: 'Фильмы', slug: 'films', order: 2 },
-    { name: 'Шортсы', slug: 'shorts', order: 3 },
-    { name: 'Обучение', slug: 'tutorials', order: 4 },
-    { name: 'Развлечения', slug: 'entertainment', order: 5 },
+    { name: 'Драма', slug: 'drama', order: 1 },
+    { name: 'Развлечения', slug: 'entertainment', order: 2 },
+    { name: 'Образование', slug: 'education', order: 3 },
+    { name: 'Лайфстайл', slug: 'lifestyle', order: 4 },
+    { name: 'Документальное', slug: 'documentary', order: 5 },
+    { name: 'Наука и технологии', slug: 'science-tech', order: 6 },
+    { name: 'Музыка', slug: 'music', order: 7 },
+    { name: 'Спорт', slug: 'sport', order: 8 },
   ];
 
   for (const category of categories) {
@@ -536,12 +539,14 @@ async function seedUsers() {
 async function seedContent() {
   console.log('🎯 Seeding Content...');
 
-  const seriesCategory = await prisma.category.findUnique({ where: { slug: 'series' } });
-  const filmsCategory = await prisma.category.findUnique({ where: { slug: 'films' } });
-  const shortsCategory = await prisma.category.findUnique({ where: { slug: 'shorts' } });
-  const tutorialsCategory = await prisma.category.findUnique({ where: { slug: 'tutorials' } });
+  const dramaCategory = await prisma.category.findUnique({ where: { slug: 'drama' } });
+  const entertainmentCategory = await prisma.category.findUnique({ where: { slug: 'entertainment' } });
+  const educationCategory = await prisma.category.findUnique({ where: { slug: 'education' } });
+  const lifestyleCategory = await prisma.category.findUnique({ where: { slug: 'lifestyle' } });
+  const documentaryCategory = await prisma.category.findUnique({ where: { slug: 'documentary' } });
+  const sciTechCategory = await prisma.category.findUnique({ where: { slug: 'science-tech' } });
 
-  if (!seriesCategory || !filmsCategory || !shortsCategory || !tutorialsCategory) {
+  if (!dramaCategory || !entertainmentCategory || !educationCategory || !lifestyleCategory || !documentaryCategory || !sciTechCategory) {
     console.log('⚠️ Categories not found, skipping content seed');
     return;
   }
@@ -553,7 +558,7 @@ async function seedContent() {
       slug: 'mysteries-of-night-city',
       description: 'Захватывающий детективный сериал о частном сыщике в мегаполисе. Каждый эпизод — новое расследование, интриги и неожиданные повороты сюжета.',
       contentType: ContentType.SERIES,
-      categoryId: seriesCategory.id,
+      categoryId: dramaCategory.id,
       ageCategory: AgeCategory.EIGHTEEN_PLUS,
       duration: 2700, // 45 min
       isFree: false,
@@ -565,7 +570,7 @@ async function seedContent() {
       slug: 'magic-school-adventures',
       description: 'Увлекательная история о подростках, обучающихся в секретной школе магии. Дружба, загадки и волшебство!',
       contentType: ContentType.SERIES,
-      categoryId: seriesCategory.id,
+      categoryId: entertainmentCategory.id,
       ageCategory: AgeCategory.TWELVE_PLUS,
       duration: 1800, // 30 min
       isFree: false,
@@ -578,7 +583,7 @@ async function seedContent() {
       slug: 'best-moments-season-finale',
       description: 'Подборка самых ярких и запоминающихся моментов из финального эпизода.',
       contentType: ContentType.CLIP,
-      categoryId: filmsCategory.id,
+      categoryId: entertainmentCategory.id,
       ageCategory: AgeCategory.SIXTEEN_PLUS,
       duration: 600, // 10 min
       isFree: true,
@@ -590,7 +595,7 @@ async function seedContent() {
       slug: 'behind-the-scenes',
       description: 'Эксклюзивный взгляд на процесс создания вашего любимого сериала.',
       contentType: ContentType.CLIP,
-      categoryId: filmsCategory.id,
+      categoryId: documentaryCategory.id,
       ageCategory: AgeCategory.ZERO_PLUS,
       duration: 900, // 15 min
       isFree: true,
@@ -602,7 +607,7 @@ async function seedContent() {
       slug: 'actor-interviews',
       description: 'Откровенный разговор с главными звездами о их ролях и жизни.',
       contentType: ContentType.CLIP,
-      categoryId: filmsCategory.id,
+      categoryId: entertainmentCategory.id,
       ageCategory: AgeCategory.SIX_PLUS,
       duration: 1200, // 20 min
       isFree: false,
@@ -615,7 +620,7 @@ async function seedContent() {
       slug: 'morning-meditation',
       description: 'Короткое видео для начала дня с позитивного настроя.',
       contentType: ContentType.SHORT,
-      categoryId: shortsCategory.id,
+      categoryId: lifestyleCategory.id,
       ageCategory: AgeCategory.ZERO_PLUS,
       duration: 60, // 1 min
       isFree: true,
@@ -627,7 +632,7 @@ async function seedContent() {
       slug: 'quick-recipe',
       description: 'Простой и вкусный рецепт, который можно приготовить за 5 минут.',
       contentType: ContentType.SHORT,
-      categoryId: shortsCategory.id,
+      categoryId: lifestyleCategory.id,
       ageCategory: AgeCategory.ZERO_PLUS,
       duration: 90, // 1.5 min
       isFree: true,
@@ -639,7 +644,7 @@ async function seedContent() {
       slug: 'cleaning-lifehack',
       description: 'Полезный совет для быстрой уборки дома.',
       contentType: ContentType.SHORT,
-      categoryId: shortsCategory.id,
+      categoryId: lifestyleCategory.id,
       ageCategory: AgeCategory.ZERO_PLUS,
       duration: 45,
       isFree: true,
@@ -652,7 +657,7 @@ async function seedContent() {
       slug: 'python-basics',
       description: 'Полный курс программирования на Python для начинающих. От установки до первых проектов.',
       contentType: ContentType.TUTORIAL,
-      categoryId: tutorialsCategory.id,
+      categoryId: sciTechCategory.id,
       ageCategory: AgeCategory.TWELVE_PLUS,
       duration: 7200, // 2 hours
       isFree: false,
@@ -665,7 +670,7 @@ async function seedContent() {
       slug: 'photography-intro',
       description: 'Бесплатный вводный урок по основам фотографии. Узнайте, как делать красивые снимки.',
       contentType: ContentType.TUTORIAL,
-      categoryId: tutorialsCategory.id,
+      categoryId: educationCategory.id,
       ageCategory: AgeCategory.ZERO_PLUS,
       duration: 1800, // 30 min
       isFree: true,

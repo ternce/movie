@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { AgeCategory, ContentStatus } from '@prisma/client';
+import { AgeCategory, ContentStatus, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../config/prisma.service';
 import { CacheService, CACHE_TTL, CACHE_KEYS } from '../../common/cache/cache.service';
@@ -61,42 +61,22 @@ export class ContentService {
     return this.cache.getOrSet(cacheKey, async () => {
       const allowedCategories = this.getAllowedAgeCategories(userAgeCategory);
 
-      // Build where clause
-      const where: any = {
+      // Build where clause with type-safe Prisma input
+      const where: Prisma.ContentWhereInput = {
         status: ContentStatus.PUBLISHED,
         ageCategory: { in: allowedCategories },
+        ...(type && { contentType: type }),
+        ...(categoryId && { categoryId }),
+        ...(genreId && { genres: { some: { genreId } } }),
+        ...(tagId && { tags: { some: { tagId } } }),
+        ...(freeOnly && { isFree: true }),
+        ...(search && {
+          OR: [
+            { title: { contains: search, mode: 'insensitive' as const } },
+            { description: { contains: search, mode: 'insensitive' as const } },
+          ],
+        }),
       };
-
-      if (type) {
-        where.contentType = type;
-      }
-
-      if (categoryId) {
-        where.categoryId = categoryId;
-      }
-
-      if (genreId) {
-        where.genres = {
-          some: { genreId },
-        };
-      }
-
-      if (tagId) {
-        where.tags = {
-          some: { tagId },
-        };
-      }
-
-      if (freeOnly) {
-        where.isFree = true;
-      }
-
-      if (search) {
-        where.OR = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-        ];
-      }
 
       // Execute count and find in parallel
       const [total, items] = await Promise.all([
@@ -106,7 +86,19 @@ export class ContentService {
           skip: (page - 1) * limit,
           take: limit,
           orderBy: { [sortBy]: sortOrder },
-          include: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            description: true,
+            thumbnailUrl: true,
+            contentType: true,
+            ageCategory: true,
+            isFree: true,
+            individualPrice: true,
+            publishedAt: true,
+            viewCount: true,
+            duration: true,
             category: {
               select: {
                 id: true,
@@ -115,7 +107,7 @@ export class ContentService {
               },
             },
             tags: {
-              include: {
+              select: {
                 tag: {
                   select: {
                     id: true,
@@ -126,7 +118,7 @@ export class ContentService {
               },
             },
             genres: {
-              include: {
+              select: {
                 genre: {
                   select: {
                     id: true,
@@ -160,7 +152,7 @@ export class ContentService {
    * Get a single content item by slug.
    */
   async findBySlug(slug: string, userAgeCategory?: AgeCategory) {
-    const cacheKey = CACHE_KEYS.content.detail(`${slug}:${userAgeCategory || 'anon'}`);
+    const cacheKey = CACHE_KEYS.content.detail(`${slug}:${userAgeCategory || 'ZERO_PLUS'}`);
 
     return this.cache.getOrSet(cacheKey, async () => {
       return this._findBySlugUncached(slug, userAgeCategory);
@@ -464,12 +456,18 @@ export class ContentService {
   /**
    * Get all content for admin (includes all statuses).
    */
-  async findAllAdmin(query: { status?: string; page: number; limit: number }) {
-    const { status, page, limit } = query;
+  async findAllAdmin(query: { status?: string; contentType?: string; search?: string; page: number; limit: number }) {
+    const { status, contentType, search, page, limit } = query;
 
     const where: any = {};
     if (status) {
       where.status = status;
+    }
+    if (contentType) {
+      where.contentType = contentType;
+    }
+    if (search) {
+      where.title = { contains: search, mode: 'insensitive' };
     }
 
     const [total, items] = await Promise.all([

@@ -39,7 +39,7 @@ import { cn } from '@/lib/utils';
 const contentFormSchema = z.object({
   title: z.string().min(1, 'Название обязательно').max(200, 'Максимум 200 символов'),
   slug: z.string().max(200).optional().or(z.literal('')),
-  description: z.string().max(5000, 'Максимум 5000 символов').optional().or(z.literal('')),
+  description: z.string().min(1, 'Описание обязательно').max(5000, 'Максимум 5000 символов'),
   contentType: z.enum(['SERIES', 'CLIP', 'SHORT', 'TUTORIAL'], {
     required_error: 'Выберите тип контента',
   }),
@@ -47,7 +47,7 @@ const contentFormSchema = z.object({
     required_error: 'Выберите возрастную категорию',
   }),
   status: z.enum(['DRAFT', 'PENDING', 'PUBLISHED', 'REJECTED', 'ARCHIVED']).default('DRAFT'),
-  categoryId: z.string().optional().or(z.literal('')),
+  categoryId: z.string().min(1, 'Выберите тематику'),
   thumbnailUrl: z.string().optional().or(z.literal('')),
   previewUrl: z.string().optional().or(z.literal('')),
   isFree: z.boolean().default(false),
@@ -215,7 +215,7 @@ function SummaryCard({
           label="Описание"
           value={values.description ? `${values.description.slice(0, 80)}${values.description.length > 80 ? '...' : ''}` : '—'}
         />
-        <SummaryRow label="Категория" value={categoryName || '—'} />
+        <SummaryRow label="Тематика" value={categoryName || '—'} />
         <SummaryRow
           label="Жанры"
           value={selectedGenres.length > 0 ? selectedGenres.map((g) => g.name).join(', ') : '—'}
@@ -482,7 +482,7 @@ export function ContentForm({
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="description">Описание</Label>
+                  <Label htmlFor="description">Описание *</Label>
                   <CharCounter current={description?.length ?? 0} max={5000} />
                 </div>
                 <Textarea
@@ -531,7 +531,8 @@ export function ContentForm({
           {/* Category */}
           <Card className="border-mp-border bg-mp-surface/50">
             <CardHeader>
-              <CardTitle className="text-lg">Категория</CardTitle>
+              <CardTitle className="text-lg">Тематика *</CardTitle>
+              <p className="text-sm text-mp-text-secondary">Выберите тему контента</p>
             </CardHeader>
             <CardContent>
               <Controller
@@ -545,6 +546,9 @@ export function ContentForm({
                   />
                 )}
               />
+              {errors.categoryId && (
+                <p className="mt-2 text-xs text-mp-error-text">{errors.categoryId.message}</p>
+              )}
             </CardContent>
           </Card>
 
@@ -714,46 +718,54 @@ export function ContentForm({
                 <CardTitle className="text-lg">Статус публикации</CardTitle>
               </CardHeader>
               <CardContent>
-                <Controller
-                  name="status"
-                  control={control}
-                  render={({ field }) => (
-                    <div className="flex flex-wrap gap-3">
-                      <StatusCard
-                        label="Черновик"
-                        description="Сохранить как черновик"
-                        value="DRAFT"
-                        selected={field.value === 'DRAFT'}
-                        onClick={() => field.onChange('DRAFT')}
-                      />
-                      <StatusCard
-                        label="На модерацию"
-                        description="Отправить на проверку"
-                        value="PENDING"
-                        selected={field.value === 'PENDING'}
-                        onClick={() => field.onChange('PENDING')}
-                      />
-                      {isEditMode && (
-                        <>
-                          <StatusCard
-                            label="Опубликован"
-                            description="Доступен всем"
-                            value="PUBLISHED"
-                            selected={field.value === 'PUBLISHED'}
-                            onClick={() => field.onChange('PUBLISHED')}
-                          />
-                          <StatusCard
-                            label="Архив"
-                            description="Скрыть контент"
-                            value="ARCHIVED"
-                            selected={field.value === 'ARCHIVED'}
-                            onClick={() => field.onChange('ARCHIVED')}
-                          />
-                        </>
-                      )}
+                {isEditMode ? (
+                  <Controller
+                    name="status"
+                    control={control}
+                    render={({ field }) => (
+                      <div className="flex flex-wrap gap-3">
+                        <StatusCard
+                          label="Черновик"
+                          description="Сохранить как черновик"
+                          value="DRAFT"
+                          selected={field.value === 'DRAFT'}
+                          onClick={() => field.onChange('DRAFT')}
+                        />
+                        <StatusCard
+                          label="На модерацию"
+                          description="Отправить на проверку"
+                          value="PENDING"
+                          selected={field.value === 'PENDING'}
+                          onClick={() => field.onChange('PENDING')}
+                        />
+                        <StatusCard
+                          label="Опубликован"
+                          description="Доступен всем"
+                          value="PUBLISHED"
+                          selected={field.value === 'PUBLISHED'}
+                          onClick={() => field.onChange('PUBLISHED')}
+                        />
+                        <StatusCard
+                          label="Архив"
+                          description="Скрыть контент"
+                          value="ARCHIVED"
+                          selected={field.value === 'ARCHIVED'}
+                          onClick={() => field.onChange('ARCHIVED')}
+                        />
+                      </div>
+                    )}
+                  />
+                ) : (
+                  <div className="flex items-center gap-3 rounded-lg border border-mp-border bg-mp-surface/50 p-4">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-mp-text-disabled/10">
+                      <Check weight="bold" className="h-4 w-4 text-mp-text-secondary" />
                     </div>
-                  )}
-                />
+                    <div>
+                      <p className="text-sm font-medium text-mp-text-primary">Черновик</p>
+                      <p className="text-xs text-mp-text-secondary">Новый контент сохраняется как черновик. Вы сможете изменить статус после создания.</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

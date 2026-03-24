@@ -7,6 +7,49 @@ import { api, ApiError, endpoints } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-client';
 import { useAuthStore } from '@/stores/auth.store';
 
+// ============ Types ============
+
+/** User profile shape returned by the API */
+interface UserProfile {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+  role: string;
+  dateOfBirth: string | null;
+  isVerified: boolean;
+  createdAt: string;
+}
+
+/** Verification status response */
+interface VerificationStatus {
+  status: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  method?: string;
+  submittedAt?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+}
+
+/** Watchlist/Watch history paginated response */
+interface PaginatedItems<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/** Session info */
+interface SessionInfo {
+  id: string;
+  deviceName: string | null;
+  ipAddress: string | null;
+  lastActive: string;
+  isCurrent: boolean;
+  createdAt: string;
+}
+
 // ==============================
 // Profile
 // ==============================
@@ -17,7 +60,7 @@ export function useProfile() {
   return useQuery({
     queryKey: queryKeys.users.profile(),
     queryFn: async () => {
-      const response = await api.get<any>(endpoints.users.me);
+      const response = await api.get<UserProfile>(endpoints.users.me);
       return response.data;
     },
     enabled: isAuthenticated && isHydrated,
@@ -34,7 +77,7 @@ export function useUpdateProfile() {
       lastName?: string;
       phone?: string;
     }) => {
-      const response = await api.patch<any>(endpoints.users.me, data);
+      const response = await api.patch<UserProfile>(endpoints.users.me, data);
       return response.data;
     },
     onSuccess: (data) => {
@@ -101,7 +144,7 @@ export function useConfirmEmailChange() {
 
   return useMutation({
     mutationFn: async (code: string) => {
-      const response = await api.post<any>(
+      const response = await api.post<UserProfile>(
         endpoints.users.confirmEmailChange,
         { code },
       );
@@ -128,7 +171,7 @@ export function useVerificationStatus() {
   return useQuery({
     queryKey: queryKeys.users.verification(),
     queryFn: async () => {
-      const response = await api.get<any>(endpoints.users.verificationStatus);
+      const response = await api.get<VerificationStatus>(endpoints.users.verificationStatus);
       return response.data;
     },
     enabled: isAuthenticated && isHydrated,
@@ -140,7 +183,7 @@ export function useSubmitVerification() {
 
   return useMutation({
     mutationFn: async (data: { method: string; documentUrl?: string }) => {
-      const response = await api.post<any>(endpoints.users.verification, data);
+      const response = await api.post<VerificationStatus>(endpoints.users.verification, data);
       return response.data;
     },
     onSuccess: () => {
@@ -163,7 +206,7 @@ export function useWatchlist(page = 1, limit = 20) {
   return useQuery({
     queryKey: queryKeys.watchlist.list({ page, limit }),
     queryFn: async () => {
-      const response = await api.get<any>(endpoints.userWatchlist.list, {
+      const response = await api.get<PaginatedItems<unknown>>(endpoints.userWatchlist.list, {
         params: { page, limit },
       });
       return response.data;
@@ -177,7 +220,7 @@ export function useAddToWatchlist() {
 
   return useMutation({
     mutationFn: async (contentId: string) => {
-      const response = await api.post<any>(endpoints.userWatchlist.add, { contentId });
+      const response = await api.post<{ contentId: string }>(endpoints.userWatchlist.add, { contentId });
       return response.data;
     },
     onSuccess: () => {
@@ -195,7 +238,7 @@ export function useRemoveFromWatchlist() {
 
   return useMutation({
     mutationFn: async (contentId: string) => {
-      const response = await api.delete<any>(endpoints.userWatchlist.remove(contentId));
+      const response = await api.delete<{ success: boolean }>(endpoints.userWatchlist.remove(contentId));
       return response.data;
     },
     onSuccess: () => {
@@ -218,7 +261,7 @@ export function useWatchHistory(page = 1, limit = 20) {
   return useQuery({
     queryKey: [...queryKeys.watchHistory.list(), { page, limit }],
     queryFn: async () => {
-      const response = await api.get<any>(endpoints.watchHistory.list, {
+      const response = await api.get<PaginatedItems<unknown>>(endpoints.watchHistory.list, {
         params: { page, limit },
       });
       return response.data;
@@ -237,7 +280,7 @@ export function useContinueWatching(limit = 10) {
   return useQuery({
     queryKey: [...queryKeys.watchHistory.continueWatching(), { limit }],
     queryFn: async () => {
-      const response = await api.get<any>(endpoints.watchHistory.continueWatching, {
+      const response = await api.get<PaginatedItems<unknown>>(endpoints.watchHistory.continueWatching, {
         params: { limit },
       });
       return response.data;
@@ -255,7 +298,7 @@ export function useDeleteWatchHistoryItem() {
 
   return useMutation({
     mutationFn: async (contentId: string) => {
-      const response = await api.delete<any>(`/users/me/watch-history/${contentId}`);
+      const response = await api.delete<{ success: boolean }>(`/users/me/watch-history/${contentId}`);
       return response.data;
     },
     onSuccess: () => {
@@ -273,7 +316,7 @@ export function useClearWatchHistory() {
 
   return useMutation({
     mutationFn: async () => {
-      const response = await api.delete<any>('/users/me/watch-history');
+      const response = await api.delete<{ success: boolean }>('/users/me/watch-history');
       return response.data;
     },
     onSuccess: () => {
@@ -296,7 +339,7 @@ export function useActiveSessions() {
   return useQuery({
     queryKey: queryKeys.sessions.list(),
     queryFn: async () => {
-      const response = await api.get<any>(endpoints.userSessions.list);
+      const response = await api.get<SessionInfo[]>(endpoints.userSessions.list);
       return response.data;
     },
     enabled: isAuthenticated && isHydrated,
@@ -308,7 +351,7 @@ export function useTerminateSession() {
 
   return useMutation({
     mutationFn: async (sessionId: string) => {
-      const response = await api.delete<any>(endpoints.userSessions.terminate(sessionId));
+      const response = await api.delete<{ success: boolean }>(endpoints.userSessions.terminate(sessionId));
       return response.data;
     },
     onSuccess: () => {
@@ -326,7 +369,7 @@ export function useTerminateAllSessions() {
 
   return useMutation({
     mutationFn: async () => {
-      const response = await api.delete<any>(endpoints.userSessions.terminateAll);
+      const response = await api.delete<{ success: boolean }>(endpoints.userSessions.terminateAll);
       return response.data;
     },
     onSuccess: () => {

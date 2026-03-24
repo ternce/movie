@@ -1,6 +1,7 @@
 'use client';
 
 import { UploadSimple, X, VideoCamera, Link as LinkIcon, Trash, Pause, Play } from '@phosphor-icons/react';
+import NextImage from 'next/image';
 import * as React from 'react';
 import { toast } from 'sonner';
 
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { endpoints } from '@/lib/api-client';
+import { endpoints, getAuthToken } from '@/lib/api-client';
 import { EncodingStatusBadge } from './encoding-status-badge';
 import {
   useUploadContentVideo,
@@ -207,10 +208,13 @@ export function VideoUpload({
               availableQualities={encodingStatus.availableQualities}
             />
             {encodingStatus.thumbnailUrl && (
-              <img
+              <NextImage
                 src={encodingStatus.thumbnailUrl}
                 alt="Thumbnail"
+                width={320}
+                height={180}
                 className="w-full max-w-xs h-auto rounded-lg"
+                unoptimized
               />
             )}
             <div className="flex gap-2">
@@ -423,16 +427,3 @@ export function VideoUpload({
   );
 }
 
-function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const storage = localStorage.getItem('mp-auth-storage');
-    if (storage) {
-      const parsed = JSON.parse(storage);
-      return parsed.state?.accessToken || null;
-    }
-  } catch {
-    // ignore
-  }
-  return null;
-}

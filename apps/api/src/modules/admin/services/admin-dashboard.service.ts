@@ -8,6 +8,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../../config/prisma.service';
+import { CacheService, CACHE_TTL } from '../../../common/cache/cache.service';
 import {
   DashboardOverviewDto,
   DashboardStatsDto,
@@ -18,25 +19,31 @@ import {
 
 @Injectable()
 export class AdminDashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
 
   /**
    * Get dashboard overview with all stats.
+   * Cached for 5 minutes to reduce database load.
    */
   async getDashboardOverview(): Promise<DashboardOverviewDto> {
-    const [stats, revenueByMonth, userGrowth, recentTransactions] = await Promise.all([
-      this.getDashboardStats(),
-      this.getRevenueByMonth(6),
-      this.getUserGrowth(30),
-      this.getRecentTransactions(10),
-    ]);
+    return this.cache.getOrSet('admin:dashboard:overview', async () => {
+      const [stats, revenueByMonth, userGrowth, recentTransactions] = await Promise.all([
+        this.getDashboardStats(),
+        this.getRevenueByMonth(6),
+        this.getUserGrowth(30),
+        this.getRecentTransactions(10),
+      ]);
 
-    return {
-      stats,
-      revenueByMonth,
-      userGrowth,
-      recentTransactions,
-    };
+      return {
+        stats,
+        revenueByMonth,
+        userGrowth,
+        recentTransactions,
+      };
+    }, { ttl: CACHE_TTL.DEFAULT });
   }
 
   /**
@@ -92,85 +99,81 @@ export class AdminDashboardService {
   }
 
   /**
-   * Get revenue by month.
+   * Get revenue by month using a single raw SQL query.
+   * Replaces the previous N+1 loop (2 aggregate queries per month).
    */
   async getRevenueByMonth(months: number): Promise<RevenueStatDto[]> {
-    const results: RevenueStatDto[] = [];
-    const now = new Date();
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - months);
+    startDate.setDate(1);
+    startDate.setHours(0, 0, 0, 0);
 
-    for (let i = months - 1; i >= 0; i--) {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+    const results = await this.prisma.$queryRaw<Array<{
+      period: string;
+      subscriptionRevenue: number | null;
+      storeRevenue: number | null;
+      totalRevenue: number | null;
+    }>>`
+      SELECT
+        TO_CHAR(DATE_TRUNC('month', "created_at"), 'YYYY-MM') AS "period",
+        COALESCE(SUM(CASE WHEN "type" = 'SUBSCRIPTION' THEN "amount" ELSE 0 END), 0) AS "subscriptionRevenue",
+        COALESCE(SUM(CASE WHEN "type" = 'STORE' THEN "amount" ELSE 0 END), 0) AS "storeRevenue",
+        COALESCE(SUM("amount"), 0) AS "totalRevenue"
+      FROM "transactions"
+      WHERE "status" = 'COMPLETED'
+        AND "created_at" >= ${startDate}
+      GROUP BY DATE_TRUNC('month', "created_at")
+      ORDER BY "period"
+    `;
 
-      const [subscriptionRevenue, storeRevenue] = await Promise.all([
-        this.prisma.transaction.aggregate({
-          where: {
-            type: 'SUBSCRIPTION',
-            status: TransactionStatus.COMPLETED,
-            createdAt: { gte: startOfMonth, lte: endOfMonth },
-          },
-          _sum: { amount: true },
-        }),
-        this.prisma.transaction.aggregate({
-          where: {
-            type: 'STORE',
-            status: TransactionStatus.COMPLETED,
-            createdAt: { gte: startOfMonth, lte: endOfMonth },
-          },
-          _sum: { amount: true },
-        }),
-      ]);
-
-      const subRev = Number(subscriptionRevenue._sum.amount) || 0;
-      const storeRev = Number(storeRevenue._sum.amount) || 0;
-
-      results.push({
-        period: `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth() + 1).padStart(2, '0')}`,
-        subscriptionRevenue: subRev,
-        storeRevenue: storeRev,
-        totalRevenue: subRev + storeRev,
-      });
-    }
-
-    return results;
+    return results.map((r) => ({
+      period: r.period,
+      subscriptionRevenue: Number(r.subscriptionRevenue),
+      storeRevenue: Number(r.storeRevenue),
+      totalRevenue: Number(r.totalRevenue),
+    }));
   }
 
   /**
-   * Get user growth over time.
+   * Get user growth over time using a single raw SQL query.
+   * Replaces the previous N+1 loop (2 count queries per day).
+   * Uses a window function for cumulative total.
    */
   async getUserGrowth(days: number): Promise<UserGrowthStatDto[]> {
-    const results: UserGrowthStatDto[] = [];
-    const now = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
 
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
+    // Get the count of all users before the start date for the running total base
+    const baseCountResult = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*) AS "count" FROM "users" WHERE "created_at" < ${startDate}
+    `;
+    const baseCount = Number(baseCountResult[0]?.count ?? 0);
 
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
+    const results = await this.prisma.$queryRaw<Array<{
+      date: Date;
+      newUsers: bigint;
+    }>>`
+      SELECT
+        DATE("created_at") AS "date",
+        COUNT(*) AS "newUsers"
+      FROM "users"
+      WHERE "created_at" >= ${startDate}
+      GROUP BY DATE("created_at")
+      ORDER BY "date"
+    `;
 
-      const [newUsers, totalUsers] = await Promise.all([
-        this.prisma.user.count({
-          where: {
-            createdAt: { gte: date, lt: nextDate },
-          },
-        }),
-        this.prisma.user.count({
-          where: {
-            createdAt: { lt: nextDate },
-          },
-        }),
-      ]);
-
-      results.push({
-        date: date.toISOString().split('T')[0],
+    // Build the result with running total
+    let runningTotal = baseCount;
+    return results.map((r) => {
+      const newUsers = Number(r.newUsers);
+      runningTotal += newUsers;
+      return {
+        date: r.date.toISOString().split('T')[0],
         newUsers,
-        totalUsers,
-      });
-    }
-
-    return results;
+        totalUsers: runningTotal,
+      };
+    });
   }
 
   /**
