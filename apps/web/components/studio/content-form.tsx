@@ -204,7 +204,7 @@ function SummaryCard({
   const selectedGenres = genres.filter((g) => values.genreIds?.includes(g.id));
 
   return (
-    <Card className="border-mp-border bg-mp-surface/50">
+    <Card className="border-mp-border bg-mp-surface/50 overflow-hidden">
       <CardHeader>
         <CardTitle className="text-lg">Предпросмотр</CardTitle>
       </CardHeader>
@@ -651,7 +651,7 @@ export function ContentForm({
       {/* ==================== STEP 3: Publishing ==================== */}
       {currentStep === 3 && (
         <div className="grid gap-6 lg:grid-cols-3 max-w-5xl overflow-hidden">
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 min-w-0">
             {/* Age Rating */}
             <Card className="border-mp-border bg-mp-surface/50">
               <CardHeader>
@@ -771,7 +771,7 @@ export function ContentForm({
           </div>
 
           {/* Summary sidebar */}
-          <div>
+          <div className="min-w-0">
             <SummaryCard
               values={allValues}
               categories={categoriesFlat}
