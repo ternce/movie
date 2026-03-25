@@ -160,6 +160,7 @@ services:
       - YOOKASSA_SECRET_KEY=${YOOKASSA_SECRET_KEY:-}
       - YOOKASSA_MOCK_MODE=${YOOKASSA_MOCK_MODE:-true}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME:-MoviePlatform}
+      - APP_URL=http://89.108.66.37
       - PORT=4000
     volumes:
       - api_video_uploads:/tmp/video-uploads

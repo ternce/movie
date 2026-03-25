@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import * as path from 'path';
 
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -30,6 +31,10 @@ async function bootstrap() {
     origin: origins,
     credentials: true,
   });
+
+  // Serve uploaded files (images, videos)
+  const uploadDir = configService.get<string>('UPLOAD_DIR', './uploads');
+  app.useStaticAssets(path.resolve(uploadDir), { prefix: '/uploads/' });
 
   // API versioning
   app.setGlobalPrefix('api');
