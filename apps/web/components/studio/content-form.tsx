@@ -233,9 +233,9 @@ function SummaryCard({
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4">
+    <div className="flex justify-between gap-4 min-w-0">
       <span className="text-mp-text-secondary shrink-0">{label}</span>
-      <span className="text-mp-text-primary text-right truncate">{value}</span>
+      <span className="text-mp-text-primary text-right truncate min-w-0">{value}</span>
     </div>
   );
 }
@@ -650,7 +650,7 @@ export function ContentForm({
 
       {/* ==================== STEP 3: Publishing ==================== */}
       {currentStep === 3 && (
-        <div className="grid gap-6 lg:grid-cols-3 max-w-5xl">
+        <div className="grid gap-6 lg:grid-cols-3 max-w-5xl overflow-hidden">
           <div className="lg:col-span-2 space-y-6">
             {/* Age Rating */}
             <Card className="border-mp-border bg-mp-surface/50">
@@ -723,7 +723,7 @@ export function ContentForm({
                     name="status"
                     control={control}
                     render={({ field }) => (
-                      <div className="flex flex-wrap gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <StatusCard
                           label="Черновик"
                           description="Сохранить как черновик"
@@ -783,7 +783,7 @@ export function ContentForm({
       )}
 
       {/* ==================== Navigation ==================== */}
-      <div className="mt-8 flex items-center justify-between max-w-3xl">
+      <div className={cn("mt-8 flex items-center justify-between", currentStep === 3 ? "max-w-5xl" : "max-w-3xl")}>
         <div>
           {currentStep > 1 && (
             <Button type="button" variant="outline" onClick={handleBack}>
@@ -838,7 +838,7 @@ function StatusCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex flex-col items-start rounded-lg border p-3 text-left transition-all duration-200 min-w-[140px]',
+        'flex flex-col items-start rounded-lg border p-3 text-left transition-all duration-200',
         selected
           ? 'border-[#c94bff] bg-[#c94bff]/10'
           : 'border-mp-border bg-mp-surface/50 hover:border-mp-text-disabled'
