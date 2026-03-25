@@ -62,18 +62,27 @@ export class ContentService {
       const allowedCategories = this.getAllowedAgeCategories(userAgeCategory);
 
       // Build where clause with type-safe Prisma input
+      // Exclude child episodes/lessons — only show root content in listings
       const where: Prisma.ContentWhereInput = {
         status: ContentStatus.PUBLISHED,
         ageCategory: { in: allowedCategories },
+        OR: [
+          { series: null },                                    // Content with no Series record
+          { series: { parentSeriesId: null } },                // Root series only
+        ],
         ...(type && { contentType: type }),
         ...(categoryId && { categoryId }),
         ...(genreId && { genres: { some: { genreId } } }),
         ...(tagId && { tags: { some: { tagId } } }),
         ...(freeOnly && { isFree: true }),
         ...(search && {
-          OR: [
-            { title: { contains: search, mode: 'insensitive' as const } },
-            { description: { contains: search, mode: 'insensitive' as const } },
+          AND: [
+            {
+              OR: [
+                { title: { contains: search, mode: 'insensitive' as const } },
+                { description: { contains: search, mode: 'insensitive' as const } },
+              ],
+            },
           ],
         }),
       };
@@ -456,8 +465,8 @@ export class ContentService {
   /**
    * Get all content for admin (includes all statuses).
    */
-  async findAllAdmin(query: { status?: string; contentType?: string; search?: string; page: number; limit: number }) {
-    const { status, contentType, search, page, limit } = query;
+  async findAllAdmin(query: { status?: string; contentType?: string; search?: string; page: number; limit: number; includeEpisodes?: boolean }) {
+    const { status, contentType, search, page, limit, includeEpisodes } = query;
 
     const where: any = {};
     if (status) {
@@ -468,6 +477,13 @@ export class ContentService {
     }
     if (search) {
       where.title = { contains: search, mode: 'insensitive' };
+    }
+    // By default, exclude child episodes/lessons from admin listing
+    if (!includeEpisodes) {
+      where.OR = [
+        { series: null },
+        { series: { parentSeriesId: null } },
+      ];
     }
 
     const [total, items] = await Promise.all([

@@ -12,3 +12,5 @@ export { TagInput } from './tag-input';
 export { GenreSelect } from './genre-select';
 export { ContentTypeCards } from './content-type-cards';
 export { AgeRatingSelector } from './age-rating-selector';
+export { TreeManager } from './tree-manager';
+export type { TreeManagerProps, TreeGroup, TreeItem } from './tree-manager';

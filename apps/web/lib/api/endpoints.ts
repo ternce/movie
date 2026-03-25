@@ -278,6 +278,12 @@ export const endpoints = {
     create: '/admin/content',
     update: (id: string) => `/admin/content/${id}`,
     delete: (id: string) => `/admin/content/${id}`,
+    createSeries: '/admin/content/series',
+    structure: (id: string) => `/admin/content/${id}/structure`,
+    reorderStructure: (id: string) => `/admin/content/${id}/structure`,
+    addEpisode: (id: string) => `/admin/content/${id}/episodes`,
+    updateEpisode: (episodeId: string) => `/admin/content/episodes/${episodeId}`,
+    deleteEpisode: (episodeId: string) => `/admin/content/episodes/${episodeId}`,
   },
 
   // Admin Dashboard

@@ -350,6 +350,8 @@ export const queryKeys = {
       [...queryKeys.adminContent.all, 'list', params] as const,
     detail: (id: string) =>
       [...queryKeys.adminContent.all, 'detail', id] as const,
+    structure: (id: string) =>
+      [...queryKeys.adminContent.all, id, 'structure'] as const,
   },
 
   // Admin Users

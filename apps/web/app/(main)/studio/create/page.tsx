@@ -1,69 +1,99 @@
 'use client';
 
-import { Plus } from '@phosphor-icons/react';
-import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import {
+  BookOpen,
+  FilmStrip,
+  Lightning,
+  MusicNote,
+} from '@phosphor-icons/react';
+import Link from 'next/link';
 
 import { StudioPageHeader } from '@/components/studio/studio-page-header';
-import type { ContentFormValues } from '@/components/studio/content-form';
-import { useCreateContent } from '@/hooks/use-admin-content';
+import { cn } from '@/lib/utils';
 
-const ContentForm = dynamic(
-  () => import('@/components/studio/content-form').then((m) => ({ default: m.ContentForm })),
+const CONTENT_TYPES = [
   {
-    loading: () => (
-      <div className="animate-pulse space-y-4">
-        <div className="h-10 bg-mp-surface rounded" />
-        <div className="h-40 bg-mp-surface rounded" />
-        <div className="h-10 bg-mp-surface rounded" />
-      </div>
-    ),
-  }
-);
+    type: 'SERIES',
+    label: 'Сериал',
+    description: 'Многосерийный контент с сезонами и эпизодами',
+    icon: FilmStrip,
+    href: '/studio/create/series',
+    color: '#c94bff',
+  },
+  {
+    type: 'CLIP',
+    label: 'Клип',
+    description: 'Музыкальные клипы, трейлеры и промо-видео',
+    icon: MusicNote,
+    href: '/studio/create/clip',
+    color: '#28e0c4',
+  },
+  {
+    type: 'SHORT',
+    label: 'Шорт',
+    description: 'Короткие вертикальные видео до 60 секунд',
+    icon: Lightning,
+    href: '/studio/create/short',
+    color: '#ff6b5a',
+  },
+  {
+    type: 'TUTORIAL',
+    label: 'Туториал',
+    description: 'Обучающие курсы с главами и уроками',
+    icon: BookOpen,
+    href: '/studio/create/tutorial',
+    color: '#3B82F6',
+  },
+] as const;
 
 export default function StudioCreatePage() {
-  const router = useRouter();
-  const createContent = useCreateContent();
-
-  const handleSubmit = (values: ContentFormValues) => {
-    createContent.mutate(
-      {
-        title: values.title,
-        description: values.description || undefined,
-        contentType: values.contentType,
-        categoryId: values.categoryId || undefined,
-        ageCategory: values.ageCategory,
-        thumbnailUrl: values.thumbnailUrl || undefined,
-        previewUrl: values.previewUrl || undefined,
-        isFree: values.isFree,
-        individualPrice: values.individualPrice || undefined,
-        tagIds: values.tagIds?.length ? values.tagIds : undefined,
-        genreIds: values.genreIds?.length ? values.genreIds : undefined,
-      },
-      {
-        onSuccess: (data) => {
-          // Redirect to edit page so user can upload video
-          router.push(`/studio/${data.id}`);
-        },
-      }
-    );
-  };
-
   return (
     <div className="py-8 md:py-12">
       <StudioPageHeader
-        title="Новый контент"
-        description="Создание нового контента на платформе"
+        title="Что вы хотите создать?"
+        description="Выберите тип контента — для каждого типа мы подготовили оптимальную форму"
       />
 
-      <div className="mt-6">
-        <ContentForm
-          onSubmit={handleSubmit}
-          isSubmitting={createContent.isPending}
-          submitLabel="Создать контент"
-          submitIcon={<Plus className="mr-2 h-4 w-4" />}
-          cancelHref="/studio"
-        />
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:max-w-2xl">
+        {CONTENT_TYPES.map(({ type, label, description, icon: Icon, href, color }) => (
+          <Link
+            key={type}
+            href={href}
+            className={cn(
+              'group flex flex-col items-start gap-3 rounded-xl border p-5 text-left transition-all duration-200',
+              'border-[#272b38] bg-[#10131c]/80 hover:bg-[#10131c]',
+              'hover:border-[color:var(--accent)] hover:shadow-[0_0_20px_rgba(var(--glow),0.15)]',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c94bff]/50',
+            )}
+            style={{
+              '--accent': color,
+              '--glow': color
+                .replace('#', '')
+                .match(/.{2}/g)
+                ?.map((hex) => parseInt(hex, 16))
+                .join(','),
+            } as React.CSSProperties}
+          >
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-lg transition-colors duration-200"
+              style={{ backgroundColor: `${color}15` }}
+            >
+              <Icon
+                weight="duotone"
+                className="h-6 w-6 transition-colors duration-200"
+                style={{ color }}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-base font-semibold text-[#f5f7ff] group-hover:text-white">
+                {label}
+              </p>
+              <p className="text-sm text-[#9ca2bc] leading-relaxed">
+                {description}
+              </p>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );

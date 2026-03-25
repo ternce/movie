@@ -4,3 +4,7 @@ export * from './create-content.dto';
 export * from './update-content.dto';
 export * from './update-progress.dto';
 export * from './watch-history-response.dto';
+export * from './create-series.dto';
+export * from './series-structure.dto';
+export * from './add-episode.dto';
+export * from './update-structure.dto';
