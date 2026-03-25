@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Post,
   UploadedFile,
@@ -41,10 +42,9 @@ export class UploadController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
-      return { success: false, error: 'No file provided' };
+      throw new BadRequestException('Файл не предоставлен');
     }
-    const result = await this.uploadService.uploadImage(file);
-    return { success: true, data: result };
+    return this.uploadService.uploadImage(file);
   }
 
   @Post('video')
@@ -64,9 +64,8 @@ export class UploadController {
   )
   async uploadVideo(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
-      return { success: false, error: 'No file provided' };
+      throw new BadRequestException('Файл не предоставлен');
     }
-    const result = await this.uploadService.uploadVideo(file);
-    return { success: true, data: result };
+    return this.uploadService.uploadVideo(file);
   }
 }

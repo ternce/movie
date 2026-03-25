@@ -93,3 +93,64 @@ export function apiPatch(
 export function apiDelete(path: string, token?: string): Promise<ApiResult> {
   return apiFetch('DELETE', path, undefined, token);
 }
+
+/**
+ * Upload a file via multipart/form-data.
+ * Used for image and video upload endpoints.
+ */
+export async function apiUploadFile(
+  path: string,
+  filePath: string,
+  fieldName: string = 'file',
+  token?: string,
+  retries = 2
+): Promise<ApiResult> {
+  const url = `${API_BASE}${path}`;
+  const fs = await import('fs');
+  const nodePath = await import('path');
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const fileBuffer = fs.readFileSync(filePath);
+      const fileName = nodePath.basename(filePath);
+      const blob = new Blob([fileBuffer]);
+
+      const formData = new FormData();
+      formData.append(fieldName, blob, fileName);
+
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+
+      if ((res.status === 502 || res.status === 503) && attempt < retries) {
+        await sleep(1000 * (attempt + 1));
+        continue;
+      }
+
+      const contentType = res.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        return (await res.json()) as ApiResult;
+      }
+
+      return {
+        success: res.ok,
+        data: await res.text(),
+      };
+    } catch (err) {
+      if (attempt < retries) {
+        await sleep(1000 * (attempt + 1));
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw new Error(`apiUploadFile failed after ${retries + 1} attempts`);
+}

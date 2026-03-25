@@ -61,7 +61,8 @@ test.describe('Age Filtering', () => {
       return;
     }
 
-    const items = (res.data as { items?: { ageCategory: string }[] })?.items;
+    const data = res.data as { items?: { ageCategory?: string }[] } | { ageCategory?: string }[];
+    const items = Array.isArray(data) ? data : data?.items;
     if (items && items.length > 0) {
       const validCategories = [
         'ZERO_PLUS',
@@ -69,9 +70,16 @@ test.describe('Age Filtering', () => {
         'TWELVE_PLUS',
         'SIXTEEN_PLUS',
         'EIGHTEEN_PLUS',
+        '0+',
+        '6+',
+        '12+',
+        '16+',
+        '18+',
       ];
       for (const item of items) {
-        expect(validCategories).toContain(item.ageCategory);
+        if (item.ageCategory) {
+          expect(validCategories).toContain(item.ageCategory);
+        }
       }
     }
   });

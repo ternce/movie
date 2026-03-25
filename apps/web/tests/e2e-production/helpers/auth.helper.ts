@@ -33,6 +33,13 @@ export const PROD_USERS = {
     lastName: 'Сидоров',
     role: 'MINOR',
   },
+  moderator: {
+    email: 'moderator@movieplatform.local',
+    password: 'mod123',
+    firstName: 'Модератор',
+    lastName: 'Контента',
+    role: 'MODERATOR',
+  },
 } as const;
 
 export type ProdUserRole = keyof typeof PROD_USERS;

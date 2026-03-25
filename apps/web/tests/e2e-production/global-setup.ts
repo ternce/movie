@@ -82,6 +82,7 @@ async function globalSetup(config: FullConfig) {
     { key: 'partner', file: 'partner-state.json' },
     { key: 'admin', file: 'admin-state.json' },
     { key: 'minor', file: 'minor-state.json' },
+    { key: 'moderator', file: 'moderator-state.json' },
   ];
 
   for (const { key, file } of roles) {

@@ -67,3 +67,49 @@ export async function markAllNotificationsRead(token: string): Promise<void> {
     // Non-critical
   }
 }
+
+/**
+ * Clean up all E2E test content created during admin tests.
+ * Searches for content with "E2E-TEST-" prefix and archives them.
+ */
+export async function cleanupTestContent(token: string): Promise<void> {
+  try {
+    const res = await apiGet(
+      `/admin/content?search=${encodeURIComponent('E2E-TEST-')}&limit=100`,
+      token
+    );
+    if (!res.success || !res.data) return;
+
+    const data = res.data as { items?: { id: string; title: string }[] };
+    const items = data.items ?? [];
+
+    let cleaned = 0;
+    for (const item of items) {
+      if (item.title.startsWith('E2E-TEST-')) {
+        await apiDelete(`/admin/content/${item.id}`, token);
+        cleaned++;
+      }
+    }
+
+    if (cleaned > 0) {
+      console.log(`[cleanup] Archived ${cleaned} test content items`);
+    }
+  } catch {
+    // Non-critical
+  }
+}
+
+/**
+ * Restore notification preferences to defaults.
+ */
+export async function restoreNotificationPreferences(token: string): Promise<void> {
+  try {
+    await apiPatch('/users/me/notification-preferences', {
+      emailMarketing: true,
+      emailUpdates: true,
+      pushNotifications: true,
+    }, token);
+  } catch {
+    // Non-critical
+  }
+}

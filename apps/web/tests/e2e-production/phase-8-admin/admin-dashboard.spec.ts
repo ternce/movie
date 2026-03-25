@@ -1,66 +1,65 @@
 import { test, expect } from '@playwright/test';
 import { apiGet } from '../helpers/api.helper';
-import { loginViaApi, PROD_USERS, canLoginViaApi } from '../helpers/auth.helper';
+import { waitForAdminPage, getAdminToken } from './helpers/admin-test.helper';
 
 test.describe('Admin Dashboard', () => {
-  test('admin panel loads', async ({ page }) => {
-    await page.goto('/admin');
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(3000);
-
-    if (page.url().includes('/login')) {
-      test.skip(true, 'Auth state expired — redirected to login');
-      return;
-    }
-
-    expect(page.url()).not.toContain('/login');
-    await expect(page.locator('body')).not.toBeEmpty();
-  });
-
-  test('admin dashboard shows content', async ({ page }) => {
-    await page.goto('/admin/dashboard');
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(5000);
-
-    if (page.url().includes('/login')) {
-      test.skip(true, 'Auth state expired — redirected to login');
-      return;
-    }
+  test('dashboard page loads with content', async ({ page }) => {
+    const loaded = await waitForAdminPage(page, '/admin/dashboard');
+    test.skip(!loaded, 'Auth state expired — redirected to login');
 
     const bodyText = await page.locator('body').innerText();
-
-    // Admin page loaded — check for any meaningful content
-    if (bodyText.trim().length < 50) {
-      test.skip(true, 'Admin dashboard did not render content — possible auth issue');
-      return;
-    }
-
-    // Page has content — pass
-    expect(bodyText.trim().length).toBeGreaterThan(0);
+    expect(bodyText.trim().length).toBeGreaterThan(50);
   });
 
-  test('admin dashboard API returns data', async () => {
-    let auth;
-    try {
-      auth = await loginViaApi(
-        PROD_USERS.admin.email,
-        PROD_USERS.admin.password
-      );
-    } catch {
-      test.skip(true, 'Admin login failed — possible 502');
+  test('dashboard shows stats cards', async ({ page }) => {
+    const loaded = await waitForAdminPage(page, '/admin/dashboard');
+    test.skip(!loaded, 'Auth state expired');
+
+    // Wait for data to load
+    await page.waitForTimeout(3000);
+
+    const bodyText = await page.locator('body').innerText();
+    if (bodyText.trim().length < 50) {
+      test.skip(true, 'Dashboard did not fully render');
       return;
     }
 
-    const res = await apiGet('/admin/dashboard', auth.accessToken);
+    // Should have stat-related text or numbers
+    const hasNumbers = /\d+/.test(bodyText);
+    expect(hasNumbers).toBe(true);
+  });
+
+  test('dashboard API returns valid data', async () => {
+    let token: string;
+    try {
+      token = await getAdminToken();
+    } catch {
+      test.skip(true, 'Admin login failed');
+      return;
+    }
+
+    const res = await apiGet('/admin/dashboard', token);
     expect(res).toBeDefined();
     expect(typeof res.success).toBe('boolean');
   });
 
-  test('admin page has Russian text', async ({ page }) => {
-    await page.goto('/admin/dashboard');
-    await page.waitForLoadState('domcontentloaded');
+  test('dashboard has Russian text throughout', async ({ page }) => {
+    const loaded = await waitForAdminPage(page, '/admin/dashboard');
+    test.skip(!loaded, 'Auth state expired');
 
     const bodyText = await page.locator('body').innerText();
     expect(/[\u0400-\u04FF]/.test(bodyText)).toBe(true);
+  });
+
+  test('dashboard has interactive elements', async ({ page }) => {
+    const loaded = await waitForAdminPage(page, '/admin/dashboard');
+    test.skip(!loaded, 'Auth state expired');
+
+    await page.waitForTimeout(3000);
+
+    const buttonCount = await page.locator('button').count();
+    const linkCount = await page.locator('a').count();
+
+    expect(buttonCount + linkCount).toBeGreaterThan(3);
   });
 });
