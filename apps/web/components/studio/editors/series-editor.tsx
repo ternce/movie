@@ -64,11 +64,11 @@ const STEP_FIELDS: Record<number, Array<keyof SeriesFormValues>> = {
 
 function createDefaultSeason(): SeasonGroup {
   return {
-    id: crypto.randomUUID(),
+    id: Math.random().toString(36).slice(2) + Date.now().toString(36),
     order: 1,
     items: [
       {
-        id: crypto.randomUUID(),
+        id: Math.random().toString(36).slice(2) + Date.now().toString(36),
         title: '',
         description: '',
         order: 1,

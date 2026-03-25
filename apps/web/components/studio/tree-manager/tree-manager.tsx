@@ -54,7 +54,7 @@ export interface TreeManagerProps {
 
 function createGroup(order: number): TreeGroup {
   return {
-    id: crypto.randomUUID(),
+    id: Math.random().toString(36).slice(2) + Date.now().toString(36),
     order,
     items: [createItem(1)],
   };
@@ -62,7 +62,7 @@ function createGroup(order: number): TreeGroup {
 
 function createItem(order: number): TreeItem {
   return {
-    id: crypto.randomUUID(),
+    id: Math.random().toString(36).slice(2) + Date.now().toString(36),
     title: '',
     description: '',
     order,
