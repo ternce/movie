@@ -23,7 +23,10 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UploadService } from './upload.service';
 
-const VIDEO_UPLOAD_DIR = '/tmp/video-uploads';
+// Use the same UPLOAD_DIR that main.ts serves as static assets.
+// This ensures uploaded files are accessible at their generated URLs.
+const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
+const VIDEO_UPLOAD_DIR = path.resolve(UPLOAD_DIR, 'videos');
 if (!fs.existsSync(VIDEO_UPLOAD_DIR)) {
   fs.mkdirSync(VIDEO_UPLOAD_DIR, { recursive: true });
 }

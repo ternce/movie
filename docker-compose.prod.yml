@@ -164,6 +164,7 @@ services:
       - PORT=4000
     volumes:
       - api_video_uploads:/tmp/video-uploads
+      - api_uploads:/app/uploads
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:4000/api/v1/health']
       interval: 30s
@@ -236,6 +237,8 @@ volumes:
   minio_data:
     driver: local
   api_video_uploads:
+    driver: local
+  api_uploads:
     driver: local
   mailpit_data:
     driver: local

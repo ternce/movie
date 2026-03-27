@@ -113,7 +113,7 @@ const initialState = {
   isPictureInPicture: false,
   isControlsVisible: true,
   isSettingsOpen: false,
-  lastActivityTime: Date.now(),
+  lastActivityTime: 0,
   error: null,
 };
 
