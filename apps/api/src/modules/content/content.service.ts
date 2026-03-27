@@ -550,14 +550,21 @@ export class ContentService {
    * Create new content (Admin only).
    */
   async create(dto: CreateContentDto) {
-    // Verify category exists (optional for SHORT content type)
-    if (dto.categoryId) {
+    // Resolve categoryId — required by DB schema, use first category as fallback for SHORT
+    let categoryId = dto.categoryId;
+    if (categoryId) {
       const category = await this.prisma.category.findUnique({
-        where: { id: dto.categoryId },
+        where: { id: categoryId },
       });
       if (!category) {
-        throw new NotFoundException(`Категория с ID "${dto.categoryId}" не найдена`);
+        throw new NotFoundException(`Категория с ID "${categoryId}" не найдена`);
       }
+    } else {
+      const fallback = await this.prisma.category.findFirst({ select: { id: true } });
+      if (!fallback) {
+        throw new NotFoundException('Нет доступных категорий');
+      }
+      categoryId = fallback.id;
     }
 
     // Generate unique slug
@@ -570,7 +577,7 @@ export class ContentService {
         slug,
         description: dto.description,
         contentType: dto.contentType,
-        ...(dto.categoryId && { categoryId: dto.categoryId }),
+        categoryId,
         ageCategory: dto.ageCategory,
         thumbnailUrl: dto.thumbnailUrl,
         previewUrl: dto.previewUrl,
