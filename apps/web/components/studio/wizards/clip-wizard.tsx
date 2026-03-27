@@ -310,7 +310,6 @@ export function ClipWizard({ onSuccess }: ClipWizardProps) {
       createContent.mutate(
         {
           title: values.title,
-          slug: values.slug || undefined,
           description: values.description || undefined,
           contentType: 'CLIP',
           categoryId: values.categoryId || undefined,
@@ -319,7 +318,6 @@ export function ClipWizard({ onSuccess }: ClipWizardProps) {
           previewUrl: values.previewUrl || undefined,
           isFree: values.isFree,
           individualPrice: values.individualPrice || undefined,
-          status: values.status || 'DRAFT',
           tagIds: values.tagIds?.length ? values.tagIds : undefined,
           genreIds: values.genreIds?.length ? values.genreIds : undefined,
         },
