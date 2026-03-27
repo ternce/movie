@@ -52,7 +52,6 @@ export interface AdminContentList {
 
 export interface CreateContentInput {
   title: string;
-  slug?: string;
   description?: string;
   contentType: string;
   categoryId?: string;
@@ -61,13 +60,13 @@ export interface CreateContentInput {
   previewUrl?: string;
   isFree?: boolean;
   individualPrice?: number;
-  status?: string;
   tagIds?: string[];
   genreIds?: string[];
 }
 
 export interface UpdateContentInput extends Partial<CreateContentInput> {
   id: string;
+  status?: string;
 }
 
 // ============ Queries ============
@@ -121,8 +120,17 @@ export function useCreateContent() {
   return useMutation({
     mutationFn: async (data: CreateContentInput) => {
       const payload = {
-        ...data,
+        title: data.title,
+        description: data.description || undefined,
+        contentType: data.contentType,
+        categoryId: data.categoryId || undefined,
         ageCategory: mapAgeCategoryToBackend(data.ageCategory),
+        thumbnailUrl: data.thumbnailUrl || undefined,
+        previewUrl: data.previewUrl || undefined,
+        isFree: data.isFree,
+        individualPrice: data.individualPrice || undefined,
+        tagIds: data.tagIds?.length ? data.tagIds : undefined,
+        genreIds: data.genreIds?.length ? data.genreIds : undefined,
       };
       const response = await api.post<Content>(endpoints.adminContent.create, payload);
       return response.data;
