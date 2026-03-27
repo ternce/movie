@@ -83,19 +83,17 @@ export function ShortWizard({ onSuccess }: ShortWizardProps) {
   const description = watch('description');
 
   const handleCreate = React.useCallback(
-    (status: 'DRAFT' | 'PENDING') => {
+    (_status: 'DRAFT' | 'PENDING') => {
       return handleSubmit((values) => {
         createContent.mutate(
           {
             title: values.title,
-            slug: values.slug || undefined,
             description: values.description || undefined,
             contentType: 'SHORT',
             ageCategory: values.ageCategory,
             thumbnailUrl: values.thumbnailUrl || undefined,
             previewUrl: values.previewUrl || undefined,
             isFree: values.isFree,
-            status,
             tagIds: values.tagIds?.length ? values.tagIds : undefined,
           },
           {
