@@ -5,6 +5,20 @@ const withBundleAnalyzer =
     ? require('@next/bundle-analyzer')({ enabled: true })
     : (config: NextConfig) => config;
 
+// Build dynamic remote patterns from environment URLs (APP_URL, API_URL)
+const envRemotePatterns: { protocol: 'http' | 'https'; hostname: string }[] = [];
+for (const envUrl of [process.env.NEXT_PUBLIC_APP_URL, process.env.NEXT_PUBLIC_API_URL]) {
+  if (envUrl) {
+    try {
+      const { protocol, hostname } = new URL(envUrl);
+      envRemotePatterns.push({
+        protocol: protocol.replace(':', '') as 'http' | 'https',
+        hostname,
+      });
+    } catch {}
+  }
+}
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
@@ -36,6 +50,7 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 3600,
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
+      ...envRemotePatterns,
       {
         protocol: 'https',
         hostname: '**.bunny.net',
