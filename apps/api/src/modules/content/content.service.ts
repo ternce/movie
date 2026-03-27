@@ -550,12 +550,14 @@ export class ContentService {
    * Create new content (Admin only).
    */
   async create(dto: CreateContentDto) {
-    // Verify category exists
-    const category = await this.prisma.category.findUnique({
-      where: { id: dto.categoryId },
-    });
-    if (!category) {
-      throw new NotFoundException(`Категория с ID "${dto.categoryId}" не найдена`);
+    // Verify category exists (optional for SHORT content type)
+    if (dto.categoryId) {
+      const category = await this.prisma.category.findUnique({
+        where: { id: dto.categoryId },
+      });
+      if (!category) {
+        throw new NotFoundException(`Категория с ID "${dto.categoryId}" не найдена`);
+      }
     }
 
     // Generate unique slug
@@ -568,7 +570,7 @@ export class ContentService {
         slug,
         description: dto.description,
         contentType: dto.contentType,
-        categoryId: dto.categoryId,
+        ...(dto.categoryId && { categoryId: dto.categoryId }),
         ageCategory: dto.ageCategory,
         thumbnailUrl: dto.thumbnailUrl,
         previewUrl: dto.previewUrl,

@@ -43,12 +43,13 @@ export class CreateContentDto {
   @IsEnum(ContentType)
   contentType!: ContentType;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '123e4567-e89b-12d3-a456-426614174000',
-    description: 'Category ID',
+    description: 'Category ID (required for SERIES, CLIP, TUTORIAL; optional for SHORT)',
   })
+  @IsOptional()
   @IsUUID()
-  categoryId!: string;
+  categoryId?: string;
 
   @ApiProperty({
     enum: AgeCategory,
