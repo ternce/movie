@@ -138,14 +138,14 @@ export function PlayerControls({
   return (
     <div
       className={cn(
-        'absolute bottom-0 left-0 right-0 px-4 pb-4 pt-8',
+        'absolute bottom-0 left-0 right-0 px-4 pb-5 pt-8',
         'transition-opacity duration-300',
         isControlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none',
         className
       )}
     >
       {/* Progress bar */}
-      <PlayerProgressBar onSeek={onSeek} className="mb-3" />
+      <PlayerProgressBar onSeek={onSeek} className="mb-5" />
 
       {/* Controls row */}
       <div className="flex items-center justify-between gap-4">
