@@ -106,7 +106,7 @@ export function PlayerSettingsMenu({ onQualityChange, className }: PlayerSetting
       <button
         onClick={() => setSettingsOpen(!isSettingsOpen)}
         className={cn(
-          'p-2.5 md:p-1.5 hover:bg-white/10 rounded-lg transition-colors',
+          'p-2 md:p-2.5 hover:bg-white/10 rounded-lg transition-colors',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary',
           isSettingsOpen && 'bg-white/10'
         )}

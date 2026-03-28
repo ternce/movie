@@ -208,79 +208,74 @@ export default function WatchPage() {
   return (
     <div className="min-h-screen bg-mp-bg-primary">
       {/* Back navigation */}
-      <div className="border-b border-mp-border bg-mp-bg-secondary/50 backdrop-blur-sm sticky top-0 z-10">
-        <Container size="full">
-          <div className="flex items-center h-14">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 text-mp-text-secondary hover:text-mp-text-primary transition-colors"
-            >
-              <CaretLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Назад</span>
-            </button>
-          </div>
-        </Container>
+      <div className="border-b border-mp-border bg-mp-bg-secondary/50 backdrop-blur-sm sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6">
+        <div className="flex items-center h-14">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-mp-text-secondary hover:text-mp-text-primary transition-colors"
+          >
+            <CaretLeft className="w-5 h-5" />
+            <span className="text-sm font-medium">Назад</span>
+          </button>
+        </div>
       </div>
 
       {/* Video player */}
-      <div className="w-full bg-black">
-        <Container size="full" className="px-0 md:px-6 lg:px-8">
-          <div className="max-w-[1600px] mx-auto">
-            {videoNotReady ? (
-              <div className="relative aspect-video bg-mp-surface flex items-center justify-center overflow-hidden">
-                {thumbnailUrl && (
-                  <Image
-                    src={thumbnailUrl}
-                    alt={title}
-                    fill
-                    className="object-cover opacity-30"
-                    sizes="100vw"
-                  />
+      <div className="w-full bg-black -mx-4 md:-mx-6">
+        <div className="max-w-[1920px] mx-auto">
+          {videoNotReady ? (
+            <div className="relative aspect-video bg-mp-surface flex items-center justify-center overflow-hidden">
+              {thumbnailUrl && (
+                <Image
+                  src={thumbnailUrl}
+                  alt={title}
+                  fill
+                  className="object-cover opacity-30"
+                  sizes="100vw"
+                />
+              )}
+              <div className="relative z-10 text-center p-6">
+                {videoNotUploaded ? (
+                  <>
+                    <div className="w-16 h-16 rounded-full bg-mp-surface-elevated flex items-center justify-center mx-auto mb-4">
+                      <WarningCircle className="w-8 h-8 text-mp-text-secondary" />
+                    </div>
+                    <p className="text-mp-text-primary font-medium text-lg">
+                      Видео ещё не загружено
+                    </p>
+                    <p className="text-mp-text-secondary text-sm mt-2">
+                      Автор пока не добавил видео к этому контенту
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 border-4 border-mp-accent-primary/30 border-t-mp-accent-primary rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-mp-text-primary font-medium text-lg">
+                      Видео готовится к воспроизведению
+                    </p>
+                    <p className="text-mp-text-secondary text-sm mt-2">
+                      Попробуйте обновить страницу через несколько минут
+                    </p>
+                  </>
                 )}
-                <div className="relative z-10 text-center p-6">
-                  {videoNotUploaded ? (
-                    <>
-                      <div className="w-16 h-16 rounded-full bg-mp-surface-elevated flex items-center justify-center mx-auto mb-4">
-                        <WarningCircle className="w-8 h-8 text-mp-text-secondary" />
-                      </div>
-                      <p className="text-mp-text-primary font-medium text-lg">
-                        Видео ещё не загружено
-                      </p>
-                      <p className="text-mp-text-secondary text-sm mt-2">
-                        Автор пока не добавил видео к этому контенту
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-12 h-12 border-4 border-mp-accent-primary/30 border-t-mp-accent-primary rounded-full animate-spin mx-auto mb-4" />
-                      <p className="text-mp-text-primary font-medium text-lg">
-                        Видео готовится к воспроизведению
-                      </p>
-                      <p className="text-mp-text-secondary text-sm mt-2">
-                        Попробуйте обновить страницу через несколько минут
-                      </p>
-                    </>
-                  )}
-                </div>
               </div>
-            ) : streamData?.streamUrl ? (
-              <VideoPlayer
-                src={streamData.streamUrl}
-                poster={thumbnailUrl}
-                title={title}
-                initialTime={0}
-                onProgress={handleProgress}
-                onEnded={handleEnded}
-                onError={handleError}
-                onUrlExpired={handleUrlExpired}
-                showSkipButtons
-                showPiP
-              />
-            ) : (
-              <VideoPlayerSkeleton />
-            )}
-          </div>
-        </Container>
+            </div>
+          ) : streamData?.streamUrl ? (
+            <VideoPlayer
+              src={streamData.streamUrl}
+              poster={thumbnailUrl}
+              initialTime={0}
+              onProgress={handleProgress}
+              onEnded={handleEnded}
+              onError={handleError}
+              onUrlExpired={handleUrlExpired}
+              showSkipButtons
+              showPiP
+            />
+          ) : (
+            <VideoPlayerSkeleton />
+          )}
+        </div>
       </div>
 
       {/* Episode info */}

@@ -150,17 +150,17 @@ export function PlayerControls({
       {/* Controls row */}
       <div className="flex items-center justify-between gap-4">
         {/* Left controls */}
-        <div className="flex items-center gap-1.5 md:gap-1">
+        <div className="flex items-center gap-2 md:gap-2.5">
           {/* Play/Pause */}
           <button
             onClick={togglePlay}
-            className="p-2.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
+            className="p-2 md:p-2.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
             aria-label={isPlaying ? 'Пауза' : 'Воспроизвести'}
           >
             {isPlaying ? (
-              <Pause className="w-6 h-6 text-white" weight="fill" />
+              <Pause className="w-7 h-7 text-white" weight="fill" />
             ) : (
-              <Play className="w-6 h-6 text-white ml-0.5" weight="fill" />
+              <Play className="w-7 h-7 text-white ml-0.5" weight="fill" />
             )}
           </button>
 
@@ -171,7 +171,7 @@ export function PlayerControls({
                 seekRelative(-10);
                 onSeek(usePlayerStore.getState().currentTime - 10);
               }}
-              className="p-2.5 md:p-1.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
+              className="p-2 md:p-2.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
               aria-label="Назад на 10 секунд"
             >
               <SkipBack className="w-5 h-5 text-white" />
@@ -185,7 +185,7 @@ export function PlayerControls({
                 seekRelative(10);
                 onSeek(usePlayerStore.getState().currentTime + 10);
               }}
-              className="p-2.5 md:p-1.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
+              className="p-2 md:p-2.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
               aria-label="Вперёд на 10 секунд"
             >
               <SkipForward className="w-5 h-5 text-white" />
@@ -204,12 +204,12 @@ export function PlayerControls({
         </div>
 
         {/* Right controls */}
-        <div className="flex items-center gap-1.5 md:gap-1">
+        <div className="flex items-center gap-2 md:gap-2.5">
           {/* Subtitles */}
           {showSubtitles && onToggleSubtitles && (
             <button
               onClick={onToggleSubtitles}
-              className="p-2.5 md:p-1.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
+              className="p-2 md:p-2.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
               aria-label="Субтитры"
             >
               <Subtitles className="w-5 h-5 text-white" />
@@ -223,7 +223,7 @@ export function PlayerControls({
           {showPiP && onTogglePiP && document.pictureInPictureEnabled && (
             <button
               onClick={onTogglePiP}
-              className="p-2.5 md:p-1.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
+              className="p-2 md:p-2.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
               aria-label="Картинка в картинке"
             >
               <PictureInPicture className="w-5 h-5 text-white" />
@@ -233,7 +233,7 @@ export function PlayerControls({
           {/* Fullscreen */}
           <button
             onClick={onToggleFullscreen}
-            className="p-2.5 md:p-1.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
+            className="p-2 md:p-2.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
             aria-label={isFullscreen ? 'Выйти из полноэкранного режима' : 'Полноэкранный режим'}
           >
             {isFullscreen ? (
