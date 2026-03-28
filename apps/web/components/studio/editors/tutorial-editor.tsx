@@ -233,7 +233,6 @@ export function TutorialEditor({ content, contentId }: TutorialEditorProps) {
       updateContent.mutate({
         id: contentId,
         title: values.title,
-        slug: values.slug || undefined,
         description: values.description || undefined,
         contentType: 'TUTORIAL',
         categoryId: values.categoryId || undefined,

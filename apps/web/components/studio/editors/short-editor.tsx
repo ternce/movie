@@ -114,7 +114,6 @@ export function ShortEditor({ content, contentId }: ShortEditorProps) {
         updateContent.mutate({
           id: contentId,
           title: values.title,
-          slug: values.slug || undefined,
           description: values.description || undefined,
           contentType: 'SHORT',
           ageCategory: values.ageCategory,

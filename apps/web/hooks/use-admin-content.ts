@@ -67,6 +67,7 @@ export interface CreateContentInput {
 export interface UpdateContentInput extends Partial<CreateContentInput> {
   id: string;
   status?: string;
+  slug?: string;
 }
 
 // ============ Queries ============
@@ -152,7 +153,7 @@ export function useUpdateContent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...data }: UpdateContentInput) => {
+    mutationFn: async ({ id, slug: _slug, ...data }: UpdateContentInput) => {
       const payload = {
         ...data,
         ...(data.ageCategory ? { ageCategory: mapAgeCategoryToBackend(data.ageCategory) } : {}),

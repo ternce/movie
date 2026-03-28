@@ -562,6 +562,8 @@ test.describe('Admin Content CRUD', () => {
     const patchRequest = await patchRequestPromise;
     const patchData = patchRequest.postDataJSON();
     expect(patchData.status).toBe('PUBLISHED');
+    // Slug must never be sent — backend rejects it with forbidNonWhitelisted
+    expect(patchData).not.toHaveProperty('slug');
   });
 
   // -------------------------------------------------------

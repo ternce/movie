@@ -233,7 +233,6 @@ export function SeriesEditor({ content, contentId }: SeriesEditorProps) {
       updateContent.mutate({
         id: contentId,
         title: values.title,
-        slug: values.slug || undefined,
         description: values.description || undefined,
         contentType: 'SERIES',
         categoryId: values.categoryId || undefined,
