@@ -40,9 +40,11 @@ export function useStreamUrl(contentId: string | undefined) {
     enabled: !!contentId,
     staleTime: 3.5 * 60 * 60 * 1000, // 3.5h (URL expires in 4h)
     refetchInterval: (query) => {
+      // Stop polling if the query errored (404 = no video, 403 = no access)
+      if (query.state.status === 'error') return false;
       const data = query.state.data;
       const expiresAt = (data as any)?.data?.expiresAt || (data as any)?.expiresAt;
-      if (!expiresAt) return 60_000; // Default: check every 60s
+      if (!expiresAt) return false; // No data yet — wait for initial fetch
       const msUntilExpiry = new Date(expiresAt).getTime() - Date.now();
       // Refetch rapidly when near expiry (within 5 minutes)
       if (msUntilExpiry < 5 * 60 * 1000) return 1_000;
