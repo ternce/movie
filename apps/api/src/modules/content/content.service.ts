@@ -171,9 +171,12 @@ export class ContentService {
   private async _findBySlugUncached(slug: string, userAgeCategory?: AgeCategory) {
     const allowedCategories = this.getAllowedAgeCategories(userAgeCategory);
 
+    // Support both UUID and slug lookup (consistent with streaming endpoint)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+
     const content = await this.prisma.content.findFirst({
       where: {
-        slug,
+        ...(isUuid ? { id: slug } : { slug }),
         status: ContentStatus.PUBLISHED,
         ageCategory: { in: allowedCategories },
       },

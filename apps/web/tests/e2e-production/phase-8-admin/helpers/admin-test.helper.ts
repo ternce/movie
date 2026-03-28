@@ -4,8 +4,9 @@
  */
 
 import { type Page } from '@playwright/test';
+import path from 'path';
 import { apiGet, apiPost, apiPatch, apiDelete, apiUploadFile } from '../../helpers/api.helper';
-import { loginViaApi, PROD_USERS } from '../../helpers/auth.helper';
+import { loginViaApi, refreshAccessToken, PROD_USERS } from '../../helpers/auth.helper';
 
 // ============ Constants ============
 
@@ -32,14 +33,33 @@ export const AGE_CATEGORY_FROM_BACKEND: Record<string, string> = {
 
 // ============ Auth Helpers ============
 
+/** Cached refresh token for mid-run token renewal without hitting rate limiter */
+let _cachedRefreshToken: string | undefined;
+
 /**
  * Login as admin via API and return access token.
+ * Uses refresh token if available (avoids rate-limited /auth/login endpoint).
+ * Falls back to full login if refresh fails.
  */
 export async function getAdminToken(): Promise<string> {
+  // Try refresh token first (doesn't hit rate limiter)
+  if (_cachedRefreshToken) {
+    try {
+      const refreshed = await refreshAccessToken(_cachedRefreshToken);
+      _cachedRefreshToken = refreshed.refreshToken;
+      return refreshed.accessToken;
+    } catch {
+      // Refresh failed — fall through to full login
+      _cachedRefreshToken = undefined;
+    }
+  }
+
+  // Full login (may hit rate limiter)
   const auth = await loginViaApi(
     PROD_USERS.admin.email,
     PROD_USERS.admin.password
   );
+  _cachedRefreshToken = auth.refreshToken;
   return auth.accessToken;
 }
 
@@ -428,6 +448,128 @@ export function getAllAdminPages(): string[] {
     '/admin/audit',
     '/admin/settings',
   ];
+}
+
+// ============ Stock Asset Helpers ============
+
+const TEST_ASSETS_DIR = path.join(__dirname, '..', '..', 'test-assets');
+
+/**
+ * Download a file if it doesn't exist locally.
+ */
+async function getOrDownloadAsset(
+  url: string,
+  localPath: string
+): Promise<string> {
+  const fs = await import('fs');
+  if (fs.existsSync(localPath) && fs.statSync(localPath).size > 0) {
+    return localPath;
+  }
+
+  const dir = path.dirname(localPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    fs.writeFileSync(localPath, buffer);
+    return localPath;
+  } catch {
+    // Return empty string on failure — callers should fallback
+    return '';
+  }
+}
+
+/**
+ * Get path to a real playable stock MP4 video (~1MB).
+ * Falls back to generateTestVideo() if stock file unavailable.
+ */
+export async function getStockVideoPath(): Promise<string> {
+  const stockPath = path.join(TEST_ASSETS_DIR, 'sample-720p.mp4');
+  const fs = await import('fs');
+
+  if (fs.existsSync(stockPath) && fs.statSync(stockPath).size > 10000) {
+    return stockPath;
+  }
+
+  // Try downloading
+  const downloaded = await getOrDownloadAsset(
+    'https://www.w3schools.com/html/mov_bbb.mp4',
+    stockPath
+  );
+  if (downloaded && fs.existsSync(downloaded) && fs.statSync(downloaded).size > 10000) {
+    return downloaded;
+  }
+
+  // Fallback to synthetic
+  return generateTestVideo();
+}
+
+/**
+ * Get path to a real JPEG thumbnail image.
+ * Falls back to generateTestImage() if stock file unavailable.
+ */
+export async function getStockImagePath(): Promise<string> {
+  const stockPath = path.join(TEST_ASSETS_DIR, 'sample-thumbnail.jpg');
+  const fs = await import('fs');
+
+  if (fs.existsSync(stockPath) && fs.statSync(stockPath).size > 100) {
+    return stockPath;
+  }
+
+  const downloaded = await getOrDownloadAsset(
+    'https://placehold.co/400x225/1a1a2e/c94bff.jpg?text=E2E+Test',
+    stockPath
+  );
+  if (downloaded && fs.existsSync(downloaded) && fs.statSync(downloaded).size > 100) {
+    return downloaded;
+  }
+
+  return generateTestImage();
+}
+
+// ============ Streaming URL Helpers ============
+
+export interface StreamUrlResponse {
+  streamUrl?: string;
+  url?: string;
+  expiresAt?: string;
+  maxQuality?: string;
+  availableQualities?: string[];
+  duration?: number;
+  title?: string;
+}
+
+/**
+ * Get streaming URL for a content item.
+ */
+export async function apiGetStreamUrl(
+  token: string,
+  contentId: string
+): Promise<StreamUrlResponse | null> {
+  const res = await apiGet(`/content/${contentId}/stream`, token);
+  if (!res.success || !res.data) return null;
+  return res.data as StreamUrlResponse;
+}
+
+/**
+ * Poll until content status becomes the target, or timeout.
+ */
+export async function waitForContentStatus(
+  token: string,
+  contentId: string,
+  targetStatus: string,
+  timeoutMs = 15_000,
+  pollIntervalMs = 2_000
+): Promise<ContentItem | null> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const item = await getContentById(token, contentId);
+    if (item?.status === targetStatus) return item;
+    await new Promise((r) => setTimeout(r, pollIntervalMs));
+  }
+  return null;
 }
 
 // ============ Cleanup Helpers for Other Sections ============

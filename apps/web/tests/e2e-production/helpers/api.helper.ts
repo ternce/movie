@@ -113,7 +113,19 @@ export async function apiUploadFile(
     try {
       const fileBuffer = fs.readFileSync(filePath);
       const fileName = nodePath.basename(filePath);
-      const blob = new Blob([fileBuffer]);
+      const ext = nodePath.extname(filePath).toLowerCase();
+      const mimeMap: Record<string, string> = {
+        '.mp4': 'video/mp4',
+        '.webm': 'video/webm',
+        '.mov': 'video/quicktime',
+        '.mkv': 'video/x-matroska',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.webp': 'image/webp',
+      };
+      const mimeType = mimeMap[ext] || 'application/octet-stream';
+      const blob = new Blob([fileBuffer], { type: mimeType });
 
       const formData = new FormData();
       formData.append(fieldName, blob, fileName);

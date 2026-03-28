@@ -58,17 +58,22 @@ export default function AdminContentEditPage() {
   // Populate form when data loads
   React.useEffect(() => {
     if (content) {
-      setTitle(content.title || '');
-      setSlug(content.slug || '');
-      setDescription(content.description || '');
-      setContentType(content.contentType || '');
-      setCategoryId(content.categoryId || (content as unknown as { category?: { id: string } }).category?.id || '');
-      setAgeCategory(AGE_CATEGORY_FROM_BACKEND[content.ageCategory] || content.ageCategory || '');
-      setThumbnailUrl(content.thumbnailUrl || '');
-      setPreviewUrl(content.previewUrl || '');
-      setIsFree(content.isFree || false);
-      setIndividualPrice(content.individualPrice?.toString() || '');
-      setStatus(content.status || '');
+      // content may be wrapped in ApiResponse { success, data } or be the data directly
+      const c = (content as { data?: Record<string, unknown> }).data ?? content;
+      setTitle((c as { title?: string }).title || '');
+      setSlug((c as { slug?: string }).slug || '');
+      setDescription((c as { description?: string }).description || '');
+      setContentType((c as { contentType?: string }).contentType || '');
+      const catObj = (c as { category?: { id: string } }).category;
+      setCategoryId((c as { categoryId?: string }).categoryId || catObj?.id || '');
+      const rawAge = (c as { ageCategory?: string }).ageCategory || '';
+      setAgeCategory(AGE_CATEGORY_FROM_BACKEND[rawAge] || rawAge);
+      setThumbnailUrl((c as { thumbnailUrl?: string }).thumbnailUrl || '');
+      setPreviewUrl((c as { previewUrl?: string }).previewUrl || '');
+      setIsFree(!!(c as { isFree?: boolean }).isFree);
+      const price = (c as { individualPrice?: number }).individualPrice;
+      setIndividualPrice(price != null ? String(price) : '');
+      setStatus((c as { status?: string }).status || '');
     }
   }, [content]);
 
@@ -145,11 +150,11 @@ export default function AdminContentEditPage() {
       </div>
 
       <AdminPageHeader
-        title={content.title}
+        title={title || 'Контент'}
         description={`Редактирование контента`}
         breadcrumbItems={[
           { label: 'Контент', href: '/admin/content' },
-          { label: content.title },
+          { label: title || 'Контент' },
         ]}
       />
 

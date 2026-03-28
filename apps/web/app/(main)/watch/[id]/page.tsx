@@ -17,9 +17,11 @@ import {
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { VideoPlayerSkeleton } from '@/components/player';
 import { cn } from '@/lib/utils';
 import { useStreamUrl } from '@/hooks/use-streaming';
+import { useContentDetail } from '@/hooks/use-content';
 import { api, endpoints, ApiError } from '@/lib/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-client';
@@ -51,16 +53,24 @@ export default function WatchPage() {
   const [showFullDescription, setShowFullDescription] = React.useState(false);
   const [liked, setLiked] = React.useState<boolean | null>(null);
 
-  const { data, isLoading, error } = useStreamUrl(contentId);
+  // Fetch content metadata (works with both UUID and slug)
+  const { data: contentData, isLoading: isContentLoading, error: contentError } = useContentDetail(contentId);
+  const contentDetail = (contentData as any)?.data || contentData;
+
+  // Fetch stream URL for playback
+  const { data, isLoading: isStreamLoading, error: streamError } = useStreamUrl(contentId);
   const streamData = (data as any)?.data || data;
+
+  const isLoading = isContentLoading && isStreamLoading;
+  const error = streamError;
 
   // Save watch progress
   const handleProgress = React.useCallback(
     (time: number) => {
       if (!contentId) return;
       api
-        .post(endpoints.watchHistory.updateProgress(contentId), {
-          progress: Math.round(time),
+        .put(endpoints.watchHistory.updateProgress(contentId), {
+          progressSeconds: Math.round(time),
         })
         .catch(() => {
           // Silently fail — progress saving is non-critical
@@ -115,31 +125,57 @@ export default function WatchPage() {
       );
     }
 
-    // 404 or other errors
-    return (
-      <div className="min-h-screen bg-mp-bg-primary flex items-center justify-center">
-        <div className="text-center max-w-md px-4">
-          <div className="w-16 h-16 rounded-full bg-mp-error-bg flex items-center justify-center mx-auto mb-6">
-            <WarningCircle className="w-8 h-8 text-mp-error-text" />
+    // True 404: content doesn't exist (both content detail and stream failed)
+    const contentNotFound = contentError && (contentError as ApiError)?.status === 404;
+    if (status === 404 && contentNotFound) {
+      return (
+        <div className="min-h-screen bg-mp-bg-primary flex items-center justify-center">
+          <div className="text-center max-w-md px-4">
+            <div className="w-16 h-16 rounded-full bg-mp-error-bg flex items-center justify-center mx-auto mb-6">
+              <WarningCircle className="w-8 h-8 text-mp-error-text" />
+            </div>
+            <h1 className="text-2xl font-bold text-mp-text-primary mb-3">
+              Контент не найден
+            </h1>
+            <p className="text-mp-text-secondary mb-6">
+              Запрашиваемый контент не существует или был удалён.
+            </p>
+            <Button variant="outline" onClick={() => router.back()}>
+              Назад
+            </Button>
           </div>
-          <h1 className="text-2xl font-bold text-mp-text-primary mb-3">
-            Видео не найдено
-          </h1>
-          <p className="text-mp-text-secondary mb-6">
-            {status === 404
-              ? 'Контент не найден или видео ещё не готово к воспроизведению.'
-              : 'Произошла ошибка при загрузке видео.'}
-          </p>
-          <Button variant="outline" onClick={() => router.back()}>
-            Назад
-          </Button>
         </div>
-      </div>
-    );
+      );
+    }
+
+    // Non-404 stream errors (and content detail not yet loaded)
+    if (status && status !== 404) {
+      return (
+        <div className="min-h-screen bg-mp-bg-primary flex items-center justify-center">
+          <div className="text-center max-w-md px-4">
+            <div className="w-16 h-16 rounded-full bg-mp-error-bg flex items-center justify-center mx-auto mb-6">
+              <WarningCircle className="w-8 h-8 text-mp-error-text" />
+            </div>
+            <h1 className="text-2xl font-bold text-mp-text-primary mb-3">
+              Ошибка загрузки
+            </h1>
+            <p className="text-mp-text-secondary mb-6">
+              Произошла ошибка при загрузке видео.
+            </p>
+            <Button variant="outline" onClick={() => router.back()}>
+              Назад
+            </Button>
+          </div>
+        </div>
+      );
+    }
   }
 
-  // Loading state
-  if (isLoading || !streamData) {
+  // Content exists but video not ready (stream 404, content detail succeeded)
+  const videoNotReady = streamError && (streamError as ApiError)?.status === 404 && contentDetail;
+
+  // Loading state — show skeleton while both queries are in flight
+  if (isLoading && !videoNotReady) {
     return (
       <div className="min-h-screen bg-mp-bg-primary">
         <div className="border-b border-mp-border bg-mp-bg-secondary/50 h-14" />
@@ -161,9 +197,11 @@ export default function WatchPage() {
     );
   }
 
-  const title = streamData.title || 'Видео';
-  const description = streamData.description || '';
-  const duration = streamData.duration || 0;
+  // Derive display data from the best available source
+  const title = streamData?.title || contentDetail?.title || 'Видео';
+  const description = streamData?.description || contentDetail?.description || '';
+  const duration = streamData?.duration || contentDetail?.duration || 0;
+  const thumbnailUrl = streamData?.thumbnailUrls?.[0] || contentDetail?.thumbnailUrl;
 
   return (
     <div className="min-h-screen bg-mp-bg-primary">
@@ -186,18 +224,43 @@ export default function WatchPage() {
       <div className="w-full bg-black">
         <Container size="full" className="px-0 md:px-6 lg:px-8">
           <div className="max-w-[1600px] mx-auto">
-            <VideoPlayer
-              src={streamData.streamUrl}
-              poster={streamData.thumbnailUrls?.[0]}
-              title={title}
-              initialTime={0}
-              onProgress={handleProgress}
-              onEnded={handleEnded}
-              onError={handleError}
-              onUrlExpired={handleUrlExpired}
-              showSkipButtons
-              showPiP
-            />
+            {videoNotReady ? (
+              <div className="relative aspect-video bg-mp-surface flex items-center justify-center overflow-hidden">
+                {thumbnailUrl && (
+                  <Image
+                    src={thumbnailUrl}
+                    alt={title}
+                    fill
+                    className="object-cover opacity-30"
+                    sizes="100vw"
+                  />
+                )}
+                <div className="relative z-10 text-center p-6">
+                  <div className="w-12 h-12 border-4 border-mp-accent-primary/30 border-t-mp-accent-primary rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-mp-text-primary font-medium text-lg">
+                    Видео готовится к воспроизведению
+                  </p>
+                  <p className="text-mp-text-secondary text-sm mt-2">
+                    Попробуйте обновить страницу через несколько минут
+                  </p>
+                </div>
+              </div>
+            ) : streamData?.streamUrl ? (
+              <VideoPlayer
+                src={streamData.streamUrl}
+                poster={thumbnailUrl}
+                title={title}
+                initialTime={0}
+                onProgress={handleProgress}
+                onEnded={handleEnded}
+                onError={handleError}
+                onUrlExpired={handleUrlExpired}
+                showSkipButtons
+                showPiP
+              />
+            ) : (
+              <VideoPlayerSkeleton />
+            )}
           </div>
         </Container>
       </div>
@@ -212,11 +275,11 @@ export default function WatchPage() {
             </h1>
             <div className="flex items-center gap-4 text-sm text-mp-text-secondary">
               {duration > 0 && <span>{formatDuration(duration)}</span>}
-              {streamData.availableQualities?.length > 0 && (
+              {streamData?.availableQualities?.length > 0 && (
                 <>
                   <span>·</span>
                   <span>
-                    До {streamData.availableQualities[streamData.availableQualities.length - 1] || streamData.maxQuality}
+                    До {streamData?.availableQualities[streamData.availableQualities.length - 1] || streamData?.maxQuality}
                   </span>
                 </>
               )}

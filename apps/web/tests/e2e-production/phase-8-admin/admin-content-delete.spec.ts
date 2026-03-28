@@ -46,6 +46,9 @@ test.describe('Admin Content Deletion', () => {
   test('delete content via API sets status to ARCHIVED', async () => {
     test.skip(!testContent1?.id, 'Test content not created');
 
+    // Refresh token in case it expired during long test run
+    try { adminToken = await getAdminToken(); } catch { /* use existing */ }
+
     const res = await apiDelete(`/admin/content/${testContent1.id}`, adminToken);
     expect(res.success).toBe(true);
 

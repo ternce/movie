@@ -69,7 +69,7 @@ test.describe('Studio Create Page', () => {
     expect(hasTitleInput || hasDescriptionInput || hasContentType).toBe(true);
   });
 
-  test('create page has Russian text (labels, buttons)', async ({ page }) => {
+  test('create page has Russian text (labels, descriptions)', async ({ page }) => {
     const loaded = await waitForStudioPage(page, '/studio/create');
     test.skip(!loaded, 'Auth state expired');
 
@@ -79,17 +79,38 @@ test.describe('Studio Create Page', () => {
     // Must contain Cyrillic characters
     expect(/[\u0400-\u04FF]/.test(bodyText)).toBe(true);
 
-    // Check for known Russian labels from the form
+    // Check for known Russian labels from the type selector page
     const hasRussianLabels =
-      bodyText.includes('Название') ||
-      bodyText.includes('Описание') ||
-      bodyText.includes('Основное') ||
-      bodyText.includes('Назад к списку');
+      bodyText.includes('Что вы хотите создать') ||
+      bodyText.includes('Сериал') ||
+      bodyText.includes('Клип') ||
+      bodyText.includes('Шорт') ||
+      bodyText.includes('Туториал');
 
     expect(hasRussianLabels).toBe(true);
   });
 
-  test('create page has step indicator or wizard navigation', async ({ page }) => {
+  test('create page has content type cards with links', async ({ page }) => {
+    const loaded = await waitForStudioPage(page, '/studio/create');
+    test.skip(!loaded, 'Auth state expired');
+
+    await page.waitForTimeout(3000);
+
+    // The create page now shows 4 content type cards, each linking to a wizard
+    const seriesLink = page.locator('a[href="/studio/create/series"]');
+    const clipLink = page.locator('a[href="/studio/create/clip"]');
+    const shortLink = page.locator('a[href="/studio/create/short"]');
+    const tutorialLink = page.locator('a[href="/studio/create/tutorial"]');
+
+    const hasLinks = (await seriesLink.count()) > 0 ||
+      (await clipLink.count()) > 0 ||
+      (await shortLink.count()) > 0 ||
+      (await tutorialLink.count()) > 0;
+
+    expect(hasLinks).toBe(true);
+  });
+
+  test('create page has content type descriptions', async ({ page }) => {
     const loaded = await waitForStudioPage(page, '/studio/create');
     test.skip(!loaded, 'Auth state expired');
 
@@ -97,37 +118,13 @@ test.describe('Studio Create Page', () => {
 
     const bodyText = await page.locator('body').innerText();
 
-    // Step labels from the wizard: "Основное", "Детали и медиа", "Публикация"
-    const hasStepLabels =
-      bodyText.includes('Основное') ||
-      bodyText.includes('Детали и медиа') ||
-      bodyText.includes('Публикация');
+    // Each card has a description
+    const hasDescriptions =
+      bodyText.includes('Многосерийный контент') ||
+      bodyText.includes('Музыкальные клипы') ||
+      bodyText.includes('Короткие вертикальные') ||
+      bodyText.includes('Обучающие курсы');
 
-    // Or look for step indicator circles (numbered buttons)
-    const stepButtons = page.locator('button').filter({ hasText: /^[123]$/ });
-    const hasStepButtons = (await stepButtons.count()) > 0;
-
-    expect(hasStepLabels || hasStepButtons).toBe(true);
-  });
-
-  test('create page has "Далее" or submit button', async ({ page }) => {
-    const loaded = await waitForStudioPage(page, '/studio/create');
-    test.skip(!loaded, 'Auth state expired');
-
-    await page.waitForTimeout(3000);
-
-    // On step 1, the button should be "Далее" (Next)
-    const nextButton = page.getByText('Далее');
-    const hasNextButton = (await nextButton.count()) > 0;
-
-    // Or on step 3, there should be a submit button "Создать контент"
-    const submitButton = page.locator('button[type="submit"]');
-    const hasSubmitButton = await submitButton.isVisible().catch(() => false);
-
-    // Also check for a generic CTA button
-    const createButton = page.getByText('Создать контент');
-    const hasCreateButton = (await createButton.count()) > 0;
-
-    expect(hasNextButton || hasSubmitButton || hasCreateButton).toBe(true);
+    expect(hasDescriptions).toBe(true);
   });
 });

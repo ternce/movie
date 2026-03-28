@@ -101,7 +101,7 @@ export const endpoints = {
   watchHistory: {
     list: '/users/me/watch-history',
     continueWatching: '/users/me/watch-history/continue',
-    updateProgress: (contentId: string) => `/users/me/watch-history/${contentId}/progress`,
+    updateProgress: (contentId: string) => `/users/me/watch-history/${contentId}`,
   },
 
   // Subscriptions

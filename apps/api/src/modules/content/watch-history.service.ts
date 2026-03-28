@@ -29,6 +29,22 @@ export class WatchHistoryService {
   }
 
   /**
+   * Resolve a content identifier (UUID or slug) to a UUID.
+   */
+  private async resolveContentId(contentId: string): Promise<string> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(contentId);
+    if (isUuid) return contentId;
+    const content = await this.prisma.content.findUnique({
+      where: { slug: contentId },
+      select: { id: true },
+    });
+    if (!content) {
+      throw new NotFoundException(`Контент с ID "${contentId}" не найден`);
+    }
+    return content.id;
+  }
+
+  /**
    * Update watch progress for content.
    */
   async updateProgress(
@@ -36,15 +52,18 @@ export class WatchHistoryService {
     contentId: string,
     dto: UpdateProgressDto,
   ) {
-    // Verify content exists
+    // Verify content exists — support both UUID and slug lookup
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(contentId);
     const content = await this.prisma.content.findUnique({
-      where: { id: contentId },
+      where: isUuid ? { id: contentId } : { slug: contentId },
       select: { id: true, duration: true },
     });
 
     if (!content) {
       throw new NotFoundException(`Контент с ID "${contentId}" не найден`);
     }
+
+    const resolvedContentId = content.id;
 
     // Calculate if completed based on progress
     const isCompleted = dto.completed ?? (dto.progressSeconds >= content.duration * 0.9);
@@ -54,12 +73,12 @@ export class WatchHistoryService {
       where: {
         userId_contentId: {
           userId,
-          contentId,
+          contentId: resolvedContentId,
         },
       },
       create: {
         userId,
-        contentId,
+        contentId: resolvedContentId,
         progressSeconds: dto.progressSeconds,
         completed: isCompleted,
         lastWatchedAt: new Date(),
@@ -190,11 +209,12 @@ export class WatchHistoryService {
    * Get progress for a specific content item.
    */
   async getProgress(userId: string, contentId: string) {
+    const resolvedId = await this.resolveContentId(contentId);
     const watchHistory = await this.prisma.watchHistory.findUnique({
       where: {
         userId_contentId: {
           userId,
-          contentId,
+          contentId: resolvedId,
         },
       },
       include: {
@@ -242,11 +262,12 @@ export class WatchHistoryService {
    * Remove a single item from watch history.
    */
   async removeFromHistory(userId: string, contentId: string) {
+    const resolvedId = await this.resolveContentId(contentId);
     const watchHistory = await this.prisma.watchHistory.findUnique({
       where: {
         userId_contentId: {
           userId,
-          contentId,
+          contentId: resolvedId,
         },
       },
     });
@@ -259,7 +280,7 @@ export class WatchHistoryService {
       where: {
         userId_contentId: {
           userId,
-          contentId,
+          contentId: resolvedId,
         },
       },
     });

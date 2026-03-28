@@ -26,14 +26,6 @@ export function PlayerOverlay({ onPlayPause, onReplay, className }: PlayerOverla
   const showEnded = isEnded && !error;
   const showError = !!error;
 
-  const handleClick = () => {
-    if (isEnded && onReplay) {
-      onReplay();
-    } else {
-      onPlayPause();
-    }
-  };
-
   // Don't show anything when playing and controls hidden
   if (isPlaying && !isControlsVisible && !isBuffering) {
     return null;
@@ -42,11 +34,10 @@ export function PlayerOverlay({ onPlayPause, onReplay, className }: PlayerOverla
   return (
     <div
       className={cn(
-        'absolute inset-0 flex items-center justify-center',
+        'absolute inset-0 flex items-center justify-center pointer-events-none',
         'transition-opacity duration-200',
         className
       )}
-      onClick={handleClick}
     >
       {/* Buffering spinner */}
       {showBuffering && (
@@ -65,7 +56,7 @@ export function PlayerOverlay({ onPlayPause, onReplay, className }: PlayerOverla
             e.stopPropagation();
             onPlayPause();
           }}
-          className="group w-20 h-20 rounded-full bg-mp-accent-primary/90 backdrop-blur-sm flex items-center justify-center shadow-glow-primary hover:scale-110 transition-transform focus:outline-none focus-visible:ring-4 focus-visible:ring-mp-accent-primary/50"
+          className="pointer-events-auto group w-20 h-20 rounded-full bg-mp-accent-primary/90 backdrop-blur-sm flex items-center justify-center shadow-glow-primary hover:scale-110 transition-transform focus:outline-none focus-visible:ring-4 focus-visible:ring-mp-accent-primary/50"
           aria-label="Воспроизвести"
         >
           <Play className="w-10 h-10 text-white ml-1" weight="fill" />
@@ -81,7 +72,7 @@ export function PlayerOverlay({ onPlayPause, onReplay, className }: PlayerOverla
 
       {/* Ended state - replay button */}
       {showEnded && !showBuffering && (
-        <div className="flex flex-col items-center gap-4">
+        <div className="pointer-events-auto flex flex-col items-center gap-4">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -98,7 +89,7 @@ export function PlayerOverlay({ onPlayPause, onReplay, className }: PlayerOverla
 
       {/* Error state */}
       {showError && (
-        <div className="flex flex-col items-center gap-4 max-w-sm text-center px-4">
+        <div className="pointer-events-auto flex flex-col items-center gap-4 max-w-sm text-center px-4">
           <div className="w-16 h-16 rounded-full bg-mp-error-bg flex items-center justify-center">
             <WarningCircle className="w-8 h-8 text-mp-error-text" />
           </div>

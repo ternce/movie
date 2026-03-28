@@ -217,4 +217,65 @@ export function useContentDetail(slug: string) {
   });
 }
 
+// ---- Series Detail ----
+
+export interface SeriesEpisode {
+  id: string;
+  title: string;
+  episodeNumber: number;
+  seasonNumber: number;
+  thumbnailUrl?: string;
+  duration: number;
+  description?: string;
+  progress?: number;
+  isWatched?: boolean;
+  isNext?: boolean;
+}
+
+export interface SeriesSeason {
+  number: number;
+  title: string;
+  year?: number;
+  episodes: SeriesEpisode[];
+}
+
+export interface SeriesDetail {
+  id: string;
+  slug: string;
+  title: string;
+  originalTitle?: string;
+  description: string;
+  thumbnailUrl?: string;
+  bannerUrl?: string;
+  contentType: string;
+  ageCategory: string;
+  rating?: number;
+  year?: number;
+  seasonCount?: number;
+  episodeCount?: number;
+  genres?: string[];
+  country?: string;
+  director?: string;
+  cast?: string[];
+  category?: string | { id: string; name: string; slug: string };
+  isFree?: boolean;
+  publishedAt?: string;
+  seasons?: SeriesSeason[];
+}
+
+/**
+ * Hook for fetching series detail by slug
+ */
+export function useSeriesDetail(slug: string) {
+  return useQuery({
+    queryKey: [...queryKeys.content.details(), 'series', slug],
+    queryFn: async () => {
+      const response = await api.get<SeriesDetail>(endpoints.content.detail(slug));
+      return response.data;
+    },
+    enabled: !!slug,
+    staleTime: 60_000,
+  });
+}
+
 export type { ContentListItem, ContentDetail, CategoryDetail, TutorialDetail };

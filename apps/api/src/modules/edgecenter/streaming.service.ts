@@ -43,9 +43,10 @@ export class StreamingService {
     contentId: string,
     context?: ContentAccessContext,
   ): Promise<StreamUrlResponseDto> {
-    // Get content with video files
+    // Get content with video files — support both UUID and slug lookup
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(contentId);
     const content = await this.prisma.content.findUnique({
-      where: { id: contentId },
+      where: isUuid ? { id: contentId } : { slug: contentId },
       include: {
         videoFiles: {
           where: { encodingStatus: 'COMPLETED' },
@@ -58,14 +59,9 @@ export class StreamingService {
       throw new NotFoundException(`Контент с ID ${contentId} не найден`);
     }
 
-    // Check if any video exists
+    // Check if any video exists (local or EdgeCenter)
     if (!content.edgecenterVideoId && content.videoFiles.length === 0) {
       throw new NotFoundException(`У контента ${contentId} нет видео`);
-    }
-
-    // Check if video is ready
-    if (content.videoFiles.length === 0) {
-      throw new NotFoundException(`Видео для контента ${contentId} ещё не готово`);
     }
 
     // Verify access
@@ -92,7 +88,7 @@ export class StreamingService {
     if (content.edgecenterClientId === 'local') {
       const streamUrl = this.storageService.getPublicUrl(
         'videos',
-        `${contentId}/master.m3u8`,
+        `${content.id}/master.m3u8`,
       );
 
       return {

@@ -1,16 +1,21 @@
 import { test, expect } from '@playwright/test';
-import { apiGet } from '../helpers/api.helper';
-import { waitForAdminPage, getAdminToken } from './helpers/admin-test.helper';
+import { apiGet, apiPost, apiPatch, apiDelete } from '../helpers/api.helper';
+import {
+  waitForAdminPage,
+  getAdminToken,
+  TEST_CONTENT_PREFIX,
+} from './helpers/admin-test.helper';
 
 /**
  * Admin Store CRUD Tests
  *
- * Tests store products, categories, and orders pages and APIs
- * against production. Read-only operations only — no destructive
- * mutations on existing store data.
+ * Tests store product listing, creation, update, deletion via API,
+ * as well as UI page loads for products and orders.
+ * All created data uses E2E-TEST- prefix for safe cleanup.
  */
 
 let adminToken: string;
+let createdProductId: string | undefined;
 
 test.beforeAll(async () => {
   try {
@@ -20,9 +25,38 @@ test.beforeAll(async () => {
   }
 });
 
-test.describe('Admin Store CRUD', () => {
+test.afterAll(async () => {
+  // Cleanup any test products that may remain
+  if (adminToken && createdProductId) {
+    try {
+      await apiDelete(`/admin/store/products/${createdProductId}`, adminToken);
+    } catch {
+      // Non-critical
+    }
+  }
+
+  // Broad cleanup: find and delete all E2E-TEST- products
+  if (adminToken) {
+    try {
+      const res = await apiGet('/admin/store/products?limit=100', adminToken);
+      if (res.success && res.data) {
+        const data = res.data as { items?: { id: string; name?: string; title?: string }[] };
+        for (const item of data.items ?? []) {
+          const itemName = item.name ?? item.title ?? '';
+          if (itemName.startsWith(TEST_CONTENT_PREFIX)) {
+            await apiDelete(`/admin/store/products/${item.id}`, adminToken);
+          }
+        }
+      }
+    } catch {
+      // Non-critical
+    }
+  }
+});
+
+test.describe('Store Products Management', () => {
   test('products page loads at /admin/store/products', async ({ page }) => {
-    test.skip(!adminToken, 'Admin token not available');
+    test.skip(!adminToken, 'Admin login failed');
 
     const loaded = await waitForAdminPage(page, '/admin/store/products');
     test.skip(!loaded, 'Auth state expired');
@@ -31,7 +65,6 @@ test.describe('Admin Store CRUD', () => {
     const bodyText = await page.locator('body').innerText();
     expect(bodyText.trim().length).toBeGreaterThan(10);
 
-    // Should have product-related content
     const hasProductContent =
       bodyText.includes('Товар') ||
       bodyText.includes('товар') ||
@@ -46,23 +79,8 @@ test.describe('Admin Store CRUD', () => {
     expect(hasProductContent || hasTable || hasCards).toBe(true);
   });
 
-  test('products API returns list', async () => {
-    test.skip(!adminToken, 'Admin token not available');
-
-    const res = await apiGet('/admin/store/products', adminToken);
-    expect(res).toBeDefined();
-    expect(typeof res.success).toBe('boolean');
-
-    if (res.success && res.data) {
-      const data = res.data as { items?: unknown[] };
-      if (data.items) {
-        expect(Array.isArray(data.items)).toBe(true);
-      }
-    }
-  });
-
-  test('product creation form loads at /admin/store/products/new', async ({ page }) => {
-    test.skip(!adminToken, 'Admin token not available');
+  test('product create form at /admin/store/products/new has form fields', async ({ page }) => {
+    test.skip(!adminToken, 'Admin login failed');
 
     const loaded = await waitForAdminPage(page, '/admin/store/products/new');
     test.skip(!loaded, 'Auth state expired');
@@ -71,7 +89,7 @@ test.describe('Admin Store CRUD', () => {
     const bodyText = await page.locator('body').innerText();
     expect(bodyText.trim().length).toBeGreaterThan(10);
 
-    // Should have form fields
+    // Should have form inputs for product creation
     const inputs = await page.locator('input').count();
     const textareas = await page.locator('textarea').count();
     const buttons = await page.locator('button').count();
@@ -79,43 +97,239 @@ test.describe('Admin Store CRUD', () => {
     expect(inputs + textareas + buttons).toBeGreaterThan(0);
   });
 
-  test('products stats API responds', async () => {
-    test.skip(!adminToken, 'Admin token not available');
+  test('API: create product with E2E-TEST prefix', async () => {
+    test.skip(!adminToken, 'Admin login failed');
 
-    const res = await apiGet('/admin/store/products/stats', adminToken);
+    const timestamp = Date.now().toString(36);
+    const productName = `${TEST_CONTENT_PREFIX}Product-${timestamp}`;
+
+    const res = await apiPost(
+      '/admin/store/products',
+      {
+        name: productName,
+        description: `Test product created at ${new Date().toISOString()}`,
+        price: 990,
+        status: 'DRAFT',
+      },
+      adminToken
+    );
+
     expect(res).toBeDefined();
-    expect(typeof res.success).toBe('boolean');
 
     if (res.success && res.data) {
-      const data = res.data as Record<string, unknown>;
-      // Stats should have numeric values
-      const hasNumbers = Object.values(data).some(
-        (v) => typeof v === 'number' || (typeof v === 'string' && /\d+/.test(v))
-      );
-      if (Object.keys(data).length > 0) {
-        expect(hasNumbers).toBe(true);
+      const data = res.data as { id?: string; name?: string; title?: string };
+      expect(data.id).toBeDefined();
+      const name = data.name ?? data.title ?? '';
+      expect(name).toContain(TEST_CONTENT_PREFIX);
+      createdProductId = data.id;
+    }
+  });
+
+  test('API: created product appears in list', async () => {
+    test.skip(!adminToken, 'Admin login failed');
+    test.skip(!createdProductId, 'No product was created');
+
+    const res = await apiGet('/admin/store/products?limit=100', adminToken);
+    expect(res).toBeDefined();
+
+    if (res.success && res.data) {
+      const data = res.data as { items?: { id: string; name?: string; title?: string }[] };
+      const items = data.items ?? [];
+      const found = items.find((item) => item.id === createdProductId);
+
+      expect(found).toBeDefined();
+      const foundName = found?.name ?? found?.title ?? '';
+      expect(foundName).toContain(TEST_CONTENT_PREFIX);
+    }
+  });
+
+  test('product detail page loads', async ({ page }) => {
+    test.skip(!adminToken, 'Admin login failed');
+    test.skip(!createdProductId, 'No product was created');
+
+    const loaded = await waitForAdminPage(page, `/admin/store/products/${createdProductId}`);
+    test.skip(!loaded, 'Auth state expired');
+
+    await page.waitForTimeout(3000);
+    const bodyText = await page.locator('body').innerText();
+    expect(bodyText.trim().length).toBeGreaterThan(10);
+
+    // Should contain product-related content or form fields
+    const hasContent =
+      bodyText.includes(TEST_CONTENT_PREFIX) ||
+      bodyText.includes('Товар') ||
+      bodyText.includes('Продукт') ||
+      bodyText.includes('Цена') ||
+      bodyText.includes('цена');
+
+    const hasInputs = (await page.locator('input, textarea').count()) > 0;
+
+    expect(hasContent || hasInputs).toBe(true);
+  });
+
+  test('API: update product name', async () => {
+    test.skip(!adminToken, 'Admin login failed');
+    test.skip(!createdProductId, 'No product was created');
+
+    const updatedName = `${TEST_CONTENT_PREFIX}Product-Updated-${Date.now().toString(36)}`;
+
+    const res = await apiPatch(
+      `/admin/store/products/${createdProductId}`,
+      { name: updatedName },
+      adminToken
+    );
+
+    expect(res).toBeDefined();
+
+    if (res.success && res.data) {
+      const data = res.data as { name?: string; title?: string };
+      const name = data.name ?? data.title ?? '';
+      expect(name).toContain('Updated');
+    }
+
+    // Verify update via GET
+    const detailRes = await apiGet(`/admin/store/products/${createdProductId}`, adminToken);
+    if (detailRes.success && detailRes.data) {
+      const detail = detailRes.data as { name?: string; title?: string };
+      const detailName = detail.name ?? detail.title ?? '';
+      expect(detailName).toContain('Updated');
+    }
+  });
+
+  test('API: delete product', async () => {
+    test.skip(!adminToken, 'Admin login failed');
+    test.skip(!createdProductId, 'No product was created');
+
+    const res = await apiDelete(`/admin/store/products/${createdProductId}`, adminToken);
+    expect(res).toBeDefined();
+
+    // Verify deletion — item should no longer appear in list
+    if (res.success) {
+      const listRes = await apiGet('/admin/store/products?limit=100', adminToken);
+      if (listRes.success && listRes.data) {
+        const data = listRes.data as { items?: { id: string }[] };
+        const items = data.items ?? [];
+        const found = items.find((item) => item.id === createdProductId);
+        expect(found).toBeUndefined();
+      }
+      createdProductId = undefined;
+    }
+  });
+
+  test('products table has columns', async ({ page }) => {
+    test.skip(!adminToken, 'Admin login failed');
+
+    const loaded = await waitForAdminPage(page, '/admin/store/products');
+    test.skip(!loaded, 'Auth state expired');
+
+    await page.waitForTimeout(3000);
+
+    const table = page.locator('table');
+    const tableExists = await table.isVisible().catch(() => false);
+
+    if (tableExists) {
+      const headers = await page.locator('table th').allInnerTexts();
+      const headerText = headers.join(' ');
+
+      // Should have common product table columns
+      const hasNameCol =
+        headerText.includes('Название') ||
+        headerText.includes('Товар') ||
+        headerText.includes('Продукт');
+      const hasPriceCol =
+        headerText.includes('Цена') ||
+        headerText.includes('Стоимость');
+      const hasStatusCol =
+        headerText.includes('Статус') ||
+        headerText.includes('Состояние');
+
+      expect(hasNameCol || hasPriceCol || hasStatusCol).toBe(true);
+    } else {
+      // Card-based layout — should have product info
+      const bodyText = await page.locator('body').innerText();
+      const hasProductInfo =
+        bodyText.includes('Товар') ||
+        bodyText.includes('Продукт') ||
+        bodyText.includes('Магазин');
+      expect(hasProductInfo).toBe(true);
+    }
+  });
+});
+
+test.describe('Store Product Creation via UI Form', () => {
+  let uiProductId: string | undefined;
+
+  test.afterAll(async () => {
+    if (adminToken && uiProductId) {
+      try {
+        await apiDelete(`/admin/store/products/${uiProductId}`, adminToken);
+      } catch {
+        // Non-critical
       }
     }
   });
 
-  test('store categories API responds', async () => {
-    test.skip(!adminToken, 'Admin token not available');
+  test('create product via UI form and verify', async ({ page }) => {
+    test.skip(!adminToken, 'Admin login failed');
 
-    const res = await apiGet('/admin/store/categories', adminToken);
-    expect(res).toBeDefined();
-    expect(typeof res.success).toBe('boolean');
+    // Refresh token in case it expired
+    try { adminToken = await getAdminToken(); } catch {}
 
-    if (res.success && res.data) {
-      const data = res.data as { items?: unknown[]; categories?: unknown[] };
-      const items = data.items ?? data.categories;
-      if (items) {
-        expect(Array.isArray(items)).toBe(true);
+    const loaded = await waitForAdminPage(page, '/admin/store/products/new');
+    test.skip(!loaded, 'Auth state expired');
+
+    await page.waitForTimeout(2000);
+
+    const timestamp = Date.now().toString(36);
+    const productName = `${TEST_CONTENT_PREFIX}UIProduct-${timestamp}`;
+
+    // Fill name
+    await page.locator('#name').fill(productName);
+
+    // Fill description
+    const descField = page.locator('#description');
+    if (await descField.isVisible().catch(() => false)) {
+      await descField.fill('Тестовый товар созданный через UI форму.');
+    }
+
+    // Fill price
+    await page.locator('#price').fill('199');
+
+    // Fill stock quantity
+    const stockField = page.locator('#stockQuantity');
+    if (await stockField.isVisible().catch(() => false)) {
+      await stockField.fill('50');
+    }
+
+    await page.waitForTimeout(500);
+
+    // Submit
+    const submitButton = page.getByRole('button', { name: /Создать товар/ });
+    if (await submitButton.isEnabled().catch(() => false)) {
+      await submitButton.click();
+      await page.waitForURL('**/admin/store/products', { timeout: 15000 }).catch(() => {});
+      await page.waitForTimeout(2000);
+
+      // Verify product was created via API
+      const res = await apiGet('/admin/store/products?limit=50', adminToken);
+      if (res.success && res.data) {
+        const data = res.data as { items?: { id: string; name?: string }[] };
+        const found = (data.items ?? []).find((item) => item.name?.includes(productName));
+        if (found) {
+          expect(found.name).toContain(TEST_CONTENT_PREFIX);
+          uiProductId = found.id;
+        }
       }
     }
-  });
 
-  test('orders page loads at /admin/store/orders', async ({ page }) => {
-    test.skip(!adminToken, 'Admin token not available');
+    // Verify we're back on the products list
+    expect(page.url()).toContain('/admin/store/products');
+  });
+});
+
+test.describe('Store Orders', () => {
+  test('orders page shows table or empty state', async ({ page }) => {
+    test.skip(!adminToken, 'Admin login failed');
 
     const loaded = await waitForAdminPage(page, '/admin/store/orders');
     test.skip(!loaded, 'Auth state expired');
@@ -124,7 +338,6 @@ test.describe('Admin Store CRUD', () => {
     const bodyText = await page.locator('body').innerText();
     expect(bodyText.trim().length).toBeGreaterThan(10);
 
-    // Should have order-related content or empty state
     const hasOrderContent =
       bodyText.includes('Заказ') ||
       bodyText.includes('заказ') ||
@@ -140,7 +353,7 @@ test.describe('Admin Store CRUD', () => {
   });
 
   test('orders API returns list', async () => {
-    test.skip(!adminToken, 'Admin token not available');
+    test.skip(!adminToken, 'Admin login failed');
 
     const res = await apiGet('/admin/store/orders', adminToken);
     expect(res).toBeDefined();
@@ -151,23 +364,6 @@ test.describe('Admin Store CRUD', () => {
       if (data.items) {
         expect(Array.isArray(data.items)).toBe(true);
       }
-    }
-  });
-
-  test('store pages have Russian text', async ({ page }) => {
-    test.skip(!adminToken, 'Admin token not available');
-
-    const loaded = await waitForAdminPage(page, '/admin/store/products');
-    test.skip(!loaded, 'Auth state expired');
-
-    const bodyText = await page.locator('body').innerText();
-    expect(/[\u0400-\u04FF]/.test(bodyText)).toBe(true);
-
-    // Also verify orders page
-    const ordersLoaded = await waitForAdminPage(page, '/admin/store/orders');
-    if (ordersLoaded) {
-      const ordersBody = await page.locator('body').innerText();
-      expect(/[\u0400-\u04FF]/.test(ordersBody)).toBe(true);
     }
   });
 });

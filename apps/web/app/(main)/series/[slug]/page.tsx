@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { Play, Plus, ShareNetwork, Calendar } from '@phosphor-icons/react';
 
 import { Container } from '@/components/ui/container';
@@ -12,167 +13,61 @@ import { ContentGrid } from '@/components/ui/grid';
 import {
   AgeBadge,
   EpisodeCard,
-  SeriesCard,
   VideoCardSkeletonGrid,
   type AgeCategory,
   type EpisodeContent,
-  type SeriesContent,
 } from '@/components/content';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { cn } from '@/lib/utils';
-
-// Mock series data
-const MOCK_SERIES = {
-  id: '1',
-  slug: 'breaking-point',
-  title: 'Точка Невозврата',
-  originalTitle: 'Breaking Point',
-  description:
-    'Захватывающая история о детективе, расследующем серию загадочных преступлений в маленьком городе. Каждый новый поворот приближает его к ужасающей правде, которая навсегда изменит его жизнь и представления о добре и зле.',
-  thumbnailUrl: '/images/movie-placeholder.jpg',
-  bannerUrl: '/images/movie-placeholder.jpg',
-  seasonCount: 3,
-  episodeCount: 24,
-  ageCategory: '16+' as AgeCategory,
-  rating: 8.7,
-  year: 2024,
-  genres: ['Триллер', 'Криминал', 'Драма'],
-  country: 'Россия',
-  director: 'Алексей Петров',
-  cast: ['Иван Сидоров', 'Мария Иванова', 'Петр Козлов', 'Анна Михайлова'],
-  seasons: [
-    {
-      number: 1,
-      title: 'Сезон 1',
-      year: 2022,
-      episodes: [
-        {
-          id: 'ep-1-1',
-          title: 'Начало',
-          episodeNumber: 1,
-          seasonNumber: 1,
-          thumbnailUrl: '/images/movie-placeholder.jpg',
-          duration: 52,
-          description: 'Детектив Сергей Волков получает новое дело, которое перевернёт его жизнь.',
-          progress: 100,
-          isWatched: true,
-        },
-        {
-          id: 'ep-1-2',
-          title: 'Первые улики',
-          episodeNumber: 2,
-          seasonNumber: 1,
-          thumbnailUrl: '/images/movie-placeholder.jpg',
-          duration: 48,
-          description: 'Расследование продолжается. Новые улики ведут к неожиданному повороту.',
-          progress: 65,
-        },
-        {
-          id: 'ep-1-3',
-          title: 'Тёмные секреты',
-          episodeNumber: 3,
-          seasonNumber: 1,
-          thumbnailUrl: '/images/movie-placeholder.jpg',
-          duration: 51,
-          description: 'Волков раскрывает тёмные секреты маленького города.',
-          isNext: true,
-        },
-        {
-          id: 'ep-1-4',
-          title: 'Точка невозврата',
-          episodeNumber: 4,
-          seasonNumber: 1,
-          thumbnailUrl: '/images/movie-placeholder.jpg',
-          duration: 55,
-          description: 'Финал первого сезона. Все карты раскрыты.',
-        },
-      ] as EpisodeContent[],
-    },
-    {
-      number: 2,
-      title: 'Сезон 2',
-      year: 2023,
-      episodes: [
-        {
-          id: 'ep-2-1',
-          title: 'Новое начало',
-          episodeNumber: 1,
-          seasonNumber: 2,
-          thumbnailUrl: '/images/movie-placeholder.jpg',
-          duration: 50,
-          description: 'Год спустя. Волков возвращается к делу.',
-        },
-        {
-          id: 'ep-2-2',
-          title: 'Призраки прошлого',
-          episodeNumber: 2,
-          seasonNumber: 2,
-          thumbnailUrl: '/images/movie-placeholder.jpg',
-          duration: 49,
-          description: 'Прошлое не отпускает никого.',
-        },
-      ] as EpisodeContent[],
-    },
-  ],
-};
-
-// Related series
-const RELATED_SERIES: SeriesContent[] = [
-  {
-    id: '2',
-    slug: 'winter-shadows',
-    title: 'Зимние Тени',
-    thumbnailUrl: '/images/movie-placeholder.jpg',
-    seasonCount: 2,
-    episodeCount: 16,
-    ageCategory: '12+',
-    rating: 8.2,
-    year: 2023,
-  },
-  {
-    id: '3',
-    slug: 'night-patrol',
-    title: 'Ночной Патруль',
-    thumbnailUrl: '/images/movie-placeholder.jpg',
-    seasonCount: 5,
-    episodeCount: 48,
-    ageCategory: '18+',
-    rating: 9.1,
-    year: 2024,
-  },
-  {
-    id: '4',
-    slug: 'family-secrets',
-    title: 'Семейные Секреты',
-    thumbnailUrl: '/images/movie-placeholder.jpg',
-    seasonCount: 1,
-    episodeCount: 8,
-    ageCategory: '6+',
-    rating: 7.5,
-    year: 2024,
-  },
-];
+import { useSeriesDetail } from '@/hooks/use-content';
 
 /**
- * Series detail page with seasons and episodes
+ * Series detail page — fetches real data from API by slug
  */
 export default function SeriesDetailPage() {
-  const [isLoading, setIsLoading] = React.useState(true);
+  const params = useParams<{ slug: string }>();
+  const slug = params.slug;
+  const { data: apiData, isLoading, error } = useSeriesDetail(slug);
   const [selectedSeason, setSelectedSeason] = React.useState('1');
   const [showFullDescription, setShowFullDescription] = React.useState(false);
 
-  // Simulate loading
-  React.useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const series = MOCK_SERIES;
+  // Build series object from API response
+  const series = React.useMemo(() => {
+    if (!apiData?.data) return null;
+    const d = apiData.data;
+    return {
+      id: d.id,
+      slug: d.slug,
+      title: d.title,
+      originalTitle: d.originalTitle,
+      description: d.description ?? '',
+      thumbnailUrl: d.thumbnailUrl || '/images/movie-placeholder.jpg',
+      bannerUrl: d.bannerUrl || d.thumbnailUrl || '/images/movie-placeholder.jpg',
+      seasonCount: d.seasonCount ?? d.seasons?.length ?? 0,
+      episodeCount:
+        d.episodeCount ??
+        (d.seasons?.reduce((acc: number, s: { episodes?: unknown[] }) => acc + (s.episodes?.length ?? 0), 0) ?? 0),
+      ageCategory: (d.ageCategory ?? '0+') as AgeCategory,
+      rating: d.rating,
+      year: d.year ?? (d.publishedAt ? new Date(d.publishedAt).getFullYear() : undefined),
+      genres: d.genres ?? [],
+      country: d.country,
+      director: d.director,
+      cast: d.cast ?? [],
+      seasons: (d.seasons ?? []).map((s: { number: number; title?: string; year?: number; episodes?: EpisodeContent[] }) => ({
+        number: s.number,
+        title: s.title ?? `Сезон ${s.number}`,
+        year: s.year,
+        episodes: (s.episodes ?? []) as EpisodeContent[],
+      })),
+    };
+  }, [apiData]);
 
   // Find next episode to watch
   const nextEpisode = React.useMemo(() => {
+    if (!series) return undefined;
     for (const season of series.seasons) {
-      const next = season.episodes.find((ep) => ep.isNext || (!ep.isWatched && !ep.progress));
+      const next = season.episodes.find((ep: EpisodeContent) => ep.isNext || (!ep.isWatched && !ep.progress));
       if (next) return next;
     }
     return series.seasons[0]?.episodes[0];
@@ -191,34 +86,48 @@ export default function SeriesDetailPage() {
     );
   }
 
+  if (error || !series) {
+    return (
+      <Container size="xl" className="py-16 text-center">
+        <h1 className="text-2xl font-bold text-mp-text-primary mb-4">Сериал не найден</h1>
+        <p className="text-mp-text-secondary mb-6">
+          Запрашиваемый сериал не существует или был удалён.
+        </p>
+        <Button asChild>
+          <Link href="/series">Вернуться к сериалам</Link>
+        </Button>
+      </Container>
+    );
+  }
+
   return (
     <div>
       {/* Hero banner */}
       <div className="relative h-[400px] md:h-[500px]">
-        {/* Background image */}
         <Image
           src={series.bannerUrl}
           alt={series.title}
           fill
           className="object-cover"
           priority
+          unoptimized={series.bannerUrl.startsWith('http')}
         />
 
-        {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-mp-bg-primary via-mp-bg-primary/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-mp-bg-primary/80 via-transparent to-transparent" />
 
-        {/* Content */}
         <Container size="xl" className="relative h-full flex items-end pb-8">
           <div className="max-w-2xl">
             {/* Badges */}
             <div className="flex items-center gap-3 mb-4">
               <AgeBadge age={series.ageCategory} size="lg" />
-              {series.rating && <RatingBadge rating={series.rating} size="lg" />}
-              <span className="text-sm text-white/80 flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                {series.year}
-              </span>
+              {series.rating != null && <RatingBadge rating={series.rating} size="lg" />}
+              {series.year && (
+                <span className="text-sm text-white/80 flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  {series.year}
+                </span>
+              )}
               <span className="text-sm text-white/80">
                 {series.seasonCount} сезон • {series.episodeCount} серий
               </span>
@@ -233,16 +142,18 @@ export default function SeriesDetailPage() {
             )}
 
             {/* Genres */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {series.genres.map((genre) => (
-                <span
-                  key={genre}
-                  className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-sm text-white/80"
-                >
-                  {genre}
-                </span>
-              ))}
-            </div>
+            {series.genres.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {series.genres.map((genre: string) => (
+                  <span
+                    key={genre}
+                    className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-sm text-white/80"
+                  >
+                    {genre}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Description */}
             <p
@@ -265,7 +176,7 @@ export default function SeriesDetailPage() {
             {/* Actions */}
             <div className="flex flex-wrap gap-3">
               <Button variant="gradient" size="lg" asChild>
-                <Link href={nextEpisode ? `/watch/${nextEpisode.id}` : '#'}>
+                <Link href={nextEpisode ? `/watch/${nextEpisode.id}` : `/watch/${series.id}`}>
                   <Play className="w-5 h-5 fill-current mr-2" />
                   Смотреть
                 </Link>
@@ -283,75 +194,89 @@ export default function SeriesDetailPage() {
       </div>
 
       {/* Seasons and episodes */}
-      <Container size="xl" className="py-8">
-        <Tabs value={selectedSeason} onValueChange={setSelectedSeason}>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-mp-text-primary">Эпизоды</h2>
-            <TabsList>
-              {series.seasons.map((season) => (
-                <TabsTrigger key={season.number} value={season.number.toString()}>
-                  {season.title}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-
-          {series.seasons.map((season) => (
-            <TabsContent key={season.number} value={season.number.toString()}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {season.episodes.map((episode) => (
-                  <EpisodeCard
-                    key={episode.id}
-                    content={episode}
-                    seriesSlug={series.slug}
-                  />
+      {series.seasons.length > 0 && (
+        <Container size="xl" className="py-8">
+          <Tabs value={selectedSeason} onValueChange={setSelectedSeason}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-mp-text-primary">Эпизоды</h2>
+              <TabsList>
+                {series.seasons.map((season) => (
+                  <TabsTrigger key={season.number} value={season.number.toString()}>
+                    {season.title}
+                  </TabsTrigger>
                 ))}
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+              </TabsList>
+            </div>
 
-        {/* Cast & Crew */}
-        <section className="mt-12">
+            {series.seasons.map((season) => (
+              <TabsContent key={season.number} value={season.number.toString()}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {season.episodes.map((episode: EpisodeContent) => (
+                    <EpisodeCard
+                      key={episode.id}
+                      content={episode}
+                      seriesSlug={series.slug}
+                    />
+                  ))}
+                </div>
+                {season.episodes.length === 0 && (
+                  <p className="text-mp-text-secondary text-center py-8">
+                    В этом сезоне пока нет эпизодов
+                  </p>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
+        </Container>
+      )}
+
+      {/* No seasons message */}
+      {series.seasons.length === 0 && (
+        <Container size="xl" className="py-8">
+          <p className="text-mp-text-secondary text-center py-8">
+            Эпизоды скоро появятся
+          </p>
+        </Container>
+      )}
+
+      {/* Cast & Crew */}
+      {(series.director || series.country || series.cast.length > 0) && (
+        <Container size="xl" className="pb-8">
           <h2 className="text-xl font-semibold text-mp-text-primary mb-4">
             Создатели
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="p-4 bg-mp-surface rounded-xl">
-              <p className="text-sm text-mp-text-secondary mb-1">Режиссёр</p>
-              <p className="font-medium text-mp-text-primary">{series.director}</p>
-            </div>
-            <div className="p-4 bg-mp-surface rounded-xl">
-              <p className="text-sm text-mp-text-secondary mb-1">Страна</p>
-              <p className="font-medium text-mp-text-primary">{series.country}</p>
-            </div>
+            {series.director && (
+              <div className="p-4 bg-mp-surface rounded-xl">
+                <p className="text-sm text-mp-text-secondary mb-1">Режиссёр</p>
+                <p className="font-medium text-mp-text-primary">{series.director}</p>
+              </div>
+            )}
+            {series.country && (
+              <div className="p-4 bg-mp-surface rounded-xl">
+                <p className="text-sm text-mp-text-secondary mb-1">Страна</p>
+                <p className="font-medium text-mp-text-primary">{series.country}</p>
+              </div>
+            )}
           </div>
 
-          <h3 className="text-lg font-medium text-mp-text-primary mt-6 mb-3">В ролях</h3>
-          <div className="flex flex-wrap gap-2">
-            {series.cast.map((actor) => (
-              <span
-                key={actor}
-                className="px-3 py-1.5 bg-mp-surface rounded-lg text-sm text-mp-text-secondary hover:text-mp-text-primary hover:bg-mp-surface-2 transition-colors cursor-pointer"
-              >
-                {actor}
-              </span>
-            ))}
-          </div>
-        </section>
-
-        {/* Related series */}
-        <section className="mt-12">
-          <h2 className="text-xl font-semibold text-mp-text-primary mb-4">
-            Похожие сериалы
-          </h2>
-          <ContentGrid variant="default">
-            {RELATED_SERIES.map((related) => (
-              <SeriesCard key={related.id} content={related} />
-            ))}
-          </ContentGrid>
-        </section>
-      </Container>
+          {series.cast.length > 0 && (
+            <>
+              <h3 className="text-lg font-medium text-mp-text-primary mt-6 mb-3">В ролях</h3>
+              <div className="flex flex-wrap gap-2">
+                {series.cast.map((actor: string) => (
+                  <span
+                    key={actor}
+                    className="px-3 py-1.5 bg-mp-surface rounded-lg text-sm text-mp-text-secondary hover:text-mp-text-primary hover:bg-mp-surface-2 transition-colors cursor-pointer"
+                  >
+                    {actor}
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+        </Container>
+      )}
     </div>
   );
 }

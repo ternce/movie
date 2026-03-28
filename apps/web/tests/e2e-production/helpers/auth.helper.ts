@@ -79,6 +79,20 @@ export async function loginViaApi(
 }
 
 /**
+ * Refresh access token using refresh token (avoids rate-limited /auth/login).
+ * Falls back to loginViaApi if refresh fails.
+ */
+export async function refreshAccessToken(
+  refreshToken: string
+): Promise<{ accessToken: string; refreshToken: string }> {
+  const res = await apiPost('/auth/refresh', { refreshToken });
+  if (!res.success || !res.data) {
+    throw new Error(`Token refresh failed: ${JSON.stringify(res)}`);
+  }
+  return res.data as { accessToken: string; refreshToken: string };
+}
+
+/**
  * Login via UI — fill form and submit on production.
  * Waits for redirect away from /login.
  */
