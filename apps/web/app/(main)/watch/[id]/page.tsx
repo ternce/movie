@@ -172,7 +172,9 @@ export default function WatchPage() {
   }
 
   // Content exists but video not ready (stream 404, content detail succeeded)
-  const videoNotReady = streamError && (streamError as ApiError)?.status === 404 && contentDetail;
+  const streamApiError = streamError as ApiError | undefined;
+  const videoNotReady = streamApiError?.status === 404 && contentDetail;
+  const videoNotUploaded = videoNotReady && streamApiError?.message?.includes('нет видео');
 
   // Loading state — show skeleton while both queries are in flight
   if (isLoading && !videoNotReady) {
@@ -236,13 +238,29 @@ export default function WatchPage() {
                   />
                 )}
                 <div className="relative z-10 text-center p-6">
-                  <div className="w-12 h-12 border-4 border-mp-accent-primary/30 border-t-mp-accent-primary rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-mp-text-primary font-medium text-lg">
-                    Видео готовится к воспроизведению
-                  </p>
-                  <p className="text-mp-text-secondary text-sm mt-2">
-                    Попробуйте обновить страницу через несколько минут
-                  </p>
+                  {videoNotUploaded ? (
+                    <>
+                      <div className="w-16 h-16 rounded-full bg-mp-surface-elevated flex items-center justify-center mx-auto mb-4">
+                        <WarningCircle className="w-8 h-8 text-mp-text-secondary" />
+                      </div>
+                      <p className="text-mp-text-primary font-medium text-lg">
+                        Видео ещё не загружено
+                      </p>
+                      <p className="text-mp-text-secondary text-sm mt-2">
+                        Автор пока не добавил видео к этому контенту
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-12 h-12 border-4 border-mp-accent-primary/30 border-t-mp-accent-primary rounded-full animate-spin mx-auto mb-4" />
+                      <p className="text-mp-text-primary font-medium text-lg">
+                        Видео готовится к воспроизведению
+                      </p>
+                      <p className="text-mp-text-secondary text-sm mt-2">
+                        Попробуйте обновить страницу через несколько минут
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             ) : streamData?.streamUrl ? (
