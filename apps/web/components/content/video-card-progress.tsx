@@ -1,10 +1,10 @@
 'use client';
 
 import { Play } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { memo } from 'react';
 
+import { ContentImage } from '@/components/content/content-image';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { cn } from '@/lib/utils';
 
@@ -51,17 +51,14 @@ export const VideoCardProgress = memo(function VideoCardProgress({ content, clas
       {/* Thumbnail container */}
       <div className="relative aspect-video rounded-xl overflow-hidden bg-mp-surface mb-3">
         {/* Image */}
-        {content.thumbnailUrl ? (
-          <Image
-            src={content.thumbnailUrl}
-            alt={content.title}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 640px) 75vw, 308px"
-          />
-        ) : (
-          <div className="w-full h-full bg-mp-surface-elevated" />
-        )}
+        <ContentImage
+          src={content.thumbnailUrl}
+          alt={content.title}
+          fill
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          sizes="(max-width: 640px) 75vw, 308px"
+          fallbackClassName="w-full h-full bg-mp-surface-elevated"
+        />
 
         {/* Play button overlay */}
         <div className="absolute inset-0 flex items-center justify-center touch:opacity-80 opacity-0 hover-hover:group-hover:opacity-100 transition-opacity duration-200">

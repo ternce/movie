@@ -1,9 +1,9 @@
 'use client';
 
 import { Play } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 
+import { ContentImage } from '@/components/content/content-image';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { cn } from '@/lib/utils';
 
@@ -40,17 +40,14 @@ export function MovieCardRated({ content, className, featured = false }: MovieCa
       {/* Thumbnail container with layered hover effects */}
       <div className="relative aspect-video rounded-xl overflow-hidden bg-mp-surface-2 mb-3">
         {/* Image with smooth zoom */}
-        {content.thumbnailUrl ? (
-          <Image
-            src={content.thumbnailUrl}
-            alt={content.title}
-            fill
-            className="object-cover transition-transform duration-500 ease-out-expo group-hover:scale-110"
-            sizes="(max-width: 640px) 70vw, 280px"
-          />
-        ) : (
-          <div className="w-full h-full bg-mp-surface-elevated" />
-        )}
+        <ContentImage
+          src={content.thumbnailUrl}
+          alt={content.title}
+          fill
+          className="object-cover transition-transform duration-500 ease-out-expo group-hover:scale-110"
+          sizes="(max-width: 640px) 70vw, 280px"
+          fallbackClassName="w-full h-full bg-mp-surface-elevated"
+        />
 
         {/* Rating badge - more subtle styling */}
         <div className="absolute top-3 left-3 z-10">

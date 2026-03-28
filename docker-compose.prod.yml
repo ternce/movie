@@ -141,7 +141,7 @@ services:
       - MINIO_BUCKET_THUMBNAILS=thumbnails
       - MINIO_BUCKET_DOCUMENTS=documents
       - MINIO_BUCKET_AVATARS=avatars
-      - MINIO_PUBLIC_ENDPOINT=${MINIO_PUBLIC_ENDPOINT:-http://minio:9000}
+      - MINIO_PUBLIC_ENDPOINT=${MINIO_PUBLIC_ENDPOINT:?MINIO_PUBLIC_ENDPOINT must be set to a browser-accessible URL}
       - VIDEO_PROCESSING_CONCURRENCY=${VIDEO_PROCESSING_CONCURRENCY:-1}
       - CORS_ORIGINS=${CORS_ORIGINS}
       - SMTP_HOST=${SMTP_HOST:-mailpit}
@@ -193,12 +193,14 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
         - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+        - NEXT_PUBLIC_MINIO_URL=${NEXT_PUBLIC_MINIO_URL:-}
     container_name: movieplatform-web
     restart: always
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - NEXT_PUBLIC_MINIO_URL=${NEXT_PUBLIC_MINIO_URL:-}
     depends_on:
       - api
     networks:

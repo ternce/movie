@@ -31,10 +31,14 @@ export class StorageService {
       },
     });
 
-    this.publicEndpoint = this.configService.get<string>(
-      'MINIO_PUBLIC_ENDPOINT',
-      'http://localhost:9000',
-    );
+    const publicEndpoint = this.configService.get<string>('MINIO_PUBLIC_ENDPOINT');
+    if (!publicEndpoint) {
+      this.logger.warn(
+        'MINIO_PUBLIC_ENDPOINT not set — using http://localhost:9000. ' +
+        'In production, set this to a browser-accessible URL (e.g. http://YOUR_IP/minio)',
+      );
+    }
+    this.publicEndpoint = publicEndpoint || 'http://localhost:9000';
   }
 
   /**

@@ -1,9 +1,9 @@
 'use client';
 
 import { Bag, Package } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 
+import { ContentImage } from '@/components/content/content-image';
 import { cn } from '@/lib/utils';
 import { ProductStatus } from '@movie-platform/shared';
 
@@ -55,19 +55,14 @@ export function ProductCard({ content, onAddToCart, isAddingToCart, className }:
       {/* Thumbnail container */}
       <div className="relative aspect-square rounded-xl overflow-hidden bg-mp-surface-2 mb-3">
         {/* Image with smooth zoom */}
-        {content.thumbnailUrl ? (
-          <Image
-            src={content.thumbnailUrl}
-            alt={content.name}
-            fill
-            className="object-cover transition-transform duration-500 ease-out-expo group-hover:scale-110"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-          />
-        ) : (
-          <div className="w-full h-full bg-mp-surface-elevated flex items-center justify-center">
-            <Package className="w-12 h-12 text-mp-text-disabled" />
-          </div>
-        )}
+        <ContentImage
+          src={content.thumbnailUrl}
+          alt={content.name}
+          fill
+          className="object-cover transition-transform duration-500 ease-out-expo group-hover:scale-110"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+          fallbackIcon={<Package className="w-12 h-12 text-mp-text-disabled" />}
+        />
 
         {/* Stock status badge */}
         <div className="absolute top-3 left-3 z-10">

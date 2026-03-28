@@ -7,7 +7,7 @@ const withBundleAnalyzer =
 
 // Build dynamic remote patterns from environment URLs (APP_URL, API_URL)
 const envRemotePatterns: { protocol: 'http' | 'https'; hostname: string }[] = [];
-for (const envUrl of [process.env.NEXT_PUBLIC_APP_URL, process.env.NEXT_PUBLIC_API_URL]) {
+for (const envUrl of [process.env.NEXT_PUBLIC_APP_URL, process.env.NEXT_PUBLIC_API_URL, process.env.NEXT_PUBLIC_MINIO_URL]) {
   if (envUrl) {
     try {
       const { protocol, hostname } = new URL(envUrl);
@@ -58,6 +58,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: '**.bunnycdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
       },
       {
         protocol: 'http',

@@ -1,6 +1,7 @@
 // Content components index
 export { AgeBadge, AgeBadgeSolid, type AgeCategory } from './age-badge';
 export { ClipCard, type ClipContent } from './clip-card';
+export { ContentImage } from './content-image';
 export { ContentRow } from './content-row';
 export { EpisodeCard, type EpisodeContent } from './episode-card';
 export { HeroSection, type HeroContent } from './hero-section';

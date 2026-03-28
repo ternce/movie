@@ -1,10 +1,10 @@
 'use client';
 
 import { Play, FilmStrip, Eye } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 
 import { AgeBadge, type AgeCategory } from '@/components/content/age-badge';
+import { ContentImage } from '@/components/content/content-image';
 import { cn, formatDuration, formatNumber } from '@/lib/utils';
 
 export interface ClipContent {
@@ -37,19 +37,14 @@ export function ClipCard({ content, className }: ClipCardProps) {
     >
       {/* Thumbnail */}
       <div className="relative aspect-video rounded-xl overflow-hidden bg-mp-surface-2 mb-3">
-        {content.thumbnailUrl ? (
-          <Image
-            src={content.thumbnailUrl}
-            alt={content.title}
-            fill
-            className="object-cover transition-transform duration-500 ease-out-expo group-hover:scale-110"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-          />
-        ) : (
-          <div className="w-full h-full bg-mp-surface-elevated flex items-center justify-center">
-            <FilmStrip className="w-12 h-12 text-mp-text-disabled" />
-          </div>
-        )}
+        <ContentImage
+          src={content.thumbnailUrl}
+          alt={content.title}
+          fill
+          className="object-cover transition-transform duration-500 ease-out-expo group-hover:scale-110"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+          fallbackIcon={<FilmStrip className="w-12 h-12 text-mp-text-disabled" />}
+        />
 
         {/* Top badges */}
         <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-10">

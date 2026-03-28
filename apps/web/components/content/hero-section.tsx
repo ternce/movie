@@ -1,9 +1,9 @@
 'use client';
 
 import { Play, DownloadSimple, Flame } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 
+import { ContentImage } from '@/components/content/content-image';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -65,18 +65,15 @@ export function HeroSection({ content, className, onCTAClick, onSecondaryClick }
     >
       {/* Background image with subtle zoom on hover */}
       <div className="absolute inset-0">
-        {content.thumbnailUrl ? (
-          <Image
-            src={content.thumbnailUrl}
-            alt={content.title}
-            fill
-            className="object-cover transition-transform duration-700 ease-out-expo group-hover:scale-105"
-            sizes="100vw"
-            priority
-          />
-        ) : (
-          <div className="w-full h-full bg-mp-surface-2" />
-        )}
+        <ContentImage
+          src={content.thumbnailUrl}
+          alt={content.title}
+          fill
+          className="object-cover transition-transform duration-700 ease-out-expo group-hover:scale-105"
+          sizes="100vw"
+          priority
+          fallbackClassName="w-full h-full bg-mp-surface-2"
+        />
         {/* Layered overlay for depth */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/95 sm:from-black/90 via-black/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />

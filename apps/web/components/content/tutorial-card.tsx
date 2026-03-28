@@ -1,10 +1,10 @@
 'use client';
 
 import { BookOpen, Play, CheckCircle } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 
 import { AgeBadge, type AgeCategory } from '@/components/content/age-badge';
+import { ContentImage } from '@/components/content/content-image';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { cn } from '@/lib/utils';
 
@@ -53,19 +53,14 @@ export function TutorialCard({ content, className }: TutorialCardProps) {
       {/* Thumbnail container */}
       <div className="relative aspect-video rounded-xl overflow-hidden bg-mp-surface-2 mb-3">
         {/* Image with smooth zoom */}
-        {content.thumbnailUrl ? (
-          <Image
-            src={content.thumbnailUrl}
-            alt={content.title}
-            fill
-            className="object-cover transition-transform duration-500 ease-out-expo group-hover:scale-110"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          />
-        ) : (
-          <div className="w-full h-full bg-mp-surface-elevated flex items-center justify-center">
-            <BookOpen className="w-12 h-12 text-mp-text-disabled" />
-          </div>
-        )}
+        <ContentImage
+          src={content.thumbnailUrl}
+          alt={content.title}
+          fill
+          className="object-cover transition-transform duration-500 ease-out-expo group-hover:scale-110"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          fallbackIcon={<BookOpen className="w-12 h-12 text-mp-text-disabled" />}
+        />
 
         {/* Top badges */}
         <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-10">
@@ -149,19 +144,14 @@ export function TutorialCardProgress({ content, className }: TutorialCardProps) 
     >
       {/* Thumbnail */}
       <div className="relative w-32 aspect-video rounded-lg overflow-hidden bg-mp-surface-2 shrink-0">
-        {content.thumbnailUrl ? (
-          <Image
-            src={content.thumbnailUrl}
-            alt={content.title}
-            fill
-            className="object-cover"
-            sizes="128px"
-          />
-        ) : (
-          <div className="w-full h-full bg-mp-surface-elevated flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-mp-text-disabled" />
-          </div>
-        )}
+        <ContentImage
+          src={content.thumbnailUrl}
+          alt={content.title}
+          fill
+          className="object-cover"
+          sizes="128px"
+          fallbackIcon={<BookOpen className="w-6 h-6 text-mp-text-disabled" />}
+        />
 
         {/* Hover play */}
         <div className="absolute inset-0 bg-black/40 touch:opacity-60 opacity-0 hover-hover:group-hover:opacity-100 transition-opacity flex items-center justify-center">

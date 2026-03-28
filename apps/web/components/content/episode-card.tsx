@@ -1,9 +1,9 @@
 'use client';
 
 import { Play, Clock, CheckCircle } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 
+import { ContentImage } from '@/components/content/content-image';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { cn } from '@/lib/utils';
 
@@ -82,17 +82,14 @@ export function EpisodeCard({ content, seriesSlug, className, variant = 'default
     >
       {/* Thumbnail */}
       <div className="relative aspect-video rounded-xl overflow-hidden bg-mp-surface-2 mb-3">
-        {content.thumbnailUrl ? (
-          <Image
-            src={content.thumbnailUrl}
-            alt={content.title}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-        ) : (
-          <div className="w-full h-full bg-mp-surface-elevated" />
-        )}
+        <ContentImage
+          src={content.thumbnailUrl}
+          alt={content.title}
+          fill
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          fallbackClassName="w-full h-full bg-mp-surface-elevated"
+        />
 
         {/* Episode number badge */}
         <div className="absolute top-3 left-3 z-10">
@@ -178,17 +175,14 @@ function EpisodeCardCompact({ content, className }: Omit<EpisodeCardProps, 'vari
       )}
     >
       <div className="relative aspect-video rounded-lg overflow-hidden bg-mp-surface-2 mb-2">
-        {content.thumbnailUrl ? (
-          <Image
-            src={content.thumbnailUrl}
-            alt={content.title}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="200px"
-          />
-        ) : (
-          <div className="w-full h-full bg-mp-surface-elevated" />
-        )}
+        <ContentImage
+          src={content.thumbnailUrl}
+          alt={content.title}
+          fill
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          sizes="200px"
+          fallbackClassName="w-full h-full bg-mp-surface-elevated"
+        />
 
         {/* Episode number */}
         <div className="absolute top-2 left-2">
@@ -240,17 +234,14 @@ function EpisodeCardList({ content, className }: Omit<EpisodeCardProps, 'variant
     >
       {/* Thumbnail */}
       <div className="relative w-28 aspect-video rounded overflow-hidden bg-mp-surface-2 shrink-0">
-        {content.thumbnailUrl ? (
-          <Image
-            src={content.thumbnailUrl}
-            alt={content.title}
-            fill
-            className="object-cover"
-            sizes="112px"
-          />
-        ) : (
-          <div className="w-full h-full bg-mp-surface-elevated" />
-        )}
+        <ContentImage
+          src={content.thumbnailUrl}
+          alt={content.title}
+          fill
+          className="object-cover"
+          sizes="112px"
+          fallbackClassName="w-full h-full bg-mp-surface-elevated"
+        />
 
         {/* Episode number overlay */}
         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
