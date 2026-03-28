@@ -138,52 +138,47 @@ export function PlayerProgressBar({ onSeek, className }: PlayerProgressBarProps)
   return (
     <div className={cn('flex items-center gap-3', className)}>
       {/* Current time */}
-      <span className="text-xs text-white/80 font-mono w-12 text-right tabular-nums">
+      <span className="text-xs text-white font-mono w-12 text-right tabular-nums">
         {formatTime(currentTime)}
       </span>
 
       {/* Progress bar container - min-h-[44px] provides adequate touch target */}
       <div
         ref={progressBarRef}
-        className="relative flex-1 h-1 group cursor-pointer min-h-[44px] flex items-center touch-none"
+        className="relative flex-1 group cursor-pointer min-h-[44px] flex items-center touch-none"
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onTouchStart={handleTouchStart}
       >
-        {/* Track background */}
-        <div className="absolute inset-0 bg-white/20 rounded-full">
-          {/* Buffered */}
-          <div
-            className="absolute inset-y-0 left-0 bg-white/30 rounded-full"
-            style={{ width: `${bufferedPercent}%` }}
-          />
+        {/* Visual track — thin bar centered within the 44px touch target */}
+        <div className="relative w-full h-1 group-hover:h-1.5 transition-all duration-150">
+          {/* Track background */}
+          <div className="absolute inset-0 bg-white/30 rounded-full">
+            {/* Buffered */}
+            <div
+              className="absolute inset-y-0 left-0 bg-white/20 rounded-full"
+              style={{ width: `${bufferedPercent}%` }}
+            />
 
-          {/* Progress */}
+            {/* Progress */}
+            <div
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-mp-accent-primary to-mp-accent-secondary rounded-full"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          {/* Scrubber handle */}
           <div
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-mp-accent-primary to-mp-accent-secondary rounded-full"
-            style={{ width: `${progress}%` }}
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-lg',
+              'opacity-0 group-hover:opacity-100 transition-opacity',
+              isDragging && 'opacity-100 scale-125'
+            )}
+            style={{ left: `calc(${progress}% - 7px)` }}
           />
         </div>
-
-        {/* Expanded hover area */}
-        <div className="absolute -inset-y-2 inset-x-0 group-hover:bg-transparent" />
-
-        {/* Hover height expand */}
-        <div className="absolute inset-x-0 -inset-y-1 bg-transparent group-hover:inset-y-0 transition-all">
-          <div className="absolute inset-0 bg-white/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
-
-        {/* Scrubber handle - always visible on touch, hover-reveal on desktop */}
-        <div
-          className={cn(
-            'absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg',
-            'touch:opacity-100 opacity-0 hover-hover:group-hover:opacity-100 transition-opacity',
-            isDragging && 'opacity-100 scale-125'
-          )}
-          style={{ left: `calc(${progress}% - 6px)` }}
-        />
 
         {/* Hover time tooltip */}
         {hoverTime !== null && (
@@ -197,7 +192,7 @@ export function PlayerProgressBar({ onSeek, className }: PlayerProgressBarProps)
       </div>
 
       {/* Duration */}
-      <span className="text-xs text-white/80 font-mono w-12 tabular-nums">
+      <span className="text-xs text-white font-mono w-12 tabular-nums">
         {formatTime(duration)}
       </span>
     </div>
