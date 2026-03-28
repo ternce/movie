@@ -219,11 +219,11 @@ export function PlayerControls({
           {/* Settings */}
           <PlayerSettingsMenu onQualityChange={onQualityChange} />
 
-          {/* Picture in Picture */}
+          {/* Picture in Picture — hidden on mobile to save space */}
           {showPiP && onTogglePiP && document.pictureInPictureEnabled && (
             <button
               onClick={onTogglePiP}
-              className="p-2 md:p-2.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
+              className="hidden sm:block p-2 md:p-2.5 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mp-accent-primary"
               aria-label="Картинка в картинке"
             >
               <PictureInPicture className="w-5 h-5 text-white" />

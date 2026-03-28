@@ -208,7 +208,7 @@ export default function WatchPage() {
   return (
     <div className="min-h-screen bg-mp-bg-primary">
       {/* Back navigation */}
-      <div className="border-b border-mp-border bg-mp-bg-secondary/50 backdrop-blur-sm sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6">
+      <div className="border-b border-mp-border bg-mp-bg-secondary/50 backdrop-blur-sm sticky top-0 z-10 -mx-4 md:-mx-6 w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] px-4 md:px-6">
         <div className="flex items-center h-14">
           <button
             onClick={() => router.back()}
@@ -221,7 +221,7 @@ export default function WatchPage() {
       </div>
 
       {/* Video player */}
-      <div className="w-full bg-black -mx-4 md:-mx-6">
+      <div className="bg-black -mx-4 md:-mx-6 w-[calc(100%+2rem)] md:w-[calc(100%+3rem)]">
         <div className="max-w-[1920px] mx-auto">
           {videoNotReady ? (
             <div className="relative aspect-video bg-mp-surface flex items-center justify-center overflow-hidden">
