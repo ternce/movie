@@ -136,7 +136,7 @@ export function useCreateContent() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.adminContent.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminContent.lists() });
       toast.success('Контент создан');
     },
     onError: (error: ApiError) => {
@@ -164,7 +164,7 @@ export function useUpdateContent() {
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.adminContent.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminContent.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.adminContent.detail(data.id) });
       toast.success('Контент обновлён');
     },
@@ -188,7 +188,7 @@ export function useDeleteContent() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.adminContent.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminContent.lists() });
       toast.success('Контент архивирован');
     },
     onError: (error: ApiError) => {

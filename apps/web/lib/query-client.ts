@@ -346,6 +346,7 @@ export const queryKeys = {
   // Admin Content
   adminContent: {
     all: ['adminContent'] as const,
+    lists: () => [...queryKeys.adminContent.all, 'list'] as const,
     list: (params?: Record<string, unknown>) =>
       [...queryKeys.adminContent.all, 'list', params] as const,
     detail: (id: string) =>
