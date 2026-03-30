@@ -52,7 +52,7 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
 
         {/* Bottom info */}
-        <div className="absolute bottom-6 left-4 right-[4.5rem] z-10">
+        <div className="absolute bottom-10 md:bottom-6 left-4 right-[4.5rem] z-10">
           <h3 className="text-white font-semibold text-lg leading-tight mb-1 line-clamp-2">
             {content.title}
           </h3>
@@ -62,7 +62,7 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
         </div>
 
         {/* Side action bar */}
-        <div className="absolute right-3 bottom-20 z-10 flex flex-col items-center gap-5">
+        <div className="absolute right-3 bottom-24 md:bottom-20 z-10 flex flex-col items-center gap-5">
           <button
             type="button"
             className="flex flex-col items-center gap-1 group"

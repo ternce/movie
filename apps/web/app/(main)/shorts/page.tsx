@@ -101,7 +101,7 @@ export default function ShortsPage() {
 
   if (isLoading) {
     return (
-      <div className="relative h-[calc(100vh-64px)] -m-4 md:-m-6 flex items-center justify-center bg-black">
+      <div className="relative shorts-viewport-height -m-4 md:-m-6 flex items-center justify-center bg-black">
         <Spinner size="xl" />
       </div>
     );
@@ -109,14 +109,14 @@ export default function ShortsPage() {
 
   if (shorts.length === 0) {
     return (
-      <div className="relative h-[calc(100vh-64px)] -m-4 md:-m-6 flex items-center justify-center bg-black">
+      <div className="relative shorts-viewport-height -m-4 md:-m-6 flex items-center justify-center bg-black">
         <p className="text-mp-text-secondary text-lg">Shorts пока нет</p>
       </div>
     );
   }
 
   return (
-    <div className="relative h-[calc(100vh-64px)] -m-4 md:-m-6">
+    <div className="relative shorts-viewport-height -m-4 md:-m-6">
       {/* Scroll container */}
       <div
         ref={containerRef}
@@ -146,7 +146,7 @@ export default function ShortsPage() {
       </div>
 
       {/* Navigation buttons */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2">
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 hidden md:flex flex-col gap-2">
         <button
           onClick={() => scrollToIndex(Math.max(activeIndex - 1, 0))}
           disabled={activeIndex === 0}
@@ -176,7 +176,7 @@ export default function ShortsPage() {
       </div>
 
       {/* Progress indicator */}
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1.5">
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 z-20 hidden md:flex flex-col gap-1.5">
         {shorts.slice(0, 10).map((_, index) => (
           <button
             key={index}

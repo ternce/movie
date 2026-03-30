@@ -236,6 +236,16 @@
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
   .safe-top { padding-top: env(safe-area-inset-top, 0px); }
 
+  /* Shorts feed viewport height — accounts for header + mobile bottom nav + safe area */
+  .shorts-viewport-height {
+    height: calc(100dvh - 4rem);
+  }
+  @media (max-width: 767px) {
+    .shorts-viewport-height {
+      height: calc(100dvh - 4rem - 4rem - env(safe-area-inset-bottom, 0px));
+    }
+  }
+
   /* Dynamic viewport height (accounts for mobile browser chrome) */
   .min-h-screen-dynamic { min-height: 100dvh; }
   .h-screen-dynamic { height: 100dvh; }
