@@ -26,8 +26,14 @@ export class ContentService {
     ];
 
     if (!userAgeCategory) {
-      // If no age category provided, return only safe content
-      return [AgeCategory.ZERO_PLUS];
+      // Unauthenticated users see content up to 16+
+      // 18+ requires authenticated age verification
+      return [
+        AgeCategory.ZERO_PLUS,
+        AgeCategory.SIX_PLUS,
+        AgeCategory.TWELVE_PLUS,
+        AgeCategory.SIXTEEN_PLUS,
+      ];
     }
 
     const index = order.indexOf(userAgeCategory);

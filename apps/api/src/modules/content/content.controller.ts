@@ -40,7 +40,6 @@ export class ContentController {
    */
   @Public()
   @Get('content')
-  @CacheControl(CACHE_PRESETS.CDN_SHORT)
   @ApiOperation({ summary: 'Get content list with filters' })
   @ApiResponse({
     status: 200,
@@ -133,7 +132,6 @@ export class ContentController {
    */
   @Public()
   @Get('content/:slug')
-  @CacheControl(CACHE_PRESETS.CDN_MEDIUM)
   @ApiOperation({ summary: 'Get content by slug' })
   @ApiParam({
     name: 'slug',

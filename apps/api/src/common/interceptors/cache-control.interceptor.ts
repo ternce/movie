@@ -200,7 +200,7 @@ export class CacheControlInterceptor implements NestInterceptor {
 
           // Set Vary header for CDN caching
           if (cacheOptions.isPublic) {
-            response.setHeader('Vary', 'Accept-Encoding, Accept-Language');
+            response.setHeader('Vary', 'Accept-Encoding, Accept-Language, Authorization');
           }
         }
       })
