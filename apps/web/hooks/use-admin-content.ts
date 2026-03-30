@@ -62,6 +62,7 @@ export interface CreateContentInput {
   individualPrice?: number;
   tagIds?: string[];
   genreIds?: string[];
+  status?: string;
 }
 
 export interface UpdateContentInput extends Partial<CreateContentInput> {
@@ -132,6 +133,7 @@ export function useCreateContent() {
         individualPrice: data.individualPrice || undefined,
         tagIds: data.tagIds?.length ? data.tagIds : undefined,
         genreIds: data.genreIds?.length ? data.genreIds : undefined,
+        status: data.status || undefined,
       };
       const response = await api.post<Content>(endpoints.adminContent.create, payload);
       return response.data;

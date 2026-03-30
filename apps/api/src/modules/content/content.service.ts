@@ -573,6 +573,12 @@ export class ContentService {
     // Generate unique slug
     const slug = this.generateSlug(dto.title);
 
+    // Only allow DRAFT or PUBLISHED on creation
+    const finalStatus =
+      dto.status === ContentStatus.DRAFT || dto.status === ContentStatus.PUBLISHED
+        ? dto.status
+        : ContentStatus.DRAFT;
+
     // Create content with relations
     const content = await this.prisma.content.create({
       data: {
@@ -587,7 +593,8 @@ export class ContentService {
         duration: dto.duration ?? 0,
         isFree: dto.isFree ?? false,
         individualPrice: dto.individualPrice,
-        status: ContentStatus.DRAFT,
+        status: finalStatus,
+        ...(finalStatus === ContentStatus.PUBLISHED && { publishedAt: new Date() }),
         tags: dto.tagIds?.length
           ? {
               create: dto.tagIds.map((tagId) => ({ tagId })),

@@ -305,31 +305,35 @@ export function ClipWizard({ onSuccess }: ClipWizardProps) {
     setCurrentStep((prev) => Math.max(1, prev - 1));
   }, []);
 
-  const handleSubmit = React.useCallback(() => {
-    form.handleSubmit((values) => {
-      createContent.mutate(
-        {
-          title: values.title,
-          description: values.description || undefined,
-          contentType: 'CLIP',
-          categoryId: values.categoryId || undefined,
-          ageCategory: values.ageCategory,
-          thumbnailUrl: values.thumbnailUrl || undefined,
-          previewUrl: values.previewUrl || undefined,
-          isFree: values.isFree,
-          individualPrice: values.individualPrice || undefined,
-          tagIds: values.tagIds?.length ? values.tagIds : undefined,
-          genreIds: values.genreIds?.length ? values.genreIds : undefined,
-        },
-        {
-          onSuccess: (data) => {
-            clearDraft();
-            onSuccess?.(data.id);
+  const handleCreate = React.useCallback(
+    (status: 'DRAFT' | 'PUBLISHED') => {
+      form.handleSubmit((values) => {
+        createContent.mutate(
+          {
+            title: values.title,
+            description: values.description || undefined,
+            contentType: 'CLIP',
+            categoryId: values.categoryId || undefined,
+            ageCategory: values.ageCategory,
+            thumbnailUrl: values.thumbnailUrl || undefined,
+            previewUrl: values.previewUrl || undefined,
+            isFree: values.isFree,
+            individualPrice: values.individualPrice || undefined,
+            tagIds: values.tagIds?.length ? values.tagIds : undefined,
+            genreIds: values.genreIds?.length ? values.genreIds : undefined,
+            status,
           },
-        }
-      );
-    })();
-  }, [form, createContent, clearDraft, onSuccess]);
+          {
+            onSuccess: (data) => {
+              clearDraft();
+              onSuccess?.(data.id);
+            },
+          }
+        );
+      })();
+    },
+    [form, createContent, clearDraft, onSuccess]
+  );
 
   return (
     <WizardShell
@@ -338,9 +342,10 @@ export function ClipWizard({ onSuccess }: ClipWizardProps) {
       onStepChange={setCurrentStep}
       onNext={handleNext}
       onBack={handleBack}
-      onSubmit={handleSubmit}
+      onSubmit={() => handleCreate('PUBLISHED')}
+      onDraftSubmit={() => handleCreate('DRAFT')}
       isSubmitting={createContent.isPending}
-      submitLabel="Создать клип"
+      submitLabel="Опубликовать"
       submitIcon={<Rocket weight="fill" className="h-4 w-4" />}
       cancelHref="/studio"
     >

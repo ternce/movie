@@ -31,6 +31,9 @@ export interface WizardShellProps {
   isSubmitting: boolean;
   submitLabel?: string;
   submitIcon?: React.ReactNode;
+  /** Optional secondary action shown on the last step (e.g. "Save Draft") */
+  onDraftSubmit?: () => void;
+  draftLabel?: string;
   cancelHref?: string;
   children: React.ReactNode;
 }
@@ -122,6 +125,8 @@ export function WizardShell({
   isSubmitting,
   submitLabel = 'Создать',
   submitIcon,
+  onDraftSubmit,
+  draftLabel = 'Сохранить черновик',
   cancelHref = '/studio',
   children,
 }: WizardShellProps) {
@@ -187,21 +192,36 @@ export function WizardShell({
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button
-              type="button"
-              onClick={onSubmit}
-              disabled={isSubmitting}
-              className="bg-[#c94bff] hover:bg-[#c94bff]/90 text-white"
-            >
-              {isSubmitting ? (
-                <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                submitIcon && (
-                  <span className="mr-2 flex items-center">{submitIcon}</span>
-                )
+            <>
+              {onDraftSubmit && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onDraftSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  {draftLabel}
+                </Button>
               )}
-              {submitLabel}
-            </Button>
+              <Button
+                type="button"
+                onClick={onSubmit}
+                disabled={isSubmitting}
+                className="bg-[#c94bff] hover:bg-[#c94bff]/90 text-white"
+              >
+                {isSubmitting ? (
+                  <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  submitIcon && (
+                    <span className="mr-2 flex items-center">{submitIcon}</span>
+                  )
+                )}
+                {submitLabel}
+              </Button>
+            </>
           )}
         </div>
       </div>

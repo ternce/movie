@@ -13,7 +13,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { ContentType, AgeCategory } from '@prisma/client';
+import { ContentType, AgeCategory, ContentStatus } from '@prisma/client';
 
 export class CreateContentDto {
   @ApiProperty({
@@ -120,4 +120,13 @@ export class CreateContentDto {
   @IsArray()
   @IsUUID('4', { each: true })
   genreIds?: string[];
+
+  @ApiPropertyOptional({
+    enum: [ContentStatus.DRAFT, ContentStatus.PUBLISHED],
+    default: ContentStatus.DRAFT,
+    description: 'Initial content status (DRAFT or PUBLISHED)',
+  })
+  @IsOptional()
+  @IsEnum(ContentStatus)
+  status?: ContentStatus;
 }

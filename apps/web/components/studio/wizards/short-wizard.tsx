@@ -83,7 +83,7 @@ export function ShortWizard({ onSuccess }: ShortWizardProps) {
   const description = watch('description');
 
   const handleCreate = React.useCallback(
-    (_status: 'DRAFT' | 'PENDING') => {
+    (status: 'DRAFT' | 'PUBLISHED') => {
       return handleSubmit((values) => {
         createContent.mutate(
           {
@@ -95,6 +95,7 @@ export function ShortWizard({ onSuccess }: ShortWizardProps) {
             previewUrl: values.previewUrl || undefined,
             isFree: values.isFree,
             tagIds: values.tagIds?.length ? values.tagIds : undefined,
+            status,
           },
           {
             onSuccess: (data) => {
@@ -274,7 +275,7 @@ export function ShortWizard({ onSuccess }: ShortWizardProps) {
             </Button>
             <Button
               type="button"
-              onClick={() => handleCreate('PENDING')}
+              onClick={() => handleCreate('PUBLISHED')}
               disabled={createContent.isPending}
               className="bg-[#c94bff] hover:bg-[#c94bff]/90 text-white"
             >
