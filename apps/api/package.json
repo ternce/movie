@@ -4,7 +4,7 @@
   "private": true,
   "description": "MoviePlatform API Server",
   "scripts": {
-    "prebuild": "npm run build --workspace=@movie-platform/shared",
+    "prebuild": "npm run build --workspace=@movie-platform/shared && npx prisma generate --schema=prisma/schema.prisma",
     "build": "nest build --path tsconfig.build.json",
     "dev": "nest start --path tsconfig.build.json --watch",
     "start": "nest start --path tsconfig.build.json",
