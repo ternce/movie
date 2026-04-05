@@ -42,7 +42,15 @@ import { UsersModule } from './modules/users/users.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>('REDIS_URL');
         const password = config.get<string>('REDIS_PASSWORD', '');
+
+        if (redisUrl) {
+          return {
+            redis: redisUrl,
+          };
+        }
+
         return {
           redis: {
             host: config.get<string>('REDIS_HOST', 'localhost'),
