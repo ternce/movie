@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 3000",
+    "prebuild": "npm run build --workspace=@movie-platform/shared",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
