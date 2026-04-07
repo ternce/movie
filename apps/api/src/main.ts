@@ -96,10 +96,12 @@ async function bootstrap() {
 
   // Start server
   const port = configService.get<number>('PORT', 4000);
-  await app.listen(port);
+  // In Docker we must listen on all interfaces, otherwise nginx in another container
+  // may get connection refused (common cause of 502).
+  await app.listen(port, '0.0.0.0');
 
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`API Documentation: http://localhost:${port}/api/docs`);
+  console.log(`Application is running on: http://0.0.0.0:${port}`);
+  console.log(`API Documentation: http://0.0.0.0:${port}/api/docs`);
 }
 
 bootstrap();
