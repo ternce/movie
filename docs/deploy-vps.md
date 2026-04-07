@@ -66,6 +66,12 @@ git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ> movieplatform
 cd movieplatform
 ```
 
+Если вы **уже создали папку** под новую версию и **уже находитесь внутри неё** (и папка пустая), можно клонировать прямо в текущую директорию:
+
+```bash
+git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ> .
+```
+
 Если Git недоступен — альтернатива: залить архив/rsync, но Git обычно проще.
 
 ## 4) Настройка переменных окружения для production
@@ -156,6 +162,15 @@ git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ> movieplatform-v2
 cd movieplatform-v2
 ```
 
+Откройте порт для v2 (если используете UFW):
+
+```bash
+sudo ufw allow 8080/tcp
+sudo ufw status
+```
+
+Если UFW выключен/не установлен — порт может блокироваться на уровне провайдера (Security Group). Тогда откройте `8080/tcp` в панели VPS.
+
 2) Создайте production env:
 
 ```bash
@@ -194,7 +209,79 @@ MP_V2_HTTP_PORT=8082 ./scripts/deploy-v2.sh
 - `http://89.108.66.37:8080/nginx-health`
 - `http://89.108.66.37:8080/api/v1/health`
 
+### Вход в админку / тестовые пользователи
+
+В v2-стеке поднимается **новая база** (новый docker volume), поэтому “старые” логины/пароли из предыдущей версии обычно не работают.
+
+Если нужно быстро получить тестовые аккаунты (включая ADMIN), можно один раз выполнить seed:
+
+```bash
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production exec -T api node prisma/seed.js
+```
+
+Seed создаёт пользователей:
+- `admin@movieplatform.local / admin123` (ADMIN)
+- `moderator@movieplatform.local / mod123` (MODERATOR)
+- `user@movieplatform.local / user123` (BUYER)
+
+Используйте это только для теста на VPS. Для реального продакшена — создайте свои учётки и смените пароли.
+
+Быстрая проверка на сервере, что порт слушается:
+
+```bash
+ss -lntp | grep ':8080'
+```
+
+### Если фронт работает, а API отдаёт `502 Bad Gateway`
+
+Иногда `api` контейнер пересоздаётся (меняется его IP в docker-сети), а `nginx` остаётся работать со старым upstream. Симптом: команда из `nginx` контейнера до `api:4000` работает, но запросы через `http://<ip>:8080/api/...` дают 502.
+
+Фикс:
+
+```bash
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production restart nginx
+```
+
 Когда убедитесь, что всё ок, дальше обычно делают нормальный домен + HTTPS и уже переключают трафик на новую версию.
+
+### Если при загрузке/транскодинге видео ошибка `NoSuchBucket`
+
+Симптом в логах `api`:
+
+- `Transcode failed ... — The specified bucket does not exist`
+
+Это значит, что в MinIO не созданы бакеты (обычно `videos`, `thumbnails`, ...). В наших compose-файлах это делает сервис `minio-setup`.
+
+Починка на VPS (для v2-стека):
+
+```bash
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production run --rm minio-setup
+```
+
+Проверка, что бакеты появились:
+
+```bash
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production exec -T minio sh -lc 'ls -la /data'
+```
+
+После этого повторите загрузку видео.
+
+Важно: `minio-setup` использует `MINIO_ROOT_USER/MINIO_ROOT_PASSWORD` из `.env.production`. Если там пусто/не совпадает с MinIO — создание бакетов не сработает.
+
+### Если в логах EmailProcessor `ECONNREFUSED 127.0.0.1:1025`
+
+Это не про видео, но будет спамить логи. В Docker-контейнере `127.0.0.1` — это сам контейнер, а SMTP у нас отдельным сервисом (`mailpit`).
+
+В `.env.production` для v2 оставьте пустым или выставьте:
+
+- `SMTP_HOST=mailpit`
+- `SMTP_PORT=1025`
+
+И перезапустите API:
+
+```bash
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production restart api
+```
 
 ## 6) Про HTTPS (важно)
 

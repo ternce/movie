@@ -43,6 +43,14 @@ echo "[3/5] Restarting services..."
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d
 
 echo ""
+echo "[3.1/5] Ensuring MinIO buckets exist..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm minio-setup
+
+echo ""
+echo "[3.2/5] Restarting nginx to refresh upstream DNS..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" restart nginx
+
+echo ""
 echo "[4/5] Waiting for API to start..."
 sleep 10
 
