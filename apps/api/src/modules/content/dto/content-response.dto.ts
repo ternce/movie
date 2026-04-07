@@ -79,6 +79,12 @@ export class ContentListItemDto {
 
   @ApiProperty({ type: [GenreDto] })
   genres!: GenreDto[];
+
+  @ApiPropertyOptional({ description: 'Number of seasons (SERIES/TUTORIAL only)' })
+  seasonCount?: number;
+
+  @ApiPropertyOptional({ description: 'Number of episodes/lessons (SERIES/TUTORIAL only)' })
+  episodeCount?: number;
 }
 
 export class ContentDetailDto extends ContentListItemDto {

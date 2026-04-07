@@ -3,16 +3,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { BookOpen } from '@phosphor-icons/react';
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
-import { Controller } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
 import { CategorySelect } from '@/components/studio/category-select';
 import { GenreSelect } from '@/components/studio/genre-select';
 import {
   tutorialFormSchema,
-  type TutorialFormValues,
   type ChapterGroup,
+  type TutorialFormValues,
 } from '@/components/studio/schemas';
 import { MediaUploadCard } from '@/components/studio/shared/media-upload-card';
 import { PublishingCard } from '@/components/studio/shared/publishing-card';
@@ -25,14 +24,15 @@ import {
 import { TagInput } from '@/components/studio/tag-input';
 import { TreeManager, type TreeGroup } from '@/components/studio/tree-manager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useUpdateContent } from '@/hooks/use-admin-content';
 import {
   useCreateSeriesContent,
   type CreateSeriesInput,
 } from '@/hooks/use-series-structure';
 import {
   useContentCategories,
-  useContentTags,
   useContentGenres,
+  useContentTags,
 } from '@/hooks/use-studio-data';
 
 // ============ Constants ============
@@ -42,16 +42,15 @@ const DRAFT_KEY = 'studio-draft-tutorial';
 const STEPS: WizardStep[] = [
   { id: 1, label: 'Основное' },
   { id: 2, label: 'Структура курса' },
-  { id: 3, label: 'Медиа' },
-  { id: 4, label: 'Публикация' },
+  { id: 3, label: 'Публикация' },
+  { id: 4, label: 'Медиа' },
 ];
 
-/** Fields to validate per step */
 const STEP_FIELDS: Record<number, Array<keyof TutorialFormValues>> = {
   1: ['title', 'description'],
   2: ['chapters'],
-  3: [],
-  4: ['categoryId', 'ageCategory'],
+  3: ['categoryId', 'ageCategory'],
+  4: [],
 };
 
 // ============ Helpers ============
@@ -110,7 +109,7 @@ function saveDraft(values: TutorialFormValues): void {
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
   } catch {
-    // Quota exceeded — silently ignore
+    // ignore
   }
 }
 
@@ -119,11 +118,10 @@ function clearDraft(): void {
   try {
     localStorage.removeItem(DRAFT_KEY);
   } catch {
-    // Ignore
+    // ignore
   }
 }
 
-/** Convert TreeGroup[] from TreeManager to ChapterGroup[] for form state */
 function treeGroupsToChapters(groups: TreeGroup[]): ChapterGroup[] {
   return groups.map((g) => ({
     id: g.id,
@@ -137,7 +135,6 @@ function treeGroupsToChapters(groups: TreeGroup[]): ChapterGroup[] {
   }));
 }
 
-/** Convert ChapterGroup[] from form state to TreeGroup[] for TreeManager */
 function chaptersToTreeGroups(chapters: ChapterGroup[]): TreeGroup[] {
   return chapters.map((c) => ({
     id: c.id,
@@ -151,6 +148,31 @@ function chaptersToTreeGroups(chapters: ChapterGroup[]): TreeGroup[] {
   }));
 }
 
+function buildCreatePayload(values: TutorialFormValues): CreateSeriesInput {
+  return {
+    title: values.title,
+    description: values.description,
+    contentType: 'TUTORIAL',
+    categoryId: values.categoryId,
+    ageCategory: values.ageCategory,
+    thumbnailUrl: values.thumbnailUrl || undefined,
+    previewUrl: values.previewUrl || undefined,
+    isFree: values.isFree,
+    individualPrice: values.individualPrice,
+    tagIds: values.tagIds,
+    genreIds: values.genreIds,
+    seasons: values.chapters.map((c) => ({
+      title: `Глава ${c.order}`,
+      order: c.order,
+      episodes: c.items.map((lesson) => ({
+        title: lesson.title,
+        description: lesson.description,
+        order: lesson.order,
+      })),
+    })),
+  };
+}
+
 // ============ Props ============
 
 export interface TutorialWizardProps {
@@ -161,16 +183,17 @@ export interface TutorialWizardProps {
 
 export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
   const [currentStep, setCurrentStep] = React.useState(1);
-  const createTutorial = useCreateSeriesContent();
+  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
 
-  // Reference data
+  const createTutorial = useCreateSeriesContent();
+  const updateContent = useUpdateContent();
+
   const { flat: categoriesFlat } = useContentCategories();
   const { data: tagsData } = useContentTags();
   const { data: genresData } = useContentGenres();
   const availableTags = tagsData ?? [];
   const availableGenres = genresData ?? [];
 
-  // Restore draft on mount
   const draft = React.useMemo(() => loadDraft(), []);
 
   const form = useForm<TutorialFormValues>({
@@ -179,7 +202,7 @@ export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
     mode: 'onTouched',
   });
 
-  const { watch, setValue, trigger, handleSubmit, formState } = form;
+  const { watch, setValue, trigger, formState } = form;
 
   // Auto-save draft on every change (debounced)
   const watchedValues = watch();
@@ -189,6 +212,7 @@ export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
     if (draftTimerRef.current) {
       clearTimeout(draftTimerRef.current);
     }
+
     draftTimerRef.current = setTimeout(() => {
       saveDraft(watchedValues);
     }, 1000);
@@ -202,10 +226,7 @@ export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
 
   // --- TreeManager sync ---
   const chapters = watch('chapters');
-  const treeGroups = React.useMemo(
-    () => chaptersToTreeGroups(chapters),
-    [chapters]
-  );
+  const treeGroups = React.useMemo(() => chaptersToTreeGroups(chapters), [chapters]);
 
   const handleGroupsChange = React.useCallback(
     (groups: TreeGroup[]) => {
@@ -220,56 +241,65 @@ export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
     const fieldsToValidate = STEP_FIELDS[currentStep];
     if (!fieldsToValidate || fieldsToValidate.length === 0) return true;
 
-    const result = await trigger(fieldsToValidate);
-    if (!result) {
+    const ok = await trigger(fieldsToValidate);
+    if (!ok) {
       toast.error('Пожалуйста, заполните обязательные поля');
+      return false;
     }
-    return result;
-  }, [currentStep, trigger]);
+
+    if (currentStep === 3 && !createdContentId) {
+      const values = form.getValues();
+      const payload = buildCreatePayload(values);
+
+      return await new Promise<boolean>((resolve) => {
+        createTutorial.mutate(payload, {
+          onSuccess: (data) => {
+            setCreatedContentId(data.id);
+            toast.success('Черновик создан. Теперь загрузите основное видео');
+            resolve(true);
+          },
+          onError: () => resolve(false),
+        });
+      });
+    }
+
+    return true;
+  }, [currentStep, trigger, createdContentId, form, createTutorial]);
 
   const handleBack = React.useCallback(() => {
     setCurrentStep((s) => Math.max(1, s - 1));
   }, []);
 
-  // --- Submit ---
-  const onFormSubmit = React.useCallback(
-    (values: TutorialFormValues) => {
-      const payload: CreateSeriesInput = {
+  const handleFinish = React.useCallback(() => {
+    if (!createdContentId) {
+      toast.error('Сначала создайте черновик на шаге «Публикация»');
+      return;
+    }
+
+    const values = form.getValues();
+    updateContent.mutate(
+      {
+        id: createdContentId,
         title: values.title,
         description: values.description,
-        contentType: 'TUTORIAL',
-        categoryId: values.categoryId,
+        categoryId: values.categoryId || undefined,
         ageCategory: values.ageCategory,
         thumbnailUrl: values.thumbnailUrl || undefined,
         previewUrl: values.previewUrl || undefined,
         isFree: values.isFree,
-        individualPrice: values.individualPrice,
-        tagIds: values.tagIds,
-        genreIds: values.genreIds,
-        seasons: values.chapters.map((c) => ({
-          title: `Глава ${c.order}`,
-          order: c.order,
-          episodes: c.items.map((lesson) => ({
-            title: lesson.title,
-            description: lesson.description,
-            order: lesson.order,
-          })),
-        })),
-      };
-
-      createTutorial.mutate(payload, {
-        onSuccess: (data) => {
+        individualPrice: values.individualPrice || undefined,
+        tagIds: values.tagIds?.length ? values.tagIds : undefined,
+        genreIds: values.genreIds?.length ? values.genreIds : undefined,
+        status: values.status || 'DRAFT',
+      },
+      {
+        onSuccess: () => {
           clearDraft();
-          onSuccess?.(data.id);
+          onSuccess?.(createdContentId);
         },
-      });
-    },
-    [createTutorial, onSuccess]
-  );
-
-  const handleFormSubmit = React.useCallback(() => {
-    handleSubmit(onFormSubmit)();
-  }, [handleSubmit, onFormSubmit]);
+      }
+    );
+  }, [createdContentId, form, updateContent, onSuccess]);
 
   return (
     <WizardShell
@@ -278,13 +308,12 @@ export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
       onStepChange={setCurrentStep}
       onNext={handleNext}
       onBack={handleBack}
-      onSubmit={handleFormSubmit}
-      isSubmitting={createTutorial.isPending}
-      submitLabel="Создать курс"
+      onSubmit={handleFinish}
+      isSubmitting={createTutorial.isPending || updateContent.isPending}
+      submitLabel="Открыть редактор"
       submitIcon={<BookOpen weight="bold" className="h-4 w-4" />}
       cancelHref="/studio"
     >
-      {/* Step 1: Basic info */}
       {currentStep === 1 && (
         <TitleDescriptionFields
           form={form}
@@ -292,7 +321,6 @@ export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
         />
       )}
 
-      {/* Step 2: Structure */}
       {currentStep === 2 && (
         <Card className="border-[#272b38] bg-[#10131c]/50">
           <CardHeader>
@@ -304,12 +332,18 @@ export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
             </p>
           </CardHeader>
           <CardContent>
-            <TreeManager
-              groupLabel="Глава"
-              itemLabel="Урок"
-              groups={treeGroups}
-              onGroupsChange={handleGroupsChange}
-            />
+            {createdContentId ? (
+              <p className="text-sm text-[#9ca2bc]">
+                Черновик уже создан. Структуру лучше редактировать в редакторе после завершения мастера.
+              </p>
+            ) : (
+              <TreeManager
+                groupLabel="Глава"
+                itemLabel="Урок"
+                groups={treeGroups}
+                onGroupsChange={handleGroupsChange}
+              />
+            )}
             {formState.errors.chapters && (
               <p className="mt-3 text-xs text-[#ff9aa8]">
                 {(formState.errors.chapters as { message?: string }).message}
@@ -319,14 +353,9 @@ export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
         </Card>
       )}
 
-      {/* Step 3: Media */}
-      {currentStep === 3 && <MediaUploadCard form={form} />}
-
-      {/* Step 4: Publishing */}
-      {currentStep === 4 && (
+      {currentStep === 3 && (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            {/* Category */}
             <Card className="border-[#272b38] bg-[#10131c]/50">
               <CardHeader>
                 <CardTitle className="text-lg text-[#f5f7ff]">
@@ -353,7 +382,6 @@ export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
               </CardContent>
             </Card>
 
-            {/* Genres */}
             <Card className="border-[#272b38] bg-[#10131c]/50">
               <CardHeader>
                 <CardTitle className="text-lg text-[#f5f7ff]">
@@ -375,7 +403,6 @@ export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
               </CardContent>
             </Card>
 
-            {/* Tags */}
             <Card className="border-[#272b38] bg-[#10131c]/50">
               <CardHeader>
                 <CardTitle className="text-lg text-[#f5f7ff]">
@@ -401,15 +428,27 @@ export function TutorialWizard({ onSuccess }: TutorialWizardProps) {
               </CardContent>
             </Card>
 
-            {/* Publishing settings */}
             <PublishingCard form={form} />
           </div>
 
-          {/* Summary sidebar */}
           <div>
             <SummaryPanel form={form} contentType="TUTORIAL" />
           </div>
         </div>
+      )}
+
+      {currentStep === 4 && (
+        createdContentId ? (
+          <MediaUploadCard form={form} contentId={createdContentId} />
+        ) : (
+          <Card className="border-[#272b38] bg-[#10131c]/50">
+            <CardContent className="pt-6">
+              <p className="text-sm text-[#9ca2bc]">
+                Чтобы загрузить основное видео, сначала создайте черновик на шаге «Публикация» и нажмите «Далее».
+              </p>
+            </CardContent>
+          </Card>
+        )
       )}
     </WizardShell>
   );

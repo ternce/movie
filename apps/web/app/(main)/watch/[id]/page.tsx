@@ -17,9 +17,10 @@ import {
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
 import { VideoPlayerSkeleton } from '@/components/player';
+import { ContentImage } from '@/components/content/content-image';
 import { cn } from '@/lib/utils';
+import { normalizeMediaUrl } from '@/lib/media-url';
 import { useStreamUrl } from '@/hooks/use-streaming';
 import { useContentDetail } from '@/hooks/use-content';
 import { api, endpoints, ApiError } from '@/lib/api-client';
@@ -237,6 +238,7 @@ export default function WatchPage() {
   const description = streamData?.description || contentDetail?.description || '';
   const duration = streamData?.duration || contentDetail?.duration || 0;
   const thumbnailUrl = streamData?.thumbnailUrls?.[0] || contentDetail?.thumbnailUrl;
+  const normalizedThumbnailUrl = thumbnailUrl ? normalizeMediaUrl(thumbnailUrl) : undefined;
 
   return (
     <div className="min-h-screen bg-mp-bg-primary">
@@ -258,9 +260,9 @@ export default function WatchPage() {
         <div className="max-w-[1920px] mx-auto">
           {videoNotReady ? (
             <div className="relative aspect-video bg-mp-surface flex items-center justify-center overflow-hidden">
-              {thumbnailUrl && (
-                <Image
-                  src={thumbnailUrl}
+              {normalizedThumbnailUrl && (
+                <ContentImage
+                  src={normalizedThumbnailUrl}
                   alt={title}
                   fill
                   className="object-cover opacity-30"
@@ -308,7 +310,7 @@ export default function WatchPage() {
           ) : streamData?.streamUrl ? (
             <VideoPlayer
               src={streamData.streamUrl}
-              poster={thumbnailUrl}
+              poster={normalizedThumbnailUrl}
               initialTime={0}
               onProgress={handleProgress}
               onEnded={handleEnded}

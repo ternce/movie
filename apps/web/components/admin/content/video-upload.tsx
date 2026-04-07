@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { endpoints, getAuthToken } from '@/lib/api-client';
+import { normalizeMediaUrl } from '@/lib/media-url';
 import { EncodingStatusBadge } from './encoding-status-badge';
 import {
   useUploadContentVideo,
@@ -245,7 +246,7 @@ export function VideoUpload({
             />
             {encodingStatus.thumbnailUrl && (
               <NextImage
-                src={encodingStatus.thumbnailUrl}
+                src={normalizeMediaUrl(encodingStatus.thumbnailUrl)}
                 alt="Thumbnail"
                 width={320}
                 height={180}

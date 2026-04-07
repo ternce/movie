@@ -14,10 +14,10 @@ import {
   User,
   Users,
 } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 import * as React from 'react';
 
+import { ContentImage } from '@/components/content/content-image';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -245,7 +245,7 @@ export default function AccountDashboardPage() {
                 >
                   <div className="relative aspect-video overflow-hidden rounded-xl bg-mp-surface">
                     {content.thumbnailUrl ? (
-                      <Image
+                      <ContentImage
                         src={content.thumbnailUrl}
                         alt={content.title || ''}
                         fill

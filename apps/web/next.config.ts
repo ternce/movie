@@ -90,6 +90,25 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // Proxy MinIO buckets through the web app.
+  // - In production, nginx already proxies /minio/* to MinIO.
+  // - In local Docker dev (without nginx), Next.js must proxy /minio/* to reach the MinIO container.
+  async rewrites() {
+    const targetBase =
+      process.env.MINIO_INTERNAL_ENDPOINT ||
+      process.env.NEXT_PUBLIC_MINIO_URL ||
+      'http://localhost:9000';
+
+    const normalizedTarget = targetBase.replace(/\/+$/, '');
+
+    return [
+      {
+        source: '/minio/:path*',
+        destination: `${normalizedTarget}/:path*`,
+      },
+    ];
+  },
+
   // Environment variables exposed to the browser
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,

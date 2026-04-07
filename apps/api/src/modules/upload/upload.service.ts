@@ -13,7 +13,19 @@ export class UploadService {
     this.uploadDir = this.config.get<string>('UPLOAD_DIR', './uploads');
     // URLs for uploaded media must point to the API host serving /uploads,
     // not to the frontend APP_URL.
-    this.publicApiUrl = this.config.get<string>('API_URL', 'http://localhost:4000');
+
+    const configuredBaseUrl =
+      this.config.get<string>('API_URL') ||
+      this.config.get<string>('APP_URL') ||
+      'http://localhost:4000';
+
+    // Always store only the origin (scheme + host + port), never a path like /api/v1.
+    // Uploaded assets are served from /uploads at the server root.
+    try {
+      this.publicApiUrl = new URL(configuredBaseUrl).origin;
+    } catch {
+      this.publicApiUrl = configuredBaseUrl.replace(/\/+$/, '');
+    }
     // Ensure upload directories exist
     for (const sub of ['images', 'videos']) {
       const dir = path.join(this.uploadDir, sub);

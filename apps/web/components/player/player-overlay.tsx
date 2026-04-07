@@ -3,6 +3,7 @@
 import { Play, Pause, ArrowCounterClockwise, WarningCircle } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
 
+import { normalizeMediaUrl } from '@/lib/media-url';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/player.store';
 
@@ -186,7 +187,11 @@ export function PlayerNextEpisode({
     <div className="absolute bottom-24 right-6 max-w-xs bg-mp-surface/95 backdrop-blur-sm border border-mp-border rounded-xl overflow-hidden shadow-xl">
       {thumbnailUrl && (
         <div className="relative aspect-video bg-mp-surface-2">
-          <img src={thumbnailUrl} alt={title} className="w-full h-full object-cover" />
+        <img
+          src={thumbnailUrl ? normalizeMediaUrl(thumbnailUrl) : thumbnailUrl}
+          alt={title}
+          className="w-full h-full object-cover"
+        />
         </div>
       )}
       <div className="p-4">

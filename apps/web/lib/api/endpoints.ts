@@ -84,6 +84,14 @@ export const endpoints = {
     search: '/content/search',
   },
 
+  // Comments
+  comments: {
+    list: (contentId: string) => `/content/${contentId}/comments`,
+    create: (contentId: string) => `/content/${contentId}/comments`,
+    delete: (contentId: string, commentId: string) =>
+      `/content/${contentId}/comments/${commentId}`,
+  },
+
   // Series
   series: {
     list: '/series',

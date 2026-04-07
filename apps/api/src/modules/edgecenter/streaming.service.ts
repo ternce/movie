@@ -43,12 +43,26 @@ export class StreamingService {
     contentId: string,
     context?: ContentAccessContext,
   ): Promise<StreamUrlResponseDto> {
+    return this.getStreamUrlInternal(contentId, context, new Set());
+  }
+
+  private async getStreamUrlInternal(
+    contentId: string,
+    context: ContentAccessContext | undefined,
+    visited: Set<string>,
+  ): Promise<StreamUrlResponseDto> {
+    if (visited.has(contentId)) {
+      throw new NotFoundException('Не удалось определить источник видео (циклическая ссылка)');
+    }
+    visited.add(contentId);
+
     // Get content with video files — support both UUID and slug lookup
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(contentId);
     const content = await this.prisma.content.findUnique({
       where: isUuid ? { id: contentId } : { slug: contentId },
       include: {
         videoFiles: true, // Get ALL video files to check encoding status
+        series: true, // Needed for series/episode fallback
       },
     });
 
@@ -86,6 +100,56 @@ export class StreamingService {
           );
         }
       }
+
+      // Fallbacks for series/tutorial structures:
+      // - If an episode has no video but its parent/root has one, stream the parent.
+      // - If a root has no video but a published episode has one, stream that episode.
+      if (content.series?.parentSeriesId) {
+        const parentSeries = await this.prisma.series.findUnique({
+          where: { id: content.series.parentSeriesId },
+          include: {
+            content: {
+              select: { id: true },
+            },
+          },
+        });
+
+        if (parentSeries?.content?.id) {
+          return this.getStreamUrlInternal(parentSeries.content.id, context, visited);
+        }
+      }
+
+      if (content.series && !content.series.parentSeriesId) {
+        const children = await this.prisma.series.findMany({
+          where: { parentSeriesId: content.series.id },
+          orderBy: [{ seasonNumber: 'asc' }, { episodeNumber: 'asc' }],
+          include: {
+            content: {
+              select: {
+                id: true,
+                status: true,
+                edgecenterVideoId: true,
+                videoFiles: {
+                  select: { encodingStatus: true },
+                },
+              },
+            },
+          },
+          take: 50,
+        });
+
+        const publishedChildren = children.filter((c) => c.content.status === 'PUBLISHED');
+        const childWithCompleted = publishedChildren.find(
+          (c) =>
+            !!c.content.edgecenterVideoId ||
+            c.content.videoFiles.some((vf) => vf.encodingStatus === 'COMPLETED'),
+        );
+
+        if (childWithCompleted?.content?.id) {
+          return this.getStreamUrlInternal(childWithCompleted.content.id, context, visited);
+        }
+      }
+
       throw new NotFoundException(`У контента нет загруженного видео`);
     }
 

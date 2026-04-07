@@ -86,6 +86,7 @@ model User {
   newsletterPrefs    NewsletterPreferences?
   documentAcceptances DocumentAcceptance[]
   genrePreferences    UserGenrePreference[]
+  comments            Comment[]
 
   // Admin relations
   reviewedVerifications UserVerification[] @relation("ReviewedVerifications")
@@ -207,6 +208,7 @@ model Content {
   playlistItems   PlaylistItem[]
   subscriptionPlans SubscriptionPlan[]
   subscriptionAccess SubscriptionAccess[]
+  comments        Comment[]
 
   @@index([slug])
   @@index([contentType])
@@ -220,6 +222,26 @@ model Content {
   @@index([status, publishedAt, ageCategory])
   @@index([isFree, status, ageCategory])
   @@map("content")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  contentId String   @map("content_id")
+  userId    String   @map("user_id")
+  parentId  String?  @map("parent_id")
+  text      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies Comment[] @relation("CommentReplies")
+
+  @@index([contentId, createdAt])
+  @@index([userId])
+  @@index([parentId])
+  @@map("comments")
 }
 
 model Series {

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { normalizeMediaUrl } from '@/lib/media-url';
 import { endpoints, getAuthToken } from '@/lib/api-client';
 
 interface ImageUploadProps {
@@ -123,7 +124,7 @@ export function ImageUpload({
       {value ? (
         <div className="relative rounded-lg border border-mp-border overflow-hidden">
           <NextImage
-            src={value}
+            src={normalizeMediaUrl(value)}
             alt="Preview"
             width={400}
             height={160}

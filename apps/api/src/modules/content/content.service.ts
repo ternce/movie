@@ -115,6 +115,11 @@ export class ContentService {
             publishedAt: true,
             viewCount: true,
             duration: true,
+            series: {
+              select: {
+                id: true,
+              },
+            },
             category: {
               select: {
                 id: true,
@@ -148,10 +153,62 @@ export class ContentService {
         }),
       ]);
 
+      // Compute season/episode counts for root series/tutorial items shown in listings.
+      // Root content has a Series row with parentSeriesId=null; episodes reference it via parentSeriesId.
+      const rootSeriesIds = Array.from(
+        new Set(
+          items
+            .map((item: any) => item.series?.id)
+            .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0),
+        ),
+      );
+
+      const episodeCountBySeriesId = new Map<string, number>();
+      const seasonCountBySeriesId = new Map<string, number>();
+
+      if (rootSeriesIds.length > 0) {
+        const [episodeCounts, seasonGroups] = await Promise.all([
+          this.prisma.series.groupBy({
+            by: ['parentSeriesId'],
+            where: { parentSeriesId: { in: rootSeriesIds } },
+            _count: { _all: true },
+          }),
+          this.prisma.series.groupBy({
+            by: ['parentSeriesId', 'seasonNumber'],
+            where: { parentSeriesId: { in: rootSeriesIds } },
+          }),
+        ]);
+
+        for (const row of episodeCounts) {
+          if (row.parentSeriesId) {
+            episodeCountBySeriesId.set(row.parentSeriesId, row._count._all);
+          }
+        }
+
+        for (const row of seasonGroups) {
+          if (row.parentSeriesId) {
+            seasonCountBySeriesId.set(
+              row.parentSeriesId,
+              (seasonCountBySeriesId.get(row.parentSeriesId) ?? 0) + 1,
+            );
+          }
+        }
+      }
+
       const totalPages = Math.ceil(total / limit);
 
       return {
-        items: items.map((item) => this.mapContentToDto(item)),
+        items: items.map((item: any) => {
+          const dto = this.mapContentToDto(item);
+          const seriesId = item.series?.id as string | undefined;
+          if (!seriesId) return dto;
+
+          return {
+            ...dto,
+            seasonCount: seasonCountBySeriesId.get(seriesId) ?? 0,
+            episodeCount: episodeCountBySeriesId.get(seriesId) ?? 0,
+          };
+        }),
         meta: {
           page,
           limit,

@@ -66,8 +66,8 @@ export default function AdminContentNewPage() {
         individualPrice: individualPrice ? Number(individualPrice) : undefined,
       },
       {
-        onSuccess: () => {
-          router.push('/admin/content');
+        onSuccess: (data) => {
+          router.push(`/admin/content/${data.id}`);
         },
       }
     );

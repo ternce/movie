@@ -19,6 +19,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { BonusesModule } from './modules/bonuses/bonuses.module';
 import { EdgeCenterModule } from './modules/edgecenter/edgecenter.module';
 import { ContentModule } from './modules/content/content.module';
+import { CommentsModule } from './modules/comments/comments.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { GenresModule } from './modules/genres/genres.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -92,6 +93,7 @@ import { UsersModule } from './modules/users/users.module';
     AuthModule,
     UsersModule,
     ContentModule,
+    CommentsModule,
     EdgeCenterModule,
     SubscriptionsModule,
     PaymentsModule,

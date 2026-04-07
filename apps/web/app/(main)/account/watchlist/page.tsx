@@ -8,10 +8,10 @@ import {
   ListBullets,
   Trash,
 } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 import * as React from 'react';
 
+import { ContentImage } from '@/components/content/content-image';
 import { AgeBadge, Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -297,7 +297,7 @@ export default function WatchlistPage() {
                     <Link href={linkPath}>
                       <div className="relative aspect-video overflow-hidden rounded-xl bg-mp-surface">
                         {content.thumbnailUrl ? (
-                          <Image
+                          <ContentImage
                             src={content.thumbnailUrl}
                             alt={content.title || 'Контент'}
                             fill
@@ -365,7 +365,7 @@ export default function WatchlistPage() {
                       <Link href={linkPath} className="shrink-0">
                         <div className="relative h-20 w-36 overflow-hidden rounded-lg bg-mp-surface sm:h-24 sm:w-40">
                           {content.thumbnailUrl ? (
-                            <Image
+                            <ContentImage
                               src={content.thumbnailUrl}
                               alt={content.title || 'Контент'}
                               fill

@@ -2,11 +2,11 @@
 
 import * as React from 'react';
 import { BookOpen, Play, Clock, CheckCircle, User, CaretRight } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
 import { AgeBadge } from '@/components/content/age-badge';
+import { ContentImage } from '@/components/content/content-image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
@@ -59,7 +59,7 @@ export default function TutorialDetailPage() {
       {/* Hero section */}
       <div className="relative rounded-2xl overflow-hidden bg-mp-surface-2 mb-8">
         <div className="relative aspect-[21/9] sm:aspect-[3/1]">
-          <Image
+          <ContentImage
             src={tutorial.thumbnailUrl || '/images/movie-placeholder.jpg'}
             alt={tutorial.title}
             fill

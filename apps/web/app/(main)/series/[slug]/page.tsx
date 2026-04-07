@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Play, Plus, ShareNetwork, Calendar } from '@phosphor-icons/react';
@@ -13,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ContentGrid } from '@/components/ui/grid';
 import {
   AgeBadge,
+  ContentImage,
   EpisodeCard,
   VideoCardSkeletonGrid,
   type AgeCategory,
@@ -137,13 +137,14 @@ export default function SeriesDetailPage() {
     <div>
       {/* Hero banner */}
       <div className="relative h-[400px] md:h-[500px]">
-        <Image
+        <ContentImage
           src={series.bannerUrl}
           alt={series.title}
           fill
           className="object-cover"
           priority
           unoptimized={series.bannerUrl.startsWith('http')}
+          sizes="100vw"
         />
 
         <div className="absolute inset-0 bg-gradient-to-t from-mp-bg-primary via-mp-bg-primary/60 to-transparent" />

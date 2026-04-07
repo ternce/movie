@@ -5,8 +5,20 @@ import Hls from 'hls.js';
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { cn, formatNumber } from '@/lib/utils';
+import { cn, formatNumber, formatRelativeTime } from '@/lib/utils';
+import { normalizeMediaUrl } from '@/lib/media-url';
 import { useStreamUrl } from '@/hooks/use-streaming';
+import { useContentComments, useCreateContentComment } from '@/hooks/use-comments';
+import { useIsAuthenticated, useUser } from '@/stores/auth.store';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { UserAvatar } from '@/components/ui/avatar';
 
 export interface ShortContent {
   id: string;
@@ -37,12 +49,33 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
 
     const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(content.likeCount);
+    const [isMuted, setIsMuted] = useState(true);
+    const [commentsOpen, setCommentsOpen] = useState(false);
+    const [commentText, setCommentText] = useState('');
+
+    const user = useUser();
+    const isAuthenticated = useIsAuthenticated();
+    const commentsQuery = useContentComments(content.id, commentsOpen);
+    const createComment = useCreateContentComment(content.id);
 
     useEffect(() => {
       // Reset local state when card changes
       setLiked(false);
       setLikeCount(content.likeCount);
+      setIsMuted(true);
+      setCommentsOpen(false);
+      setCommentText('');
     }, [content.id, content.likeCount]);
+
+    useEffect(() => {
+      // When card becomes inactive, ensure it's muted (prevents bleed when scrolling)
+      if (!isActive) {
+        setIsMuted(true);
+        if (videoRef.current) {
+          videoRef.current.muted = true;
+        }
+      }
+    }, [isActive]);
 
     const videoSrc = useMemo(() => {
       if (!isActive) return undefined;
@@ -139,7 +172,24 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
     };
 
     const handleComments = () => {
-      toast.message('Комментарии будут доступны позже');
+      setCommentsOpen(true);
+    };
+
+    const handleSubmitComment = async () => {
+      const text = commentText.trim();
+      if (!text) return;
+
+      if (!isAuthenticated) {
+        toast.message('Войдите, чтобы оставлять комментарии');
+        return;
+      }
+
+      try {
+        await createComment.mutateAsync({ text });
+        setCommentText('');
+      } catch {
+        // handled by global mutation error toast
+      }
     };
 
     const handleShare = async () => {
@@ -160,21 +210,49 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
       }
     };
 
+    const handleToggleMute = () => {
+      const el = videoRef.current;
+      if (!el) return;
+      const nextMuted = !el.muted;
+      el.muted = nextMuted;
+      if (!nextMuted && el.volume === 0) {
+        el.volume = 1;
+      }
+      setIsMuted(nextMuted);
+
+      // If autoplay was muted and audio is now enabled, keep playback running
+      if (!nextMuted) {
+        const playPromise = el.play();
+        if (playPromise && typeof (playPromise as Promise<void>).catch === 'function') {
+          (playPromise as Promise<void>).catch(() => {
+            // ignore
+          });
+        }
+      }
+    };
+
     return (
-      <div
-        ref={ref}
-        data-short-id={content.id}
-        className={cn(
-          'relative w-full h-full snap-start snap-always flex items-center justify-center bg-black',
-          className
-        )}
-      >
+      <>
+        <div
+          ref={ref}
+          data-short-id={content.id}
+          className={cn(
+            'relative w-full h-full snap-start snap-always flex items-center justify-center bg-black',
+            className
+          )}
+          onClick={(e) => {
+            if (!isActive) return;
+            const target = e.target as HTMLElement | null;
+            if (target?.closest('button')) return;
+            handleToggleMute();
+          }}
+        >
         {/* Video element */}
         <video
           ref={videoRef}
-          poster={content.thumbnailUrl}
+          poster={normalizeMediaUrl(content.thumbnailUrl)}
           loop
-          muted
+          muted={isMuted}
           playsInline
           autoPlay={isActive}
           className="absolute inset-0 w-full h-full object-cover"
@@ -249,7 +327,86 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
             </div>
           </div>
         )}
-      </div>
+        </div>
+
+        <Sheet open={commentsOpen} onOpenChange={setCommentsOpen}>
+          <SheetContent
+            side="bottom"
+            className="h-[75vh] bg-mp-surface border-mp-border text-mp-text-primary flex flex-col"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <SheetHeader>
+              <SheetTitle className="text-mp-text-primary">Комментарии</SheetTitle>
+            </SheetHeader>
+
+            <div className="mt-4 flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+              {commentsQuery.isLoading ? (
+                <div className="text-sm text-mp-text-secondary">Загрузка…</div>
+              ) : commentsQuery.isError ? (
+                <div className="text-sm text-mp-text-secondary">Не удалось загрузить комментарии</div>
+              ) : (commentsQuery.data?.items?.length ?? 0) === 0 ? (
+                <div className="text-sm text-mp-text-secondary">Пока нет комментариев</div>
+              ) : (
+                commentsQuery.data!.items.map((c) => {
+                  const name = `${c.author.firstName} ${c.author.lastName}`.trim();
+                  const avatarSrc = c.author.avatarUrl
+                    ? normalizeMediaUrl(c.author.avatarUrl)
+                    : undefined;
+
+                  return (
+                    <div key={c.id} className="flex gap-3">
+                      <UserAvatar size="sm" name={name || 'Пользователь'} src={avatarSrc} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline gap-2">
+                          <div className="text-sm font-medium text-mp-text-primary truncate">
+                            {name || 'Пользователь'}
+                          </div>
+                          <div className="text-xs text-mp-text-secondary">
+                            {formatRelativeTime(c.createdAt)}
+                          </div>
+                        </div>
+                        <div className="text-sm text-mp-text-secondary whitespace-pre-wrap break-words">
+                          {c.text}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="mt-4 border-t border-mp-border pt-4">
+              {isAuthenticated ? (
+                <div className="space-y-2">
+                  <div className="text-xs text-mp-text-secondary">
+                    Комментирует: {user ? `${user.firstName} ${user.lastName}` : 'вы'}
+                  </div>
+                  <Textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Написать комментарий…"
+                    className="bg-mp-surface-elevated border-mp-border text-mp-text-primary placeholder:text-mp-text-disabled"
+                    maxLength={2000}
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={handleSubmitComment}
+                      disabled={!commentText.trim() || createComment.isPending}
+                    >
+                      Отправить
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-mp-text-secondary">
+                  Войдите, чтобы оставить комментарий.
+                </div>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+      </>
     );
   }
 );

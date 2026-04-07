@@ -1,11 +1,11 @@
 'use client';
 
 import { Play, Heart, ChatCircle, ShareNetwork, ArrowLeft } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
 import { AgeBadge, type AgeCategory } from '@/components/content/age-badge';
+import { ContentImage } from '@/components/content/content-image';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Spinner } from '@/components/ui/spinner';
@@ -53,7 +53,7 @@ export default function ShortDetailPage() {
             className="relative block aspect-[9/16] rounded-2xl overflow-hidden bg-black group"
           >
             {short.thumbnailUrl ? (
-              <Image
+              <ContentImage
                 src={short.thumbnailUrl}
                 alt={short.title}
                 fill
@@ -155,7 +155,7 @@ export default function ShortDetailPage() {
               >
                 <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-mp-surface-2">
                   {item.thumbnailUrl ? (
-                    <Image
+                    <ContentImage
                       src={item.thumbnailUrl}
                       alt={item.title}
                       fill
