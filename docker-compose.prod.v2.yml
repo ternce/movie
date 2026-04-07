@@ -136,7 +136,7 @@ services:
       - MINIO_BUCKET_THUMBNAILS=thumbnails
       - MINIO_BUCKET_DOCUMENTS=documents
       - MINIO_BUCKET_AVATARS=avatars
-      - UPLOAD_DIR=/app/uploads
+      - UPLOAD_DIR=/app/apps/api/uploads
       - MINIO_PUBLIC_ENDPOINT=${MINIO_PUBLIC_ENDPOINT:?MINIO_PUBLIC_ENDPOINT must be set to a browser-accessible URL}
       - VIDEO_PROCESSING_CONCURRENCY=${VIDEO_PROCESSING_CONCURRENCY:-1}
       - CORS_ORIGINS=${CORS_ORIGINS}
@@ -160,7 +160,7 @@ services:
       - PORT=4000
     volumes:
       - api_video_uploads:/tmp/video-uploads
-      - api_uploads:/app/uploads
+      - api_uploads_v2:/app/apps/api/uploads
     healthcheck:
       test: ['CMD', 'node', '-e', "fetch('http://localhost:4000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -232,7 +232,7 @@ volumes:
     driver: local
   api_video_uploads:
     driver: local
-  api_uploads:
+  api_uploads_v2:
     driver: local
   mailpit_data:
     driver: local
