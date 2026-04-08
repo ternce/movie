@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
 import { VideoPlayerSkeleton } from '@/components/player';
 import { ContentImage } from '@/components/content/content-image';
-import { cn } from '@/lib/utils';
+import { cn, copyTextToClipboard } from '@/lib/utils';
 import { normalizeMediaUrl } from '@/lib/media-url';
 import { useStreamUrl } from '@/hooks/use-streaming';
 import { useContentDetail } from '@/hooks/use-content';
@@ -66,6 +66,23 @@ export default function WatchPage() {
   const isLoading = isContentLoading && isStreamLoading;
   const error = streamError;
 
+  // Record view once when the video becomes playable
+  const hasRecordedViewRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!contentId) return;
+    if (hasRecordedViewRef.current) return;
+
+    const status = (streamError as ApiError | undefined)?.status;
+    if (status === 403) return;
+
+    if (streamData?.streamUrl) {
+      hasRecordedViewRef.current = true;
+      api.get<void>(endpoints.content.recordView(contentId)).catch(() => {
+        // Non-critical
+      });
+    }
+  }, [contentId, streamData?.streamUrl, streamError]);
+
   // Save watch progress
   const handleProgress = React.useCallback(
     (time: number) => {
@@ -111,12 +128,9 @@ export default function WatchPage() {
       // fall back to clipboard
     }
 
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success('Ссылка скопирована');
-    } catch {
-      toast.error('Не удалось скопировать ссылку');
-    }
+    const ok = await copyTextToClipboard(url);
+    if (ok) toast.success('Ссылка скопирована');
+    else toast.error('Не удалось скопировать ссылку');
   }, [contentDetail?.title, streamData?.title]);
 
   const handleReport = React.useCallback(() => {

@@ -540,6 +540,7 @@ describe('endpoints', () => {
       expect(endpoints.content.detail('my-series')).toBe('/content/my-series');
       expect(endpoints.content.featured).toBe('/content/featured');
       expect(endpoints.content.search).toBe('/content/search');
+      expect(endpoints.content.recordView('content-123')).toBe('/content/content-123/view');
     });
   });
 

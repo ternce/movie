@@ -44,7 +44,7 @@ docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d
 
 echo ""
 echo "[3.1/5] Ensuring MinIO buckets exist..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm minio-setup
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm -T minio-setup
 
 echo ""
 echo "[3.2/5] Restarting nginx to refresh upstream DNS..."

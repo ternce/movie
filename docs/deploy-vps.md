@@ -226,6 +226,74 @@ Seed создаёт пользователей:
 
 Используйте это только для теста на VPS. Для реального продакшена — создайте свои учётки и смените пароли.
 
+### Перенос данных из первой версии (v1 → v2)
+
+Да, можно забрать данные со старого проекта. Самый безопасный вариант — **скопировать базу** (и при необходимости файлы MinIO) в новый стек. Старый стек при этом можно не трогать.
+
+#### Вариант A (рекомендовано): клонировать PostgreSQL из v1 в v2
+
+1) На всякий случай остановите API нового стека (v2), чтобы он не писал в БД во время восстановления:
+
+```bash
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production stop api web nginx
+```
+
+2) Скопируйте БД из v1 в v2 одной командой (дамп → restore по пайпу):
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production exec -T postgres \
+   pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc --no-owner --no-privileges \
+| docker compose -f docker-compose.prod.v2.yml --env-file .env.production exec -T postgres \
+   pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner --no-privileges
+```
+
+3) После восстановления примените миграции новой версии (v2), если они есть:
+
+```bash
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production up -d
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production exec -T api \
+   npx prisma migrate deploy --schema=prisma/schema.prisma
+```
+
+Это перенесёт пользователей/пароли (bcrypt-хеши) и данные приложения, поэтому логины из v1 начнут работать в v2.
+
+Важно: команда выше **перезапишет данные** в v2 базе (используется `--clean`).
+
+#### Вариант B (опционально): перенести файлы MinIO (видео/превью/аватары)
+
+Если вы хотите, чтобы в v2 были доступны уже загруженные файлы, нужно перенести данные MinIO.
+
+1) Узнайте имена docker-volume’ов MinIO (обычно что-то вроде `movieplatform_minio_data` и `movieplatform-v2_minio_data`):
+
+```bash
+docker volume ls | grep -i minio_data
+```
+
+2) Для консистентности остановите оба MinIO на время копирования (короткая пауза):
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production stop minio
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production stop minio
+```
+
+3) Скопируйте данные из volume v1 в volume v2 (замените имена volume’ов на ваши):
+
+```bash
+docker run --rm \
+   -v movieplatform_minio_data:/from \
+   -v movieplatform-v2_minio_data:/to \
+   alpine sh -lc 'cd /from; cp -a . /to'
+```
+
+4) Запустите MinIO обратно:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d minio
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production up -d minio
+```
+
+Если не уверены, нужны ли файлы — начните с переноса PostgreSQL (Вариант A): чаще всего это решает проблему с логином и данными.
+
 Быстрая проверка на сервере, что порт слушается:
 
 ```bash
@@ -255,8 +323,50 @@ docker compose -f docker-compose.prod.v2.yml --env-file .env.production restart 
 Починка на VPS (для v2-стека):
 
 ```bash
-docker compose -f docker-compose.prod.v2.yml --env-file .env.production run --rm minio-setup
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production run --rm -T minio-setup
 ```
+
+Если команда внезапно просит `Enter Access Key/Enter Secret Key`, значит у вас на VPS запущен старый compose (без проброса переменных в `minio-setup`) или не подхватился `.env.production`.
+
+### Если в браузере видео запрашивается как `http://localhost:9000/...`
+
+Если при просмотре (например, Shorts) в DevTools видно запросы вида:
+
+- `http://localhost:9000/videos/<contentId>/master.m3u8`
+
+то это означает, что ссылки на файлы **уже сохранены в базе** (колонки `video_files.file_url`, `content.thumbnail_url`, `content.preview_url`) с dev-адресом.
+
+1) Сначала убедитесь, что в `.env.production` (v2) стоит правильный публичный MinIO endpoint (через nginx v2):
+
+- `MINIO_PUBLIC_ENDPOINT=http://89.108.66.37:8080/minio`
+
+2) Пересоздайте `api` (чтобы он работал с новым endpoint для новых загрузок):
+
+```bash
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production up -d api
+```
+
+3) Исправьте уже сохранённые ссылки в Postgres (замените IP/порт на свои):
+
+```bash
+docker compose -f docker-compose.prod.v2.yml --env-file .env.production exec -T postgres sh -lc '
+   psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<"SQL"
+UPDATE video_files
+SET file_url = replace(file_url, "http://localhost:9000", "http://89.108.66.37:8080/minio")
+WHERE file_url LIKE "http://localhost:9000/%";
+
+UPDATE content
+SET thumbnail_url = replace(thumbnail_url, "http://localhost:9000", "http://89.108.66.37:8080/minio")
+WHERE thumbnail_url LIKE "http://localhost:9000/%";
+
+UPDATE content
+SET preview_url = replace(preview_url, "http://localhost:9000", "http://89.108.66.37:8080/minio")
+WHERE preview_url LIKE "http://localhost:9000/%";
+SQL
+'
+```
+
+После этого перезайдите на страницу и обновите кэш (Ctrl+F5).
 
 Проверка, что бакеты появились:
 

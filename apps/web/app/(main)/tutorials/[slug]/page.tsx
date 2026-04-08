@@ -30,6 +30,7 @@ export default function TutorialDetailPage() {
   const totalCount = lessons.length;
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const nextLesson = lessons.find((l) => !l.isCompleted);
+  const ctaLesson = nextLesson ?? lessons[0];
 
   if (isLoading) {
     return (
@@ -123,12 +124,19 @@ export default function TutorialDetailPage() {
 
       {/* CTA */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
-        <Button variant="gradient" size="lg" asChild>
-          <Link href={nextLesson ? `/watch/${nextLesson.id}` : '#'}>
+        {ctaLesson ? (
+          <Button variant="gradient" size="lg" asChild>
+            <Link href={`/watch/${ctaLesson.id}`}>
+              <Play className="w-5 h-5" />
+              {completedCount > 0 ? 'Продолжить обучение' : 'Начать обучение'}
+            </Link>
+          </Button>
+        ) : (
+          <Button variant="gradient" size="lg" disabled>
             <Play className="w-5 h-5" />
-            {completedCount > 0 ? 'Продолжить обучение' : 'Начать обучение'}
-          </Link>
-        </Button>
+            Начать обучение
+          </Button>
+        )}
         {nextLesson && (
           <p className="text-sm text-mp-text-secondary">
             Следующий: Урок {nextLesson.number} — {nextLesson.title}

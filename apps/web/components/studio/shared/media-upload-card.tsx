@@ -1,10 +1,16 @@
 'use client';
 
+import { ArrowSquareOut, Copy } from '@phosphor-icons/react';
+import Link from 'next/link';
+import * as React from 'react';
 import { Controller, type UseFormReturn } from 'react-hook-form';
+import { toast } from 'sonner';
 
 import { ImageUpload } from '@/components/admin/content/image-upload';
 import { VideoUpload } from '@/components/admin/content/video-upload';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { copyTextToClipboard } from '@/lib/utils';
 
 // ============ Types ============
 
@@ -24,6 +30,22 @@ export function MediaUploadCard({
   disabled = false,
 }: MediaUploadCardProps) {
   const { control } = form;
+
+  const watchPath = contentId ? `/watch/${contentId}` : '';
+  const [origin, setOrigin] = React.useState<string>('');
+
+  React.useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  const watchUrl = origin && watchPath ? `${origin}${watchPath}` : watchPath;
+
+  const handleCopyWatchUrl = React.useCallback(async () => {
+    if (!watchUrl) return;
+    const ok = await copyTextToClipboard(watchUrl);
+    if (ok) toast.success('Ссылка скопирована');
+    else toast.error('Не удалось скопировать ссылку');
+  }, [watchUrl]);
 
   return (
     <div className="space-y-6">
@@ -80,6 +102,30 @@ export function MediaUploadCard({
             </p>
           </CardHeader>
           <CardContent>
+            {watchPath && (
+              <div className="mb-4 flex flex-col gap-2 rounded-lg border border-[#272b38] bg-[#10131c]/30 p-3">
+                <p className="text-sm font-medium text-[#f5f7ff]">Ссылка на видео</p>
+                <p className="text-xs text-[#9ca2bc] break-all">{watchUrl}</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" asChild disabled={disabled} leftIcon={<ArrowSquareOut />}
+                  >
+                    <Link href={watchPath} target="_blank" rel="noopener noreferrer">
+                      Открыть
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyWatchUrl}
+                    disabled={disabled || !watchUrl}
+                    leftIcon={<Copy />}
+                    type="button"
+                  >
+                    Скопировать
+                  </Button>
+                </div>
+              </div>
+            )}
             <VideoUpload
               contentId={contentId}
               label="Основное видео"

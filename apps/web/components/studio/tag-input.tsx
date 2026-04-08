@@ -42,6 +42,8 @@ export function TagInput({
   const [query, setQuery] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
 
+  const SUGGESTIONS_LIMIT = 12;
+
   const maxReached = maxTags !== undefined && value.length >= maxTags;
 
   const selectedTags = React.useMemo(
@@ -51,11 +53,15 @@ export function TagInput({
 
   const filteredSuggestions = React.useMemo(() => {
     const selectedSet = new Set(value);
-    return availableTags.filter(
-      (tag) =>
-        !selectedSet.has(tag.id) &&
-        tag.name.toLowerCase().includes(query.toLowerCase())
-    );
+    const q = query.trim().toLowerCase();
+
+    const suggestions = availableTags.filter((tag) => {
+      if (selectedSet.has(tag.id)) return false;
+      if (q.length === 0) return true;
+      return tag.name.toLowerCase().includes(q);
+    });
+
+    return suggestions.slice(0, SUGGESTIONS_LIMIT);
   }, [availableTags, value, query]);
 
   const handleAdd = React.useCallback(
@@ -81,20 +87,14 @@ export function TagInput({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
       setQuery(val);
-      if (val.length > 0 && !maxReached) {
-        setOpen(true);
-      } else {
-        setOpen(false);
-      }
+      if (!maxReached) setOpen(true);
     },
     [maxReached]
   );
 
   const handleInputFocus = React.useCallback(() => {
-    if (query.length > 0 && !maxReached) {
-      setOpen(true);
-    }
-  }, [query, maxReached]);
+    if (!maxReached) setOpen(true);
+  }, [maxReached]);
 
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {

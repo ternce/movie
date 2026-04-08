@@ -82,6 +82,7 @@ export const endpoints = {
     detail: (slug: string) => `/content/${slug}`,
     featured: '/content/featured',
     search: '/content/search',
+    recordView: (contentId: string) => `/content/${contentId}/view`,
   },
 
   // Comments

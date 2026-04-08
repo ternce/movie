@@ -481,7 +481,10 @@ export class ContentService {
    */
   async getTags() {
     return this.prisma.tag.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: [
+        { content: { _count: 'desc' } },
+        { name: 'asc' },
+      ],
     });
   }
 
