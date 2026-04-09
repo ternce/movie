@@ -23,12 +23,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageUpload } from '@/components/admin/content/image-upload';
 import { VideoUpload } from '@/components/admin/content/video-upload';
+import { TagInput } from '@/components/studio/tag-input';
 import {
   useAdminContentDetail,
   useUpdateContent,
   AGE_CATEGORY_FROM_BACKEND,
 } from '@/hooks/use-admin-content';
-import { useContentCategories } from '@/hooks/use-studio-data';
+import { useContentCategories, useContentTags } from '@/hooks/use-studio-data';
 
 /**
  * Admin content edit page
@@ -41,6 +42,7 @@ export default function AdminContentEditPage() {
   const { data: content, isLoading } = useAdminContentDetail(contentId);
   const updateContent = useUpdateContent();
   const { flat: categories } = useContentCategories();
+  const { data: availableTags } = useContentTags();
 
   // Form state
   const [title, setTitle] = React.useState('');
@@ -54,6 +56,7 @@ export default function AdminContentEditPage() {
   const [isFree, setIsFree] = React.useState(false);
   const [individualPrice, setIndividualPrice] = React.useState('');
   const [status, setStatus] = React.useState('');
+  const [tagIds, setTagIds] = React.useState<string[]>([]);
 
   // Populate form when data loads
   React.useEffect(() => {
@@ -74,6 +77,9 @@ export default function AdminContentEditPage() {
       const price = (c as { individualPrice?: number }).individualPrice;
       setIndividualPrice(price != null ? String(price) : '');
       setStatus((c as { status?: string }).status || '');
+
+      const tags = (c as { tags?: Array<{ id: string }> }).tags;
+      setTagIds(Array.isArray(tags) ? tags.map((t) => t.id).filter(Boolean) : []);
     }
   }, [content]);
 
@@ -92,6 +98,7 @@ export default function AdminContentEditPage() {
         previewUrl: previewUrl || undefined,
         isFree,
         individualPrice: individualPrice ? Number(individualPrice) : undefined,
+        tagIds,
         status: status || undefined,
       },
       {
@@ -307,6 +314,18 @@ export default function AdminContentEditPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Теги</Label>
+                  <TagInput
+                    value={tagIds}
+                    onChange={setTagIds}
+                    availableTags={availableTags ?? []}
+                    placeholder="Добавить тег..."
+                    disabled={updateContent.isPending}
+                    maxTags={10}
+                  />
                 </div>
               </CardContent>
             </Card>

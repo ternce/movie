@@ -369,16 +369,46 @@ export function usePlayer({
   // Fullscreen handlers
   const enterFullscreen = useCallback(async () => {
     const video = videoRef.current;
-    const container = video?.closest('[data-player-container]') as HTMLElement;
-    if (!container) return;
+    const container = video?.closest('[data-player-container]') as HTMLElement | null;
+    if (!video) return;
+
+    const tryEnterContainerFullscreen = async (): Promise<boolean> => {
+      if (!container) return false;
+      try {
+        if (container.requestFullscreen) {
+          await container.requestFullscreen();
+          return true;
+        }
+        const webkitRequestFullscreen = (container as unknown as { webkitRequestFullscreen?: () => Promise<void> })
+          .webkitRequestFullscreen;
+        if (webkitRequestFullscreen) {
+          await webkitRequestFullscreen.call(container);
+          return true;
+        }
+      } catch {
+        return false;
+      }
+      return false;
+    };
+
+    const tryEnterVideoFullscreen = (): boolean => {
+      const webkitEnterFullscreen = (video as unknown as { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen;
+      if (webkitEnterFullscreen) {
+        try {
+          webkitEnterFullscreen.call(video);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    };
 
     try {
-      if (container.requestFullscreen) {
-        await container.requestFullscreen();
-      } else if ((container as unknown as { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen) {
-        await (container as unknown as { webkitRequestFullscreen: () => Promise<void> }).webkitRequestFullscreen();
+      const didEnter = (await tryEnterContainerFullscreen()) || tryEnterVideoFullscreen();
+      if (didEnter) {
+        setFullscreen(true);
       }
-      setFullscreen(true);
     } catch {
       // Fullscreen not supported or denied
     }
@@ -390,6 +420,12 @@ export function usePlayer({
         await document.exitFullscreen();
       } else if ((document as unknown as { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen) {
         await (document as unknown as { webkitExitFullscreen: () => Promise<void> }).webkitExitFullscreen();
+      } else {
+        const video = videoRef.current;
+        const webkitExitFullscreen = (video as unknown as { webkitExitFullscreen?: () => void })?.webkitExitFullscreen;
+        if (video && webkitExitFullscreen) {
+          webkitExitFullscreen.call(video);
+        }
       }
       setFullscreen(false);
     } catch {
@@ -431,16 +467,25 @@ export function usePlayer({
 
   // Fullscreen change listener
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setFullscreen(!!document.fullscreenElement);
-    };
+    const handleFullscreenChange = () => setFullscreen(!!document.fullscreenElement);
+
+    const video = videoRef.current;
+    const handleWebkitBeginFullscreen = () => setFullscreen(true);
+    const handleWebkitEndFullscreen = () => setFullscreen(false);
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
 
+    // iOS Safari uses video-specific events (document.fullscreenElement won't change)
+    video?.addEventListener('webkitbeginfullscreen', handleWebkitBeginFullscreen as EventListener);
+    video?.addEventListener('webkitendfullscreen', handleWebkitEndFullscreen as EventListener);
+
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+      video?.removeEventListener('webkitbeginfullscreen', handleWebkitBeginFullscreen as EventListener);
+      video?.removeEventListener('webkitendfullscreen', handleWebkitEndFullscreen as EventListener);
     };
   }, [setFullscreen]);
 

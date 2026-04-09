@@ -62,7 +62,8 @@ export default function TutorialsPage() {
       slug: item.slug,
       title: item.title,
       thumbnailUrl: item.thumbnailUrl || '/images/movie-placeholder.jpg',
-      lessonCount: item.lessonCount || 0,
+      // Backend exposes SERIES/TUTORIAL structure counts as episodeCount
+      lessonCount: (item.lessonCount ?? item.episodeCount) || 0,
       completedLessons: item.completedLessons || 0,
       ageCategory: normalizeAgeCategory(item.ageCategory || '0+'),
       category: typeof item.category === 'object' && item.category !== null ? item.category.name : item.category,
@@ -189,17 +190,19 @@ export default function TutorialsPage() {
         </div>
       </div>
 
-      {/* Mobile: Sheet overlay */}
-      <Sheet open={showFilters} onOpenChange={setShowFilters}>
-        <SheetContent side="left" className="w-80 md:hidden">
-          <SheetHeader>
-            <SheetTitle>Фильтры</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4">
-            {filterContent}
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Mobile: Sheet overlay (do not mount on desktop to avoid invisible overlays blocking clicks) */}
+      <div className="md:hidden">
+        <Sheet open={showFilters} onOpenChange={setShowFilters}>
+          <SheetContent side="left" className="w-80">
+            <SheetHeader>
+              <SheetTitle>Фильтры</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4">
+              {filterContent}
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
 
       <div className="flex gap-6">
         {/* Desktop: inline aside */}

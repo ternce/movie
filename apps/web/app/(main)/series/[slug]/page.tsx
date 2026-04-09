@@ -19,7 +19,7 @@ import {
   type EpisodeContent,
 } from '@/components/content';
 import { RatingBadge } from '@/components/ui/rating-badge';
-import { cn } from '@/lib/utils';
+import { cn, copyTextToClipboard } from '@/lib/utils';
 import { useSeriesDetail } from '@/hooks/use-content';
 import { useAddToWatchlist } from '@/hooks/use-account';
 
@@ -98,12 +98,9 @@ export default function SeriesDetailPage() {
       // fall back to clipboard
     }
 
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success('Ссылка скопирована');
-    } catch {
-      toast.error('Не удалось скопировать ссылку');
-    }
+    const ok = await copyTextToClipboard(url);
+    if (ok) toast.success('Ссылка скопирована');
+    else toast.error('Не удалось скопировать ссылку');
   }, [series?.title]);
 
   if (isLoading) {

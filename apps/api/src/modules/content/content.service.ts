@@ -115,6 +115,11 @@ export class ContentService {
             publishedAt: true,
             viewCount: true,
             duration: true,
+            _count: {
+              select: {
+                comments: true,
+              },
+            },
             series: {
               select: {
                 id: true,
@@ -267,6 +272,11 @@ export class ContentService {
         ageCategory: { in: allowedCategories },
       },
       include: {
+        _count: {
+          select: {
+            comments: true,
+          },
+        },
         category: {
           select: {
             id: true,
@@ -330,6 +340,11 @@ export class ContentService {
         ageCategory: { in: allowedCategories },
       },
       include: {
+        _count: {
+          select: {
+            comments: true,
+          },
+        },
         category: {
           select: {
             id: true,
@@ -404,6 +419,11 @@ export class ContentService {
           { publishedAt: 'desc' },
         ],
         include: {
+          _count: {
+            select: {
+              comments: true,
+            },
+          },
           category: {
             select: {
               id: true,
@@ -539,6 +559,7 @@ export class ContentService {
       category: content.category,
       tags: content.tags.map((ct: any) => ct.tag),
       genres: content.genres.map((cg: any) => cg.genre),
+      commentCount: typeof content?._count?.comments === 'number' ? content._count.comments : undefined,
     };
   }
 

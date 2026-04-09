@@ -13,8 +13,13 @@ import { Container } from '@/components/ui/container';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Spinner } from '@/components/ui/spinner';
 import { useTutorialDetail, type TutorialLesson } from '@/hooks/use-content';
-import { cn, formatDuration } from '@/lib/utils';
+import { cn, formatDuration, formatRelativeTime } from '@/lib/utils';
 import type { AgeCategory } from '@/components/content';
+import { useContentComments, useCreateContentComment } from '@/hooks/use-comments';
+import { useIsAuthenticated, useUser } from '@/stores/auth.store';
+import { Textarea } from '@/components/ui/textarea';
+import { UserAvatar } from '@/components/ui/avatar';
+import { toast } from 'sonner';
 
 type TabValue = 'lessons' | 'about' | 'reviews';
 
@@ -24,6 +29,13 @@ export default function TutorialDetailPage() {
   const [activeTab, setActiveTab] = React.useState<TabValue>('lessons');
 
   const { data: tutorial, isLoading } = useTutorialDetail(slug);
+
+  const isAuthenticated = useIsAuthenticated();
+  const user = useUser();
+  const reviewsEnabled = !!tutorial?.id && activeTab === 'reviews';
+  const reviewsQuery = useContentComments(tutorial?.id ?? '', reviewsEnabled);
+  const createReview = useCreateContentComment(tutorial?.id ?? '');
+  const [reviewText, setReviewText] = React.useState('');
 
   const lessons: TutorialLesson[] = tutorial?.lessons ?? [];
   const completedCount = lessons.filter((l) => l.isCompleted).length;
@@ -238,10 +250,84 @@ export default function TutorialDetailPage() {
       )}
 
       {activeTab === 'reviews' && (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-mp-text-secondary">
-            Отзывы пока отсутствуют
-          </p>
+        <div className="space-y-6">
+          <Card className="border-mp-border bg-mp-surface/50">
+            <CardContent className="pt-6">
+              <h3 className="text-lg font-semibold text-mp-text-primary mb-3">Отзывы</h3>
+              <p className="text-sm text-mp-text-secondary mb-4">
+                Отзывы отображаются как комментарии к курсу.
+              </p>
+
+              <div className="flex gap-3">
+                <UserAvatar
+                  size="sm"
+                  src={(user as any)?.avatarUrl ?? null}
+                  name={`${(user as any)?.firstName ?? ''} ${(user as any)?.lastName ?? ''}`.trim() || 'Гость'}
+                />
+                <div className="flex-1">
+                  <Textarea
+                    value={reviewText}
+                    onChange={(e) => setReviewText(e.target.value)}
+                    placeholder={isAuthenticated ? 'Оставьте отзыв…' : 'Войдите, чтобы оставить отзыв'}
+                    disabled={!isAuthenticated || createReview.isPending}
+                    className="min-h-[100px]"
+                  />
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      variant="gradient"
+                      disabled={!isAuthenticated || createReview.isPending || !reviewText.trim()}
+                      onClick={async () => {
+                        const text = reviewText.trim();
+                        if (!text) return;
+                        if (!isAuthenticated) {
+                          toast.message('Войдите, чтобы оставлять отзывы');
+                          return;
+                        }
+                        try {
+                          await createReview.mutateAsync({ text });
+                          setReviewText('');
+                        } catch {
+                          // handled by global mutation error toast
+                        }
+                      }}
+                    >
+                      Отправить
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {reviewsQuery.isLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner size="lg" />
+            </div>
+          ) : (reviewsQuery.data?.items?.length ?? 0) === 0 ? (
+            <div className="py-8 text-center text-mp-text-secondary">Отзывов пока нет</div>
+          ) : (
+            <div className="space-y-3">
+              {(reviewsQuery.data?.items ?? []).map((c) => {
+                const name = `${c.author.firstName} ${c.author.lastName}`.trim();
+                return (
+                  <Card key={c.id} className="border-mp-border bg-mp-surface/30">
+                    <CardContent className="pt-4">
+                      <div className="flex items-start gap-3">
+                        <UserAvatar size="sm" src={c.author.avatarUrl ?? null} name={name || 'Пользователь'} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-mp-text-primary truncate">{name || 'Пользователь'}</p>
+                            <span className="text-xs text-mp-text-disabled">{formatRelativeTime(c.createdAt)}</span>
+                          </div>
+                          <p className="text-sm text-mp-text-secondary mt-1 whitespace-pre-wrap">{c.text}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </Container>

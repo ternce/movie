@@ -5,7 +5,7 @@ import Hls from 'hls.js';
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { cn, formatNumber, formatRelativeTime } from '@/lib/utils';
+import { cn, copyTextToClipboard, formatNumber, formatRelativeTime } from '@/lib/utils';
 import { normalizeMediaUrl } from '@/lib/media-url';
 import { useStreamUrl } from '@/hooks/use-streaming';
 import { useContentComments, useCreateContentComment } from '@/hooks/use-comments';
@@ -202,12 +202,10 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
       } catch {
         // fall back to clipboard
       }
-      try {
-        await navigator.clipboard.writeText(url);
-        toast.success('Ссылка скопирована');
-      } catch {
-        toast.error('Не удалось скопировать ссылку');
-      }
+
+      const ok = await copyTextToClipboard(url);
+      if (ok) toast.success('Ссылка скопирована');
+      else toast.error('Не удалось скопировать ссылку');
     };
 
     const handleToggleMute = () => {

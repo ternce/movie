@@ -83,6 +83,38 @@ async function seedCategories() {
   console.log('✅ Content Categories seeded');
 }
 
+async function seedTags() {
+  console.log('🎯 Seeding Content Tags...');
+
+  const tags = [
+    { name: 'Новинка', slug: 'new' },
+    { name: 'Популярное', slug: 'popular' },
+    { name: 'Рекомендуем', slug: 'recommended' },
+    { name: 'Для новичков', slug: 'for-beginners' },
+    { name: 'Продвинутый уровень', slug: 'advanced' },
+    { name: 'Практика', slug: 'practice' },
+    { name: 'Теория', slug: 'theory' },
+    { name: 'Разбор кейсов', slug: 'case-studies' },
+    { name: 'Интервью', slug: 'interview' },
+    { name: 'Подборка', slug: 'collection' },
+    { name: 'Без спойлеров', slug: 'no-spoilers' },
+    { name: 'Топ недели', slug: 'top-week' },
+    { name: 'Топ месяца', slug: 'top-month' },
+    { name: 'С субтитрами', slug: 'subtitles' },
+    { name: 'Семейное', slug: 'family' },
+  ];
+
+  for (const tag of tags) {
+    await prisma.tag.upsert({
+      where: { slug: tag.slug },
+      update: { name: tag.name },
+      create: tag,
+    });
+  }
+
+  console.log('✅ Content Tags seeded');
+}
+
 async function seedProductCategories() {
   console.log('🎯 Seeding Product Categories...');
 
@@ -863,6 +895,7 @@ async function main() {
     // Phase 1: Lookup Tables (no dependencies)
     await seedPartnerLevels();
     await seedCategories();
+    await seedTags();
     await seedProductCategories();
     await seedSubscriptionPlans();
     await seedBonusRates();
