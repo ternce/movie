@@ -110,6 +110,13 @@ export class AdminStoreService {
     },
     adminId: string,
   ) {
+    if (!dto.description || dto.description.trim().length === 0) {
+      throw new BadRequestException('Описание товара обязательно');
+    }
+    if (!dto.categoryId) {
+      throw new BadRequestException('Категория товара обязательна');
+    }
+
     const slug = dto.name
       .toLowerCase()
       .replace(/[^a-zа-яё0-9]+/gi, '-')
@@ -119,8 +126,8 @@ export class AdminStoreService {
       data: {
         name: dto.name,
         slug,
-        description: dto.description || null,
-        categoryId: dto.categoryId || null,
+        description: dto.description,
+        categoryId: dto.categoryId,
         price: dto.price,
         bonusPrice: dto.bonusPrice ?? null,
         allowsPartialBonus: dto.allowsPartialBonus ?? true,
@@ -173,9 +180,10 @@ export class AdminStoreService {
     }
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.categoryId !== undefined) {
-      data.category = dto.categoryId
-        ? { connect: { id: dto.categoryId } }
-        : { disconnect: true };
+      if (!dto.categoryId) {
+        throw new BadRequestException('Нельзя убрать категорию у товара');
+      }
+      data.category = { connect: { id: dto.categoryId } };
     }
     if (dto.price !== undefined) data.price = dto.price;
     if (dto.bonusPrice !== undefined) data.bonusPrice = dto.bonusPrice;

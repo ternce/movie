@@ -26,13 +26,11 @@ import {
   AdminWithdrawalsQueryDto,
 } from '../dto/partner/admin-partner-query.dto';
 import {
-  AdminPartnerDto,
   AdminPartnerListDto,
   AdminPartnerStatsDto,
   AdminPartnerDetailDto,
 } from '../dto/partner/admin-partner.dto';
 import {
-  AdminCommissionDto,
   AdminCommissionListDto,
   RejectCommissionDto,
   BatchApproveCommissionsDto,

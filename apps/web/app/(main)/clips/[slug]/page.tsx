@@ -1,12 +1,12 @@
 'use client';
 
 import { Play, Eye, Clock, FilmStrip } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
 import { AgeBadge, type AgeCategory } from '@/components/content/age-badge';
 import { ClipCard } from '@/components/content/clip-card';
+import { ContentImage } from '@/components/content/content-image';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { ContentGrid } from '@/components/ui/grid';
@@ -57,7 +57,7 @@ export default function ClipDetailPage() {
       <div className="relative rounded-2xl overflow-hidden bg-mp-surface-2 mb-8">
         <div className="relative aspect-video">
           {clip.thumbnailUrl ? (
-            <Image
+            <ContentImage
               src={clip.thumbnailUrl}
               alt={clip.title}
               fill

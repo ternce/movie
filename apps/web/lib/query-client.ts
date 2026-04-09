@@ -109,6 +109,12 @@ export const queryKeys = {
     search: (query: string) => [...queryKeys.content.all, 'search', query] as const,
   },
 
+  // Comments
+  comments: {
+    all: ['comments'] as const,
+    list: (contentId: string) => [...queryKeys.comments.all, 'list', contentId] as const,
+  },
+
   // Series
   series: {
     all: ['series'] as const,

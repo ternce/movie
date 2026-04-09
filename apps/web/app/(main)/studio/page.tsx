@@ -16,6 +16,8 @@ import { StudioPageHeader } from '@/components/studio/studio-page-header';
 import { StudioContentCard, StudioContentCardSkeleton } from '@/components/studio/content-card';
 import { ContentFilters } from '@/components/studio/content-filters';
 import { useAdminContent, useUpdateContent } from '@/hooks/use-admin-content';
+import { api, endpoints, ApiError } from '@/lib/api-client';
+import { toast } from 'sonner';
 
 /**
  * Studio dashboard — content list with stats, filters, and grid
@@ -45,6 +47,7 @@ export default function StudioPage() {
   });
 
   const updateContent = useUpdateContent();
+  const [publishingId, setPublishingId] = React.useState<string | null>(null);
 
   const items = data?.items || [];
   const meta = (data as unknown as { meta?: { total: number; totalPages: number } })?.meta;
@@ -56,8 +59,35 @@ export default function StudioPage() {
   const draftCount = items.filter((c) => c.status === 'DRAFT').length;
   const totalViews = items.reduce((sum, c) => sum + (c.viewCount || 0), 0);
 
-  const handlePublish = (id: string) => {
-    updateContent.mutate({ id, status: 'PUBLISHED' });
+  const handlePublish = async (id: string) => {
+    setPublishingId(id);
+    try {
+      const statusResponse = await api.get<{ hasVideo: boolean; status: string }>(
+        endpoints.adminVideo.status(id),
+      );
+      const payload = (statusResponse as any)?.data || statusResponse;
+
+      if (payload?.hasVideo === false) {
+        toast.error('Нельзя опубликовать без видео. Откройте контент и загрузите основное видео.');
+        return;
+      }
+
+      if (payload?.status && payload.status !== 'COMPLETED') {
+        toast.error('Видео ещё обрабатывается. Дождитесь статуса «Готово» и повторите.');
+        return;
+      }
+
+      updateContent.mutate({ id, status: 'PUBLISHED' });
+    } catch (err) {
+      const e = err as unknown;
+      if (e instanceof ApiError) {
+        toast.error(e.message || 'Не удалось проверить статус видео');
+      } else {
+        toast.error('Не удалось проверить статус видео');
+      }
+    } finally {
+      setPublishingId(null);
+    }
   };
 
   const stats = [
@@ -145,7 +175,7 @@ export default function StudioPage() {
               key={content.id}
               content={content}
               onPublish={handlePublish}
-              isPublishing={updateContent.isPending}
+              isPublishing={publishingId === content.id || updateContent.isPending}
             />
           ))}
         </div>

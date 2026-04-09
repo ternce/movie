@@ -151,9 +151,9 @@ function StepInfo({
                   value={field.value ?? []}
                   onChange={field.onChange}
                   availableTags={availableTags}
-                  placeholder="Выберите тег..."
+                  placeholder="Добавить тег..."
                   disabled={disabled}
-                  maxTags={1}
+                  maxTags={15}
                 />
               )}
             />

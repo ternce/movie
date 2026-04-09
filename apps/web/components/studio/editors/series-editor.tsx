@@ -387,7 +387,7 @@ export function SeriesEditor({ content, contentId }: SeriesEditorProps) {
                       value={field.value ?? []}
                       onChange={field.onChange}
                       availableTags={availableTags}
-                      maxTags={1}
+                      maxTags={20}
                     />
                   )}
                 />

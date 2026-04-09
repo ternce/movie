@@ -56,8 +56,8 @@ export class AdminPartnersService {
         this.prisma.user.count({
           where: {
             OR: [
-              { partnerRelationships: { some: {} } },
-              { partnerCommissions: { some: {} } },
+              { partnerAsPartner: { some: {} } },
+              { commissions: { some: {} } },
             ],
           },
         }),
@@ -66,7 +66,7 @@ export class AdminPartnersService {
           where: {
             createdAt: { gte: startOfMonth },
             OR: [
-              { partnerRelationships: { some: {} } },
+              { partnerAsPartner: { some: {} } },
               { referredById: { not: null } },
             ],
           },
@@ -74,7 +74,7 @@ export class AdminPartnersService {
         // Active partners (those with referrals)
         this.prisma.user.count({
           where: {
-            partnerRelationships: { some: { level: 1 } },
+            partnerAsPartner: { some: { level: 1 } },
           },
         }),
         // Pending commissions total
@@ -146,7 +146,7 @@ export class AdminPartnersService {
         totalPartners: 0,
         newPartnersThisMonth: 0,
         activePartners: 0,
-        partnersByLevel: {},
+        partnersByLevel: { level1: 0, level2: 0, level3: 0, level4: 0, level5: 0 },
         totalCommissionsPaid: 0,
         pendingCommissions: 0,
         pendingCommissionCount: 0,
@@ -1006,8 +1006,8 @@ export class AdminPartnersService {
     const partners = await this.prisma.user.findMany({
       where: {
         OR: [
-          { partnerRelationships: { some: { level: 1 } } },
-          { partnerCommissions: { some: {} } },
+          { partnerAsPartner: { some: { level: 1 } } },
+          { commissions: { some: {} } },
         ],
       },
       select: { id: true },

@@ -28,7 +28,6 @@ export default function ShortsPage() {
       (page?.items ?? []).map((item) => ({
         id: item.id,
         title: item.title,
-        videoUrl: item.videoUrl || '',
         thumbnailUrl: item.thumbnailUrl || '/images/movie-placeholder.jpg',
         creator: item.creator || 'movieplatform',
         likeCount: item.likeCount || 0,

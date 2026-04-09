@@ -5,6 +5,7 @@ import { ContentType } from '@movie-platform/shared';
 
 import { ContentService } from './content.service';
 import { PrismaService } from '../../config/prisma.service';
+import { CacheService } from '../../common/cache/cache.service';
 import { ContentQueryDto } from './dto';
 import {
   contentFactory,
@@ -19,6 +20,11 @@ describe('ContentService', () => {
   let prismaService: any;
 
   beforeEach(async () => {
+    const mockCacheService = {
+      getOrSet: jest.fn(async (_key: string, factory: () => Promise<unknown>) => factory()),
+      invalidatePattern: jest.fn(async () => undefined),
+    };
+
     const mockPrismaService = {
       content: {
         count: jest.fn(),
@@ -53,6 +59,7 @@ describe('ContentService', () => {
       providers: [
         ContentService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: CacheService, useValue: mockCacheService },
       ],
     }).compile();
 

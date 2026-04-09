@@ -353,7 +353,6 @@ export class EmailService {
    * Send email change OTP code.
    */
   async sendEmailChangeCode(
-    email: string,
     firstName: string,
     newEmail: string,
     code: string,

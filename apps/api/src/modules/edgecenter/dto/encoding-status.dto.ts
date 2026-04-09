@@ -24,6 +24,13 @@ export class EncodingStatusDto {
   })
   status!: EncodingStatus;
 
+  @ApiPropertyOptional({
+    description:
+      'Whether the content currently has an uploaded video (local video files or CDN reference).',
+    example: true,
+  })
+  hasVideo?: boolean;
+
   @ApiProperty({
     description: 'Available video qualities after encoding',
     type: [String],

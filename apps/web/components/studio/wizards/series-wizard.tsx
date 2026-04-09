@@ -3,16 +3,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FilmStrip } from '@phosphor-icons/react';
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
-import { Controller } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
 import { CategorySelect } from '@/components/studio/category-select';
 import { GenreSelect } from '@/components/studio/genre-select';
 import {
   seriesFormSchema,
-  type SeriesFormValues,
   type SeasonGroup,
+  type SeriesFormValues,
 } from '@/components/studio/schemas';
 import { MediaUploadCard } from '@/components/studio/shared/media-upload-card';
 import { PublishingCard } from '@/components/studio/shared/publishing-card';
@@ -25,33 +24,36 @@ import {
 import { TagInput } from '@/components/studio/tag-input';
 import { TreeManager, type TreeGroup } from '@/components/studio/tree-manager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useUpdateContent } from '@/hooks/use-admin-content';
 import {
   useCreateSeriesContent,
   type CreateSeriesInput,
 } from '@/hooks/use-series-structure';
 import {
   useContentCategories,
-  useContentTags,
   useContentGenres,
+  useContentTags,
 } from '@/hooks/use-studio-data';
 
 // ============ Constants ============
 
 const DRAFT_KEY = 'studio-draft-series';
 
+// Note: Publishing step goes before Media so we can create a draft
+// (categoryId + ageCategory are required by the backend).
 const STEPS: WizardStep[] = [
   { id: 1, label: 'Основное' },
   { id: 2, label: 'Структура' },
-  { id: 3, label: 'Медиа' },
-  { id: 4, label: 'Публикация' },
+  { id: 3, label: 'Публикация' },
+  { id: 4, label: 'Медиа' },
 ];
 
 /** Fields to validate per step */
 const STEP_FIELDS: Record<number, Array<keyof SeriesFormValues>> = {
   1: ['title', 'description'],
   2: ['seasons'],
-  3: [],
-  4: ['categoryId', 'ageCategory'],
+  3: ['categoryId', 'ageCategory'],
+  4: [],
 };
 
 // ============ Helpers ============
@@ -96,7 +98,6 @@ function loadDraft(): SeriesFormValues | null {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SeriesFormValues;
-    // Basic sanity check
     if (parsed.title !== undefined && parsed.seasons?.length) {
       return parsed;
     }
@@ -152,6 +153,31 @@ function seasonsToTreeGroups(seasons: SeasonGroup[]): TreeGroup[] {
   }));
 }
 
+function buildCreatePayload(values: SeriesFormValues): CreateSeriesInput {
+  return {
+    title: values.title,
+    description: values.description,
+    contentType: 'SERIES',
+    categoryId: values.categoryId,
+    ageCategory: values.ageCategory,
+    thumbnailUrl: values.thumbnailUrl || undefined,
+    previewUrl: values.previewUrl || undefined,
+    isFree: values.isFree,
+    individualPrice: values.individualPrice,
+    tagIds: values.tagIds,
+    genreIds: values.genreIds,
+    seasons: values.seasons.map((s) => ({
+      title: `Сезон ${s.order}`,
+      order: s.order,
+      episodes: s.items.map((ep) => ({
+        title: ep.title,
+        description: ep.description,
+        order: ep.order,
+      })),
+    })),
+  };
+}
+
 // ============ Props ============
 
 export interface SeriesWizardProps {
@@ -162,16 +188,17 @@ export interface SeriesWizardProps {
 
 export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
   const [currentStep, setCurrentStep] = React.useState(1);
-  const createSeries = useCreateSeriesContent();
+  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
 
-  // Reference data
+  const createSeries = useCreateSeriesContent();
+  const updateContent = useUpdateContent();
+
   const { flat: categoriesFlat } = useContentCategories();
   const { data: tagsData } = useContentTags();
   const { data: genresData } = useContentGenres();
   const availableTags = tagsData ?? [];
   const availableGenres = genresData ?? [];
 
-  // Restore draft on mount
   const draft = React.useMemo(() => loadDraft(), []);
 
   const form = useForm<SeriesFormValues>({
@@ -180,7 +207,7 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
     mode: 'onTouched',
   });
 
-  const { watch, setValue, trigger, handleSubmit, formState } = form;
+  const { watch, setValue, trigger, formState } = form;
 
   // Auto-save draft on every change (debounced)
   const watchedValues = watch();
@@ -190,6 +217,7 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
     if (draftTimerRef.current) {
       clearTimeout(draftTimerRef.current);
     }
+
     draftTimerRef.current = setTimeout(() => {
       saveDraft(watchedValues);
     }, 1000);
@@ -203,10 +231,7 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
 
   // --- TreeManager sync ---
   const seasons = watch('seasons');
-  const treeGroups = React.useMemo(
-    () => seasonsToTreeGroups(seasons),
-    [seasons]
-  );
+  const treeGroups = React.useMemo(() => seasonsToTreeGroups(seasons), [seasons]);
 
   const handleGroupsChange = React.useCallback(
     (groups: TreeGroup[]) => {
@@ -221,56 +246,66 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
     const fieldsToValidate = STEP_FIELDS[currentStep];
     if (!fieldsToValidate || fieldsToValidate.length === 0) return true;
 
-    const result = await trigger(fieldsToValidate);
-    if (!result) {
+    const ok = await trigger(fieldsToValidate);
+    if (!ok) {
       toast.error('Пожалуйста, заполните обязательные поля');
+      return false;
     }
-    return result;
-  }, [currentStep, trigger]);
+
+    // Create draft when moving from Publishing -> Media
+    if (currentStep === 3 && !createdContentId) {
+      const values = form.getValues();
+      const payload = buildCreatePayload(values);
+
+      return await new Promise<boolean>((resolve) => {
+        createSeries.mutate(payload, {
+          onSuccess: (data) => {
+            setCreatedContentId(data.id);
+            toast.success('Черновик создан. Теперь загрузите основное видео');
+            resolve(true);
+          },
+          onError: () => resolve(false),
+        });
+      });
+    }
+
+    return true;
+  }, [currentStep, trigger, createdContentId, form, createSeries]);
 
   const handleBack = React.useCallback(() => {
     setCurrentStep((s) => Math.max(1, s - 1));
   }, []);
 
-  // --- Submit ---
-  const onFormSubmit = React.useCallback(
-    (values: SeriesFormValues) => {
-      const payload: CreateSeriesInput = {
+  const handleFinish = React.useCallback(() => {
+    if (!createdContentId) {
+      toast.error('Сначала создайте черновик на шаге «Публикация»');
+      return;
+    }
+
+    const values = form.getValues();
+    updateContent.mutate(
+      {
+        id: createdContentId,
         title: values.title,
         description: values.description,
-        contentType: 'SERIES',
-        categoryId: values.categoryId,
+        categoryId: values.categoryId || undefined,
         ageCategory: values.ageCategory,
         thumbnailUrl: values.thumbnailUrl || undefined,
         previewUrl: values.previewUrl || undefined,
         isFree: values.isFree,
-        individualPrice: values.individualPrice,
-        tagIds: values.tagIds,
-        genreIds: values.genreIds,
-        seasons: values.seasons.map((s) => ({
-          title: `Сезон ${s.order}`,
-          order: s.order,
-          episodes: s.items.map((ep) => ({
-            title: ep.title,
-            description: ep.description,
-            order: ep.order,
-          })),
-        })),
-      };
-
-      createSeries.mutate(payload, {
-        onSuccess: (data) => {
+        individualPrice: values.individualPrice || undefined,
+        tagIds: values.tagIds?.length ? values.tagIds : undefined,
+        genreIds: values.genreIds?.length ? values.genreIds : undefined,
+        status: values.status || 'DRAFT',
+      },
+      {
+        onSuccess: () => {
           clearDraft();
-          onSuccess?.(data.id);
+          onSuccess?.(createdContentId);
         },
-      });
-    },
-    [createSeries, onSuccess]
-  );
-
-  const handleFormSubmit = React.useCallback(() => {
-    handleSubmit(onFormSubmit)();
-  }, [handleSubmit, onFormSubmit]);
+      }
+    );
+  }, [createdContentId, form, updateContent, onSuccess]);
 
   return (
     <WizardShell
@@ -279,13 +314,12 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
       onStepChange={setCurrentStep}
       onNext={handleNext}
       onBack={handleBack}
-      onSubmit={handleFormSubmit}
-      isSubmitting={createSeries.isPending}
-      submitLabel="Создать сериал"
+      onSubmit={handleFinish}
+      isSubmitting={createSeries.isPending || updateContent.isPending}
+      submitLabel="Открыть редактор"
       submitIcon={<FilmStrip weight="bold" className="h-4 w-4" />}
       cancelHref="/studio"
     >
-      {/* Step 1: Basic info */}
       {currentStep === 1 && (
         <TitleDescriptionFields
           form={form}
@@ -293,7 +327,6 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
         />
       )}
 
-      {/* Step 2: Structure */}
       {currentStep === 2 && (
         <Card className="border-[#272b38] bg-[#10131c]/50">
           <CardHeader>
@@ -305,12 +338,18 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
             </p>
           </CardHeader>
           <CardContent>
-            <TreeManager
-              groupLabel="Сезон"
-              itemLabel="Эпизод"
-              groups={treeGroups}
-              onGroupsChange={handleGroupsChange}
-            />
+            {createdContentId ? (
+              <p className="text-sm text-[#9ca2bc]">
+                Черновик уже создан. Структуру лучше редактировать в редакторе после завершения мастера.
+              </p>
+            ) : (
+              <TreeManager
+                groupLabel="Сезон"
+                itemLabel="Эпизод"
+                groups={treeGroups}
+                onGroupsChange={handleGroupsChange}
+              />
+            )}
             {formState.errors.seasons && (
               <p className="mt-3 text-xs text-[#ff9aa8]">
                 {(formState.errors.seasons as { message?: string }).message}
@@ -320,14 +359,9 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
         </Card>
       )}
 
-      {/* Step 3: Media */}
-      {currentStep === 3 && <MediaUploadCard form={form} />}
-
-      {/* Step 4: Publishing */}
-      {currentStep === 4 && (
+      {currentStep === 3 && (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            {/* Category */}
             <Card className="border-[#272b38] bg-[#10131c]/50">
               <CardHeader>
                 <CardTitle className="text-lg text-[#f5f7ff]">
@@ -354,7 +388,6 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
               </CardContent>
             </Card>
 
-            {/* Genres */}
             <Card className="border-[#272b38] bg-[#10131c]/50">
               <CardHeader>
                 <CardTitle className="text-lg text-[#f5f7ff]">
@@ -376,7 +409,6 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
               </CardContent>
             </Card>
 
-            {/* Tags */}
             <Card className="border-[#272b38] bg-[#10131c]/50">
               <CardHeader>
                 <CardTitle className="text-lg text-[#f5f7ff]">
@@ -395,23 +427,34 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
                       value={field.value ?? []}
                       onChange={field.onChange}
                       availableTags={availableTags}
-                      placeholder="Выберите тег..."
-                      maxTags={1}
+                      maxTags={20}
                     />
                   )}
                 />
               </CardContent>
             </Card>
 
-            {/* Publishing settings */}
             <PublishingCard form={form} />
           </div>
 
-          {/* Summary sidebar */}
           <div>
             <SummaryPanel form={form} contentType="SERIES" />
           </div>
         </div>
+      )}
+
+      {currentStep === 4 && (
+        createdContentId ? (
+          <MediaUploadCard form={form} contentId={createdContentId} />
+        ) : (
+          <Card className="border-[#272b38] bg-[#10131c]/50">
+            <CardContent className="pt-6">
+              <p className="text-sm text-[#9ca2bc]">
+                Чтобы загрузить основное видео, сначала создайте черновик на шаге «Публикация» и нажмите «Далее».
+              </p>
+            </CardContent>
+          </Card>
+        )
       )}
     </WizardShell>
   );

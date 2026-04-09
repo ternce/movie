@@ -7,9 +7,25 @@ import { v4 as uuidv4 } from 'uuid';
 @Injectable()
 export class UploadService {
   private readonly uploadDir: string;
+  private readonly publicApiUrl: string;
 
   constructor(private readonly config: ConfigService) {
     this.uploadDir = this.config.get<string>('UPLOAD_DIR', './uploads');
+    // URLs for uploaded media must point to the API host serving /uploads,
+    // not to the frontend APP_URL.
+
+    const configuredBaseUrl =
+      this.config.get<string>('API_URL') ||
+      this.config.get<string>('APP_URL') ||
+      'http://localhost:4000';
+
+    // Always store only the origin (scheme + host + port), never a path like /api/v1.
+    // Uploaded assets are served from /uploads at the server root.
+    try {
+      this.publicApiUrl = new URL(configuredBaseUrl).origin;
+    } catch {
+      this.publicApiUrl = configuredBaseUrl.replace(/\/+$/, '');
+    }
     // Ensure upload directories exist
     for (const sub of ['images', 'videos']) {
       const dir = path.join(this.uploadDir, sub);
@@ -44,8 +60,7 @@ export class UploadService {
 
     fs.writeFileSync(filePath, file.buffer);
 
-    const baseUrl = this.config.get<string>('APP_URL', 'http://localhost:4000');
-    const url = `${baseUrl}/uploads/images/${filename}`;
+    const url = `${this.publicApiUrl}/uploads/images/${filename}`;
 
     return { url, filename };
   }
@@ -67,8 +82,7 @@ export class UploadService {
 
     // If file was stored to disk via diskStorage, file.path is set
     if (file.path) {
-      const baseUrl = this.config.get<string>('APP_URL', 'http://localhost:4000');
-      const url = `${baseUrl}/uploads/videos/${file.filename}`;
+      const url = `${this.publicApiUrl}/uploads/videos/${file.filename}`;
       return { url, filename: file.filename, filePath: file.path };
     }
 
@@ -86,8 +100,7 @@ export class UploadService {
 
     fs.writeFileSync(filePath, file.buffer);
 
-    const baseUrl = this.config.get<string>('APP_URL', 'http://localhost:4000');
-    const url = `${baseUrl}/uploads/videos/${filename}`;
+    const url = `${this.publicApiUrl}/uploads/videos/${filename}`;
 
     return { url, filename, filePath };
   }

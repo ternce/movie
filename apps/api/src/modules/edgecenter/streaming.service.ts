@@ -43,15 +43,26 @@ export class StreamingService {
     contentId: string,
     context?: ContentAccessContext,
   ): Promise<StreamUrlResponseDto> {
+    return this.getStreamUrlInternal(contentId, context, new Set());
+  }
+
+  private async getStreamUrlInternal(
+    contentId: string,
+    context: ContentAccessContext | undefined,
+    visited: Set<string>,
+  ): Promise<StreamUrlResponseDto> {
+    if (visited.has(contentId)) {
+      throw new NotFoundException('Не удалось определить источник видео (циклическая ссылка)');
+    }
+    visited.add(contentId);
+
     // Get content with video files — support both UUID and slug lookup
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(contentId);
     const content = await this.prisma.content.findUnique({
       where: isUuid ? { id: contentId } : { slug: contentId },
       include: {
-        videoFiles: {
-          where: { encodingStatus: 'COMPLETED' },
-          orderBy: { quality: 'desc' },
-        },
+        videoFiles: true, // Get ALL video files to check encoding status
+        series: true, // Needed for series/episode fallback
       },
     });
 
@@ -59,9 +70,87 @@ export class StreamingService {
       throw new NotFoundException(`Контент с ID ${contentId} не найден`);
     }
 
-    // Check if any video exists (local or EdgeCenter)
-    if (!content.edgecenterVideoId && content.videoFiles.length === 0) {
-      throw new NotFoundException(`У контента ${contentId} нет видео`);
+    // Check if any completed video exists (local or EdgeCenter)
+    const completedVideoFiles = content.videoFiles.filter((vf) => vf.encodingStatus === 'COMPLETED');
+    const hasCompletedVideos = !!content.edgecenterVideoId || completedVideoFiles.length > 0;
+
+    if (!hasCompletedVideos) {
+      // Provide specific error message based on status
+      if (content.videoFiles.length > 0) {
+        const processingCount = content.videoFiles.filter((vf) => vf.encodingStatus === 'PROCESSING').length;
+        const pendingCount = content.videoFiles.filter((vf) => vf.encodingStatus === 'PENDING').length;
+        const failedCount = content.videoFiles.filter((vf) => vf.encodingStatus === 'FAILED').length;
+
+        if (processingCount > 0) {
+          throw new NotFoundException(
+            `Видео ${processingCount === 1 ? 'кодируется' : `кодируется (${processingCount} файлов)`}. ` +
+            `Пожалуйста, подождите, кодирование занимает несколько минут.`,
+          );
+        }
+        if (pendingCount > 0) {
+          throw new NotFoundException(
+            `Видео ещё не готово (${pendingCount} файлов в очереди). ` +
+            `Кодирование начнётся в ближайшее время.`,
+          );
+        }
+        if (failedCount > 0) {
+          throw new NotFoundException(
+            `Кодирование видео не удалось (${failedCount} файлов). ` +
+            `Загрузите видео снова.`,
+          );
+        }
+      }
+
+      // Fallbacks for series/tutorial structures:
+      // - If an episode has no video but its parent/root has one, stream the parent.
+      // - If a root has no video but a published episode has one, stream that episode.
+      if (content.series?.parentSeriesId) {
+        const parentSeries = await this.prisma.series.findUnique({
+          where: { id: content.series.parentSeriesId },
+          include: {
+            content: {
+              select: { id: true },
+            },
+          },
+        });
+
+        if (parentSeries?.content?.id) {
+          return this.getStreamUrlInternal(parentSeries.content.id, context, visited);
+        }
+      }
+
+      if (content.series && !content.series.parentSeriesId) {
+        const children = await this.prisma.series.findMany({
+          where: { parentSeriesId: content.series.id },
+          orderBy: [{ seasonNumber: 'asc' }, { episodeNumber: 'asc' }],
+          include: {
+            content: {
+              select: {
+                id: true,
+                status: true,
+                edgecenterVideoId: true,
+                videoFiles: {
+                  select: { encodingStatus: true },
+                },
+              },
+            },
+          },
+          take: 50,
+        });
+
+        const publishedChildren = children.filter((c) => c.content.status === 'PUBLISHED');
+        const childWithCompleted = publishedChildren.find(
+          (c) =>
+            !!c.content.edgecenterVideoId ||
+            c.content.videoFiles.some((vf) => vf.encodingStatus === 'COMPLETED'),
+        );
+
+        if (childWithCompleted?.content?.id) {
+          return this.getStreamUrlInternal(childWithCompleted.content.id, context, visited);
+        }
+      }
+
+      throw new NotFoundException(`У контента нет загруженного видео`);
     }
 
     // Verify access
@@ -72,7 +161,7 @@ export class StreamingService {
 
     // Get available qualities from video files
     const availableQualities = this.mapDbQualitiesToEnum(
-      content.videoFiles.map((vf) => vf.quality),
+      completedVideoFiles.map((vf) => vf.quality),
     );
 
     // Determine max quality based on access type
@@ -84,8 +173,13 @@ export class StreamingService {
     // Set expiry time (for client-side cache management)
     const expiryTimestamp = Math.floor(Date.now() / 1000) + this.signedUrlExpiryHours * 3600;
 
+    const shouldServeLocal =
+      content.edgecenterClientId === 'local' ||
+      (!!content.edgecenterVideoId && content.edgecenterVideoId.startsWith('local:')) ||
+      (!content.edgecenterVideoId && completedVideoFiles.length > 0);
+
     // LOCAL VIDEO: Serve HLS from MinIO
-    if (content.edgecenterClientId === 'local') {
+    if (shouldServeLocal) {
       const streamUrl = this.storageService.getPublicUrl(
         'videos',
         `${content.id}/master.m3u8`,

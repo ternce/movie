@@ -387,7 +387,7 @@ export function TutorialEditor({ content, contentId }: TutorialEditorProps) {
                       value={field.value ?? []}
                       onChange={field.onChange}
                       availableTags={availableTags}
-                      maxTags={1}
+                      maxTags={20}
                     />
                   )}
                 />

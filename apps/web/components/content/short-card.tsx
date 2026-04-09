@@ -1,16 +1,14 @@
 'use client';
 
 import { Play, Heart, ChatCircle, ShareNetwork } from '@phosphor-icons/react';
-import { forwardRef } from 'react';
+import Hls from 'hls.js';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
-<<<<<<< Updated upstream
-import { cn, formatNumber } from '@/lib/utils';
-=======
 import { cn, copyTextToClipboard, formatNumber, formatRelativeTime } from '@/lib/utils';
 import { normalizeMediaUrl } from '@/lib/media-url';
 import { useStreamUrl } from '@/hooks/use-streaming';
 import { useContentComments, useCreateContentComment } from '@/hooks/use-comments';
-import { useLikeContent, useUnlikeContent } from '@/hooks/use-likes';
 import { useIsAuthenticated, useUser } from '@/stores/auth.store';
 import {
   Sheet,
@@ -21,12 +19,10 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/avatar';
->>>>>>> Stashed changes
 
 export interface ShortContent {
   id: string;
   title: string;
-  videoUrl: string;
   thumbnailUrl: string;
   creator: string;
   likeCount: number;
@@ -46,42 +42,10 @@ interface ShortCardProps {
  */
 export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
   ({ content, isActive = false, className }, ref) => {
-<<<<<<< Updated upstream
-=======
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const hlsRef = useRef<Hls | null>(null);
     const { data, isLoading, error } = useStreamUrl(isActive ? content.id : undefined);
     const streamData = (data as any)?.data ?? data;
-
-    const LIKES_STORAGE_KEY = 'mp-liked-content-ids';
-
-    const getStoredLiked = (contentId: string): boolean => {
-      if (typeof window === 'undefined') return false;
-      try {
-        const raw = localStorage.getItem(LIKES_STORAGE_KEY);
-        if (!raw) return false;
-        const ids = JSON.parse(raw) as unknown;
-        if (!Array.isArray(ids)) return false;
-        return ids.includes(contentId);
-      } catch {
-        return false;
-      }
-    };
-
-    const setStoredLiked = (contentId: string, isLiked: boolean): void => {
-      if (typeof window === 'undefined') return;
-      try {
-        const raw = localStorage.getItem(LIKES_STORAGE_KEY);
-        const parsed = raw ? (JSON.parse(raw) as unknown) : [];
-        const ids = Array.isArray(parsed) ? (parsed as string[]) : [];
-        const next = new Set(ids);
-        if (isLiked) next.add(contentId);
-        else next.delete(contentId);
-        localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(Array.from(next)));
-      } catch {
-        // ignore
-      }
-    };
 
     const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(content.likeCount);
@@ -93,23 +57,15 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
     const isAuthenticated = useIsAuthenticated();
     const commentsQuery = useContentComments(content.id, commentsOpen);
     const createComment = useCreateContentComment(content.id);
-    const likeMutation = useLikeContent(content.id);
-    const unlikeMutation = useUnlikeContent(content.id);
 
     useEffect(() => {
       // Reset local state when card changes
-      const storedLiked = getStoredLiked(content.id);
-      setLiked(storedLiked);
-
-      // For guests we keep local likes as a UI-only overlay.
-      // For authenticated users, backend likeCount already reflects the like.
-      const base = content.likeCount;
-      const nextCount = !isAuthenticated && storedLiked ? base + 1 : base;
-      setLikeCount(nextCount);
+      setLiked(false);
+      setLikeCount(content.likeCount);
       setIsMuted(true);
       setCommentsOpen(false);
       setCommentText('');
-    }, [content.id, content.likeCount, isAuthenticated]);
+    }, [content.id, content.likeCount]);
 
     useEffect(() => {
       // When card becomes inactive, ensure it's muted (prevents bleed when scrolling)
@@ -207,37 +163,12 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
       }
     }, [isActive, videoSrc]);
 
-    const handleToggleLike = async () => {
-      if (likeMutation.isPending || unlikeMutation.isPending) return;
-
-      const prevLiked = liked;
-      const prevCount = likeCount;
-      const nextLiked = !prevLiked;
-
-      // Optimistic UI
-      setLiked(nextLiked);
-      setLikeCount((c) => (nextLiked ? c + 1 : Math.max(0, c - 1)));
-
-      try {
-        // Guests: persist locally only
-        if (!isAuthenticated) {
-          setStoredLiked(content.id, nextLiked);
-          return;
-        }
-
-        const res = nextLiked
-          ? await likeMutation.mutateAsync()
-          : await unlikeMutation.mutateAsync();
-
-        // Persist locally for heart fill across reload
-        setStoredLiked(content.id, nextLiked);
-
-        if (typeof res?.likeCount === 'number') setLikeCount(res.likeCount);
-      } catch {
-        // Rollback (global mutation toast will show error)
-        setLiked(prevLiked);
-        setLikeCount(prevCount);
-      }
+    const handleToggleLike = () => {
+      setLiked((prev) => {
+        const next = !prev;
+        setLikeCount((c) => (next ? c + 1 : Math.max(0, c - 1)));
+        return next;
+      });
     };
 
     const handleComments = () => {
@@ -298,22 +229,28 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
       }
     };
 
->>>>>>> Stashed changes
     return (
-      <div
-        ref={ref}
-        data-short-id={content.id}
-        className={cn(
-          'relative w-full h-full snap-start snap-always flex items-center justify-center bg-black',
-          className
-        )}
-      >
+      <>
+        <div
+          ref={ref}
+          data-short-id={content.id}
+          className={cn(
+            'relative w-full h-full snap-start snap-always flex items-center justify-center bg-black',
+            className
+          )}
+          onClick={(e) => {
+            if (!isActive) return;
+            const target = e.target as HTMLElement | null;
+            if (target?.closest('button')) return;
+            handleToggleMute();
+          }}
+        >
         {/* Video element */}
         <video
-          src={content.videoUrl}
-          poster={content.thumbnailUrl}
+          ref={videoRef}
+          poster={normalizeMediaUrl(content.thumbnailUrl)}
           loop
-          muted
+          muted={isMuted}
           playsInline
           autoPlay={isActive}
           className="absolute inset-0 w-full h-full object-cover"
@@ -338,17 +275,19 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
             type="button"
             className="flex flex-col items-center gap-1 group"
             aria-label="Нравится"
+            onClick={handleToggleLike}
           >
             <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-colors">
-              <Heart className="w-5 h-5 text-white" />
+              <Heart className={cn('w-5 h-5 text-white', liked && 'fill-current')} />
             </div>
-            <span className="text-xs text-white/80">{formatNumber(content.likeCount)}</span>
+            <span className="text-xs text-white/80">{formatNumber(likeCount)}</span>
           </button>
 
           <button
             type="button"
             className="flex flex-col items-center gap-1 group"
             aria-label="Комментарии"
+            onClick={handleComments}
           >
             <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-colors">
               <ChatCircle className="w-5 h-5 text-white" />
@@ -360,6 +299,7 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
             type="button"
             className="flex flex-col items-center gap-1 group"
             aria-label="Поделиться"
+            onClick={handleShare}
           >
             <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-colors">
               <ShareNetwork className="w-5 h-5 text-white" />
@@ -367,6 +307,15 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
             <span className="text-xs text-white/80">{formatNumber(content.shareCount)}</span>
           </button>
         </div>
+
+        {/* Stream state indicator for active card */}
+        {isActive && (isLoading || error || !videoSrc) && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+            <div className="px-4 py-2 rounded-full bg-black/50 backdrop-blur-sm text-white/90 text-sm">
+              Видео готовится…
+            </div>
+          </div>
+        )}
 
         {/* Center play indicator (shown when paused) */}
         {!isActive && (
@@ -376,7 +325,86 @@ export const ShortCard = forwardRef<HTMLDivElement, ShortCardProps>(
             </div>
           </div>
         )}
-      </div>
+        </div>
+
+        <Sheet open={commentsOpen} onOpenChange={setCommentsOpen}>
+          <SheetContent
+            side="bottom"
+            className="h-[75vh] bg-mp-surface border-mp-border text-mp-text-primary flex flex-col"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <SheetHeader>
+              <SheetTitle className="text-mp-text-primary">Комментарии</SheetTitle>
+            </SheetHeader>
+
+            <div className="mt-4 flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+              {commentsQuery.isLoading ? (
+                <div className="text-sm text-mp-text-secondary">Загрузка…</div>
+              ) : commentsQuery.isError ? (
+                <div className="text-sm text-mp-text-secondary">Не удалось загрузить комментарии</div>
+              ) : (commentsQuery.data?.items?.length ?? 0) === 0 ? (
+                <div className="text-sm text-mp-text-secondary">Пока нет комментариев</div>
+              ) : (
+                commentsQuery.data!.items.map((c) => {
+                  const name = `${c.author.firstName} ${c.author.lastName}`.trim();
+                  const avatarSrc = c.author.avatarUrl
+                    ? normalizeMediaUrl(c.author.avatarUrl)
+                    : undefined;
+
+                  return (
+                    <div key={c.id} className="flex gap-3">
+                      <UserAvatar size="sm" name={name || 'Пользователь'} src={avatarSrc} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline gap-2">
+                          <div className="text-sm font-medium text-mp-text-primary truncate">
+                            {name || 'Пользователь'}
+                          </div>
+                          <div className="text-xs text-mp-text-secondary">
+                            {formatRelativeTime(c.createdAt)}
+                          </div>
+                        </div>
+                        <div className="text-sm text-mp-text-secondary whitespace-pre-wrap break-words">
+                          {c.text}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="mt-4 border-t border-mp-border pt-4">
+              {isAuthenticated ? (
+                <div className="space-y-2">
+                  <div className="text-xs text-mp-text-secondary">
+                    Комментирует: {user ? `${user.firstName} ${user.lastName}` : 'вы'}
+                  </div>
+                  <Textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Написать комментарий…"
+                    className="bg-mp-surface-elevated border-mp-border text-mp-text-primary placeholder:text-mp-text-disabled"
+                    maxLength={2000}
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={handleSubmitComment}
+                      disabled={!commentText.trim() || createComment.isPending}
+                    >
+                      Отправить
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-mp-text-secondary">
+                  Войдите, чтобы оставить комментарий.
+                </div>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+      </>
     );
   }
 );

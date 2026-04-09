@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -41,6 +42,8 @@ import {
 @UseGuards(RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.MODERATOR)
 export class AdminContentController {
+  private readonly logger = new Logger(AdminContentController.name);
+
   constructor(
     private readonly contentService: ContentService,
     private readonly seriesService: SeriesService,
@@ -161,6 +164,12 @@ export class AdminContentController {
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiResponse({ status: 404, description: 'Category not found' })
   async create(@Body() dto: CreateContentDto) {
+    this.logger.debug(`Creating content with dto:`, JSON.stringify({
+      title: dto.title,
+      previewUrl: dto.previewUrl,
+      previewUrlType: typeof dto.previewUrl,
+      previewUrlLength: (dto.previewUrl as string)?.length,
+    }));
     return this.contentService.create(dto);
   }
 

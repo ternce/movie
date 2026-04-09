@@ -10,6 +10,7 @@ import {
   useContentTags,
   useContentGenres,
 } from '@/hooks/use-studio-data';
+import { normalizeMediaUrl } from '@/lib/media-url';
 
 // ============ Types ============
 
@@ -111,7 +112,7 @@ export function SummaryPanel({ form, contentType }: SummaryPanelProps) {
         {values.thumbnailUrl && (
           <div className="rounded-lg border border-[#272b38] overflow-hidden">
             <NextImage
-              src={values.thumbnailUrl}
+              src={normalizeMediaUrl(values.thumbnailUrl)}
               alt="Обложка"
               width={400}
               height={225}

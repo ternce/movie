@@ -2,8 +2,29 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, endpoints } from '@/lib/api-client';
+import { api, endpoints, ApiError } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-client';
+
+function shouldPollStreamOnError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  if (error.status !== 404) return false;
+
+  const msg = (error.message || '').toLowerCase();
+  const notUploaded = msg.includes('нет загруженного видео') || msg.includes('нет видео');
+  const failed = msg.includes('не удалось');
+
+  if (notUploaded || failed) return false;
+
+  // Transient states returned by backend while transcoding is running or queued.
+  return (
+    msg.includes('кодир') ||
+    msg.includes('очеред') ||
+    msg.includes('ещё не готово') ||
+    msg.includes('не готово') ||
+    msg.includes('подождите') ||
+    msg.includes('начнётся')
+  );
+}
 
 export interface StreamUrlResponse {
   streamUrl: string;
@@ -21,6 +42,7 @@ export interface EncodingStatusResponse {
   contentId: string;
   edgecenterVideoId?: string;
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  hasVideo?: boolean;
   availableQualities: string[];
   progress?: number;
   thumbnailUrl?: string;
@@ -40,8 +62,10 @@ export function useStreamUrl(contentId: string | undefined) {
     enabled: !!contentId,
     staleTime: 3.5 * 60 * 60 * 1000, // 3.5h (URL expires in 4h)
     refetchInterval: (query) => {
-      // Stop polling if the query errored (404 = no video, 403 = no access)
-      if (query.state.status === 'error') return false;
+      // Poll even on 404 when backend says "queued/processing".
+      if (query.state.status === 'error') {
+        return shouldPollStreamOnError(query.state.error) ? 5_000 : false;
+      }
       const data = query.state.data;
       const expiresAt = (data as any)?.data?.expiresAt || (data as any)?.expiresAt;
       if (!expiresAt) return false; // No data yet — wait for initial fetch
@@ -73,7 +97,12 @@ export function useEncodingStatus(contentId: string | undefined) {
     enabled: !!contentId,
     refetchInterval: (query) => {
       const data = query.state.data;
-      const status = (data as any)?.data?.status || (data as any)?.status;
+      const payload = (data as any)?.data || data;
+      const status = payload?.status;
+      const hasVideo = payload?.hasVideo;
+
+      // If no video has been uploaded yet, don't poll endlessly.
+      if (hasVideo === false) return false;
       if (status === 'PENDING' || status === 'PROCESSING') {
         return 5000; // Poll every 5s while active
       }

@@ -279,6 +279,7 @@ export class EdgeCenterService {
     if (!content.edgecenterVideoId) {
       return {
         contentId,
+        hasVideo: false,
         status: EncodingStatus.PENDING,
         availableQualities: [],
       };
@@ -321,6 +322,7 @@ export class EdgeCenterService {
     return {
       contentId,
       edgecenterVideoId: content.edgecenterVideoId,
+      hasVideo: true,
       status,
       availableQualities,
       progress: this.calculateEncodingProgress(ecVideo.converted_videos || []),
@@ -535,6 +537,19 @@ export class EdgeCenterService {
   }): Promise<AdminVideoListDto> {
     const { status, search, hasVideo, page = 1, limit = 20 } = query;
 
+    type AdminVideoListContentRow = {
+      id: string;
+      title: string;
+      edgecenterVideoId: string | null;
+      thumbnailUrl: string | null;
+      duration: number;
+      createdAt: Date;
+      videoFiles: Array<{
+        encodingStatus: EncodingStatus;
+        quality: string;
+      }>;
+    };
+
     const where: any = {};
 
     // Filter by whether content has video
@@ -558,7 +573,7 @@ export class EdgeCenterService {
       where.title = { contains: search, mode: 'insensitive' };
     }
 
-    const [total, contents] = await Promise.all([
+    const [total, contents] = (await Promise.all([
       this.prisma.content.count({ where }),
       this.prisma.content.findMany({
         where,
@@ -580,19 +595,19 @@ export class EdgeCenterService {
           },
         },
       }),
-    ]);
+    ])) as [number, AdminVideoListContentRow[]];
 
     const items: AdminVideoListItemDto[] = contents.map((content) => {
       // Get the most relevant encoding status
       const statuses = content.videoFiles.map((vf) => vf.encodingStatus);
       let encodingStatus = 'NONE';
-      if (statuses.includes('PROCESSING')) {
+      if (statuses.includes(EncodingStatus.PROCESSING)) {
         encodingStatus = 'PROCESSING';
-      } else if (statuses.includes('COMPLETED')) {
+      } else if (statuses.includes(EncodingStatus.COMPLETED)) {
         encodingStatus = 'COMPLETED';
-      } else if (statuses.includes('FAILED')) {
+      } else if (statuses.includes(EncodingStatus.FAILED)) {
         encodingStatus = 'FAILED';
-      } else if (statuses.includes('PENDING')) {
+      } else if (statuses.includes(EncodingStatus.PENDING)) {
         encodingStatus = 'PENDING';
       }
 

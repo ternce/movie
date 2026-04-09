@@ -307,7 +307,7 @@ describe('api client', () => {
       mockErrorResponse(401, 'Unauthorized', 'AUTH_002');
 
       try {
-        await api.get('/test');
+        await api.get('/test', { skipRefresh: true });
       } catch (error) {
         expect(error).toBeInstanceOf(ApiError);
         expect((error as ApiError).code).toBe('AUTH_002');
@@ -540,6 +540,7 @@ describe('endpoints', () => {
       expect(endpoints.content.detail('my-series')).toBe('/content/my-series');
       expect(endpoints.content.featured).toBe('/content/featured');
       expect(endpoints.content.search).toBe('/content/search');
+      expect(endpoints.content.recordView('content-123')).toBe('/content/content-123/view');
     });
   });
 
@@ -562,7 +563,7 @@ describe('endpoints', () => {
     it('should have correct watch history endpoints', () => {
       expect(endpoints.watchHistory.list).toBe('/users/me/watch-history');
       expect(endpoints.watchHistory.continueWatching).toBe('/users/me/watch-history/continue');
-      expect(endpoints.watchHistory.updateProgress('content-123')).toBe('/users/me/watch-history/content-123/progress');
+      expect(endpoints.watchHistory.updateProgress('content-123')).toBe('/users/me/watch-history/content-123');
     });
   });
 

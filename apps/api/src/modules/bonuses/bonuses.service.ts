@@ -48,7 +48,7 @@ interface EarnBonusParams {
   referenceType?: string;
   description?: string;
   expiryDays?: number;
-  metadata?: Record<string, unknown>;
+  metadata?: Prisma.InputJsonValue;
 }
 
 interface SpendBonusParams {
@@ -252,7 +252,7 @@ export class BonusesService {
       referenceType,
       description,
       expiryDays = BONUS_CONFIG.DEFAULT_EXPIRY_DAYS,
-      metadata = {},
+      metadata = {} as Prisma.InputJsonValue,
     } = params;
 
     const amountDecimal = new Decimal(amount.toString());
@@ -281,7 +281,7 @@ export class BonusesService {
           referenceType,
           description: description || `Earned bonus from ${source}`,
           expiresAt,
-          metadata,
+          metadata: metadata as Prisma.InputJsonValue,
         },
       }),
     ]);
@@ -865,7 +865,7 @@ export class BonusesService {
           taxStatus: dto.taxStatus,
           taxAmount: preview.estimatedTax,
           netAmount: preview.estimatedNet,
-          paymentDetails: dto.paymentDetails || {},
+          paymentDetails: (dto.paymentDetails ?? {}) as Prisma.InputJsonValue,
           status: WithdrawalStatus.PENDING,
         },
       });

@@ -13,7 +13,32 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ContentType, AgeCategory, ContentStatus } from '@prisma/client';
+
+function normalizeAgeCategory(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const v = value.trim();
+
+  // Accept Prisma enum names
+  if (v in AgeCategory) return v;
+
+  // Accept shared/UI values like "0+", "6+", ...
+  switch (v) {
+    case '0+':
+      return AgeCategory.ZERO_PLUS;
+    case '6+':
+      return AgeCategory.SIX_PLUS;
+    case '12+':
+      return AgeCategory.TWELVE_PLUS;
+    case '16+':
+      return AgeCategory.SIXTEEN_PLUS;
+    case '18+':
+      return AgeCategory.EIGHTEEN_PLUS;
+    default:
+      return value;
+  }
+}
 
 export class CreateContentDto {
   @ApiProperty({
@@ -56,6 +81,7 @@ export class CreateContentDto {
     example: AgeCategory.TWELVE_PLUS,
     description: 'Age restriction category',
   })
+  @Transform(({ value }) => normalizeAgeCategory(value))
   @IsEnum(AgeCategory)
   ageCategory!: AgeCategory;
 
@@ -63,16 +89,18 @@ export class CreateContentDto {
     example: 'https://cdn.example.com/thumb.jpg',
     description: 'Thumbnail image URL',
   })
+  @Transform(({ value }) => (typeof value === 'string' && value === '') ? undefined : value)
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   thumbnailUrl?: string;
 
   @ApiPropertyOptional({
     example: 'https://cdn.example.com/preview.mp4',
     description: 'Preview video URL',
   })
+  @Transform(({ value }) => (typeof value === 'string' && value === '') ? undefined : value)
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false }, { message: 'previewUrl must be a valid URL' })
   previewUrl?: string;
 
   @ApiPropertyOptional({

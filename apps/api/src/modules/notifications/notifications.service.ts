@@ -209,7 +209,6 @@ export class NotificationsService {
     data: Prisma.JsonValue;
     readAt: Date | null;
     createdAt: Date;
-    updatedAt: Date;
   }) {
     const data = (n.data ?? {}) as Record<string, unknown>;
     return {

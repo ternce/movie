@@ -458,7 +458,6 @@ export class UsersService {
     const code = await this.tokenService.generateEmailChangeCode(userId, normalized);
 
     await this.emailService.sendEmailChangeCode(
-      user.email,
       user.firstName || 'Пользователь',
       normalized,
       code,

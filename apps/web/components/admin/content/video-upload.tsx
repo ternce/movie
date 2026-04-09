@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { endpoints, getAuthToken } from '@/lib/api-client';
+import { normalizeMediaUrl } from '@/lib/media-url';
 import { EncodingStatusBadge } from './encoding-status-badge';
 import {
   useUploadContentVideo,
@@ -38,6 +39,11 @@ function formatTimeRemaining(seconds: number): string {
 interface VideoUploadProps {
   /** When set, uploads trigger HLS transcoding for this content */
   contentId?: string;
+  /**
+   * Optional hook to lazily create/resolve a contentId before uploading.
+   * Useful in Studio wizards: user selects a file first, and we create a DRAFT automatically.
+   */
+  ensureContentId?: () => Promise<string>;
   value?: string;
   onChange: (url: string) => void;
   label: string;
@@ -49,6 +55,7 @@ interface VideoUploadProps {
 
 export function VideoUpload({
   contentId,
+  ensureContentId,
   value,
   onChange,
   label,
@@ -61,14 +68,25 @@ export function VideoUpload({
   const [progress, setProgress] = React.useState(0);
   const [showUrlInput, setShowUrlInput] = React.useState(false);
   const [manualUrl, setManualUrl] = React.useState('');
+  const [resolvedContentId, setResolvedContentId] = React.useState<string | undefined>(contentId);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    // Keep internal id in sync with prop, but don't wipe a lazily created id
+    // unless the parent explicitly provides a new one.
+    if (contentId) setResolvedContentId(contentId);
+  }, [contentId]);
+
+  const effectiveContentId = contentId || resolvedContentId;
 
   // Content-mode hooks
   const uploadMutation = useUploadContentVideo();
   const ecUpload = useEdgeCenterUpload();
   const deleteMutation = useDeleteContentVideo();
-  const { data: statusRaw } = useEncodingStatus(contentId);
+  const { data: statusRaw } = useEncodingStatus(effectiveContentId);
   const encodingStatus = (statusRaw as any)?.data || statusRaw;
+
+  const hasVideo = Boolean(encodingStatus?.hasVideo);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -85,12 +103,29 @@ export function VideoUpload({
       return;
     }
 
+    // Studio/creator flows: allow lazy DRAFT creation before upload
+    let targetContentId = effectiveContentId;
+    if (!targetContentId && ensureContentId) {
+      try {
+        setIsUploading(true);
+        setProgress(0);
+        targetContentId = await ensureContentId();
+        setResolvedContentId(targetContentId);
+      } catch {
+        // ensureContentId is expected to show its own user-facing toast
+        setIsUploading(false);
+        setProgress(0);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+    }
+
     // Content-mode: Upload via admin video endpoint
-    if (contentId) {
+    if (targetContentId) {
       // EdgeCenter TUS upload mode
       if (isEdgeCenterMode) {
         try {
-          await ecUpload.start(contentId, file);
+          await ecUpload.start(targetContentId, file);
           toast.success('Видео загружается через CDN...');
         } catch {
           toast.error('Не удалось начать загрузку');
@@ -104,7 +139,7 @@ export function VideoUpload({
       setProgress(0);
       try {
         await uploadMutation.mutateAsync({
-          contentId,
+          contentId: targetContentId,
           file,
           onProgress: (pct) => setProgress(pct),
         });
@@ -183,9 +218,9 @@ export function VideoUpload({
   };
 
   const handleDeleteVideo = async () => {
-    if (!contentId) return;
+    if (!effectiveContentId) return;
     try {
-      await deleteMutation.mutateAsync(contentId);
+      await deleteMutation.mutateAsync(effectiveContentId);
       onChange('');
       toast.success('Видео удалено');
     } catch {
@@ -194,7 +229,9 @@ export function VideoUpload({
   };
 
   // Content-mode: Show encoding status + management
-  if (contentId && encodingStatus?.status) {
+  // IMPORTANT: status can be PENDING even when no video has been uploaded yet.
+  // In that case we still want to show the upload UI.
+  if (effectiveContentId && encodingStatus?.status && hasVideo) {
     const st = encodingStatus.status as string;
 
     // Show completed state with preview + delete
@@ -209,7 +246,7 @@ export function VideoUpload({
             />
             {encodingStatus.thumbnailUrl && (
               <NextImage
-                src={encodingStatus.thumbnailUrl}
+                src={normalizeMediaUrl(encodingStatus.thumbnailUrl)}
                 alt="Thumbnail"
                 width={320}
                 height={180}

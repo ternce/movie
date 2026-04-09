@@ -17,14 +17,16 @@ import {
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
 import { VideoPlayerSkeleton } from '@/components/player';
-import { cn } from '@/lib/utils';
+import { ContentImage } from '@/components/content/content-image';
+import { cn, copyTextToClipboard } from '@/lib/utils';
+import { normalizeMediaUrl } from '@/lib/media-url';
 import { useStreamUrl } from '@/hooks/use-streaming';
 import { useContentDetail } from '@/hooks/use-content';
 import { api, endpoints, ApiError } from '@/lib/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-client';
+import { toast } from 'sonner';
 
 const VideoPlayer = dynamic(
   () => import('@/components/player/video-player').then((m) => m.VideoPlayer),
@@ -64,6 +66,23 @@ export default function WatchPage() {
   const isLoading = isContentLoading && isStreamLoading;
   const error = streamError;
 
+  // Record view once when the video becomes playable
+  const hasRecordedViewRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!contentId) return;
+    if (hasRecordedViewRef.current) return;
+
+    const status = (streamError as ApiError | undefined)?.status;
+    if (status === 403) return;
+
+    if (streamData?.streamUrl) {
+      hasRecordedViewRef.current = true;
+      api.get<void>(endpoints.content.recordView(contentId)).catch(() => {
+        // Non-critical
+      });
+    }
+  }, [contentId, streamData?.streamUrl, streamError]);
+
   // Save watch progress
   const handleProgress = React.useCallback(
     (time: number) => {
@@ -93,6 +112,30 @@ export default function WatchPage() {
       queryKey: queryKeys.streaming.url(contentId),
     });
   }, [queryClient, contentId]);
+
+  const handleShare = React.useCallback(async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    if (!url) return;
+
+    const shareTitle = streamData?.title || contentDetail?.title || 'Видео';
+
+    try {
+      if (typeof navigator !== 'undefined' && 'share' in navigator) {
+        await (navigator as any).share({ title: shareTitle, url });
+        return;
+      }
+    } catch {
+      // fall back to clipboard
+    }
+
+    const ok = await copyTextToClipboard(url);
+    if (ok) toast.success('Ссылка скопирована');
+    else toast.error('Не удалось скопировать ссылку');
+  }, [contentDetail?.title, streamData?.title]);
+
+  const handleReport = React.useCallback(() => {
+    toast.message('Жалобы будут доступны позже');
+  }, []);
 
   // Access denied (403) — show subscription CTA
   if (error) {
@@ -174,7 +217,12 @@ export default function WatchPage() {
   // Content exists but video not ready (stream 404, content detail succeeded)
   const streamApiError = streamError as ApiError | undefined;
   const videoNotReady = streamApiError?.status === 404 && contentDetail;
-  const videoNotUploaded = videoNotReady && streamApiError?.message?.includes('нет видео');
+  const streamMessage = videoNotReady ? streamApiError?.message : undefined;
+  const streamMessageLower = (streamMessage || '').toLowerCase();
+  const videoNotUploaded =
+    videoNotReady &&
+    (streamMessageLower.includes('нет загруженного видео') || streamMessageLower.includes('нет видео'));
+  const videoEncodingFailed = videoNotReady && streamMessageLower.includes('не удалось');
 
   // Loading state — show skeleton while both queries are in flight
   if (isLoading && !videoNotReady) {
@@ -204,6 +252,7 @@ export default function WatchPage() {
   const description = streamData?.description || contentDetail?.description || '';
   const duration = streamData?.duration || contentDetail?.duration || 0;
   const thumbnailUrl = streamData?.thumbnailUrls?.[0] || contentDetail?.thumbnailUrl;
+  const normalizedThumbnailUrl = thumbnailUrl ? normalizeMediaUrl(thumbnailUrl) : undefined;
 
   return (
     <div className="min-h-screen bg-mp-bg-primary">
@@ -225,9 +274,9 @@ export default function WatchPage() {
         <div className="max-w-[1920px] mx-auto">
           {videoNotReady ? (
             <div className="relative aspect-video bg-mp-surface flex items-center justify-center overflow-hidden">
-              {thumbnailUrl && (
-                <Image
-                  src={thumbnailUrl}
+              {normalizedThumbnailUrl && (
+                <ContentImage
+                  src={normalizedThumbnailUrl}
                   alt={title}
                   fill
                   className="object-cover opacity-30"
@@ -247,6 +296,18 @@ export default function WatchPage() {
                       Автор пока не добавил видео к этому контенту
                     </p>
                   </>
+                ) : videoEncodingFailed ? (
+                  <>
+                    <div className="w-16 h-16 rounded-full bg-mp-error-bg flex items-center justify-center mx-auto mb-4">
+                      <WarningCircle className="w-8 h-8 text-mp-error-text" />
+                    </div>
+                    <p className="text-mp-text-primary font-medium text-lg">
+                      Не удалось подготовить видео
+                    </p>
+                    <p className="text-mp-text-secondary text-sm mt-2">
+                      {streamMessage || 'Попробуйте позже'}
+                    </p>
+                  </>
                 ) : (
                   <>
                     <div className="w-12 h-12 border-4 border-mp-accent-primary/30 border-t-mp-accent-primary rounded-full animate-spin mx-auto mb-4" />
@@ -254,7 +315,7 @@ export default function WatchPage() {
                       Видео готовится к воспроизведению
                     </p>
                     <p className="text-mp-text-secondary text-sm mt-2">
-                      Попробуйте обновить страницу через несколько минут
+                      {streamMessage || 'Попробуйте обновить страницу через несколько минут'}
                     </p>
                   </>
                 )}
@@ -263,7 +324,7 @@ export default function WatchPage() {
           ) : streamData?.streamUrl ? (
             <VideoPlayer
               src={streamData.streamUrl}
-              poster={thumbnailUrl}
+              poster={normalizedThumbnailUrl}
               initialTime={0}
               onProgress={handleProgress}
               onEnded={handleEnded}
@@ -321,11 +382,11 @@ export default function WatchPage() {
                 className={cn('w-4 h-4', liked === false && 'fill-current')}
               />
             </Button>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleShare}>
               <ShareNetwork className="w-4 h-4" />
               Поделиться
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={handleReport}>
               <Flag className="w-4 h-4" />
             </Button>
           </div>

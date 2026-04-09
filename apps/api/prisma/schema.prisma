@@ -86,11 +86,7 @@ model User {
   newsletterPrefs    NewsletterPreferences?
   documentAcceptances DocumentAcceptance[]
   genrePreferences    UserGenrePreference[]
-<<<<<<< Updated upstream
-=======
   comments            Comment[]
-  contentLikes        ContentLike[]
->>>>>>> Stashed changes
 
   // Admin relations
   reviewedVerifications UserVerification[] @relation("ReviewedVerifications")
@@ -212,11 +208,7 @@ model Content {
   playlistItems   PlaylistItem[]
   subscriptionPlans SubscriptionPlan[]
   subscriptionAccess SubscriptionAccess[]
-<<<<<<< Updated upstream
-=======
   comments        Comment[]
-  likes           ContentLike[]
->>>>>>> Stashed changes
 
   @@index([slug])
   @@index([contentType])
@@ -230,23 +222,6 @@ model Content {
   @@index([status, publishedAt, ageCategory])
   @@index([isFree, status, ageCategory])
   @@map("content")
-}
-
-<<<<<<< Updated upstream
-=======
-model ContentLike {
-  id        String   @id @default(uuid())
-  contentId String   @map("content_id")
-  userId    String   @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([contentId, userId])
-  @@index([contentId])
-  @@index([userId])
-  @@map("content_likes")
 }
 
 model Comment {
@@ -269,7 +244,6 @@ model Comment {
   @@map("comments")
 }
 
->>>>>>> Stashed changes
 model Series {
   id             String  @id @default(uuid())
   contentId      String  @unique @map("content_id")

@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 
 import { CategorySelect } from '@/components/studio/category-select';
+import { AgeRatingSelector } from '@/components/studio/age-rating-selector';
 import { GenreSelect } from '@/components/studio/genre-select';
 import { TagInput } from '@/components/studio/tag-input';
 import {
@@ -19,7 +20,8 @@ import {
 import type { WizardStep } from '@/components/studio/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { useCreateContent } from '@/hooks/use-admin-content';
+import { useCreateContent, useUpdateContent } from '@/hooks/use-admin-content';
+import { useEncodingStatus } from '@/hooks/use-streaming';
 import {
   useContentCategories,
   useContentTags,
@@ -42,7 +44,7 @@ const WIZARD_STEPS: WizardStep[] = [
 ];
 
 const STEP_FIELDS: Record<number, (keyof ClipFormValues)[]> = {
-  1: ['title', 'description', 'categoryId'],
+  1: ['title', 'description', 'categoryId', 'ageCategory'],
   2: [],
   3: ['ageCategory'],
 };
@@ -223,12 +225,33 @@ function StepInfo({
                   value={field.value ?? []}
                   onChange={field.onChange}
                   availableTags={availableTags}
-                  placeholder="Выберите тег..."
+                  placeholder="Добавить тег..."
                   disabled={disabled}
-                  maxTags={1}
+                  maxTags={15}
                 />
               )}
             />
+          </div>
+
+          {/* Age Rating */}
+          <div className="space-y-2">
+            <Label className="text-[#f5f7ff]">Возрастное ограничение *</Label>
+            <Controller
+              name="ageCategory"
+              control={form.control}
+              render={({ field }) => (
+                <AgeRatingSelector
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={disabled}
+                />
+              )}
+            />
+            {form.formState.errors.ageCategory && (
+              <p className="text-xs text-[#ff9aa8]">
+                {form.formState.errors.ageCategory.message}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -240,12 +263,28 @@ function StepInfo({
 
 function StepMedia({
   form,
+  contentId,
   disabled,
 }: {
   form: ReturnType<typeof useForm<ClipFormValues>>;
+  contentId?: string;
   disabled: boolean;
 }) {
-  return <MediaUploadCard form={form} disabled={disabled} />;
+  return (
+    <div>
+      {!contentId ? (
+        <Card className="border-[#272b38] bg-[#10131c]/50">
+          <CardContent className="pt-6">
+            <p className="text-sm text-mp-text-secondary mb-4">
+              Сначала необходимо создать черновик для загрузки видео. Вернитесь на предыдущий шаг и нажимите кнопку "Сохранить как черновик".
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <MediaUploadCard form={form} contentId={contentId} disabled={disabled} />
+      )}
+    </div>
+  );
 }
 
 // ============ Step 3: Publishing ============
@@ -269,7 +308,14 @@ function StepPublishing({
 
 export function ClipWizard({ onSuccess }: ClipWizardProps) {
   const [currentStep, setCurrentStep] = React.useState(1);
+  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
   const createContent = useCreateContent();
+  const updateContent = useUpdateContent();
+
+  const { data: encodingStatusRaw } = useEncodingStatus(createdContentId || undefined);
+  const encodingStatus = (encodingStatusRaw as any)?.data || encodingStatusRaw;
+  const hasVideo = encodingStatus?.hasVideo === true;
+  const isVideoReady = hasVideo && encodingStatus?.status === 'COMPLETED';
 
   const form = useForm<ClipFormValues>({
     resolver: zodResolver(clipFormSchema),
@@ -298,16 +344,11 @@ export function ClipWizard({ onSuccess }: ClipWizardProps) {
     if (!fields || fields.length === 0) return true;
 
     const result = await form.trigger(fields);
-    return result;
-  }, [currentStep, form]);
-
-  const handleBack = React.useCallback(() => {
-    setCurrentStep((prev) => Math.max(1, prev - 1));
-  }, []);
-
-  const handleCreate = React.useCallback(
-    (status: 'DRAFT' | 'PUBLISHED') => {
-      form.handleSubmit((values) => {
+    
+    // If moving from step 1 to 2, create draft content
+    if (currentStep === 1 && result) {
+      const values = form.getValues();
+      return new Promise((resolve) => {
         createContent.mutate(
           {
             title: values.title,
@@ -316,24 +357,74 @@ export function ClipWizard({ onSuccess }: ClipWizardProps) {
             categoryId: values.categoryId || undefined,
             ageCategory: values.ageCategory,
             thumbnailUrl: values.thumbnailUrl || undefined,
-            previewUrl: values.previewUrl || undefined,
+            previewUrl: undefined, // Will be uploaded separately
             isFree: values.isFree,
             individualPrice: values.individualPrice || undefined,
             tagIds: values.tagIds?.length ? values.tagIds : undefined,
             genreIds: values.genreIds?.length ? values.genreIds : undefined,
-            status,
+            status: 'DRAFT',
           },
           {
             onSuccess: (data) => {
-              clearDraft();
-              onSuccess?.(data.id);
+              setCreatedContentId(data.id);
+              toast.success('Черновик создан. Теперь загрузите видео');
+              resolve(true);
+            },
+            onError: () => {
+              resolve(false);
             },
           }
         );
-      })();
-    },
-    [form, createContent, clearDraft, onSuccess]
-  );
+      });
+    }
+    
+    return result;
+  }, [currentStep, form, createContent]);
+
+  const handleBack = React.useCallback(() => {
+    setCurrentStep((prev) => Math.max(1, prev - 1));
+  }, []);
+
+  const handleDraftSubmit = React.useCallback(() => {
+    if (!createdContentId) {
+      toast.error('Контент не был создан. Пожалуйста, попробуйте снова');
+      return;
+    }
+    clearDraft();
+    onSuccess?.(createdContentId);
+  }, [createdContentId, clearDraft, onSuccess]);
+
+  const handlePublish = React.useCallback(() => {
+    if (!createdContentId) {
+      toast.error('Контент не был создан. Пожалуйста, попробуйте снова');
+      return;
+    }
+
+    if (!hasVideo) {
+      toast.error('Сначала загрузите основное видео');
+      return;
+    }
+
+    if (!isVideoReady) {
+      toast.error('Видео ещё обрабатывается. Дождитесь статуса «Готово»');
+      return;
+    }
+    
+    const values = form.getValues();
+    updateContent.mutate(
+      {
+        id: createdContentId,
+        ageCategory: values.ageCategory,
+        status: 'PUBLISHED',
+      },
+      {
+        onSuccess: (data) => {
+          clearDraft();
+          onSuccess?.(data.id);
+        },
+      }
+    );
+  }, [createdContentId, hasVideo, isVideoReady, form, updateContent, clearDraft, onSuccess]);
 
   return (
     <WizardShell
@@ -342,9 +433,9 @@ export function ClipWizard({ onSuccess }: ClipWizardProps) {
       onStepChange={setCurrentStep}
       onNext={handleNext}
       onBack={handleBack}
-      onSubmit={() => handleCreate('PUBLISHED')}
-      onDraftSubmit={() => handleCreate('DRAFT')}
-      isSubmitting={createContent.isPending}
+      onSubmit={handlePublish}
+      onDraftSubmit={handleDraftSubmit}
+      isSubmitting={createContent.isPending || updateContent.isPending}
       submitLabel="Опубликовать"
       submitIcon={<Rocket weight="fill" className="h-4 w-4" />}
       cancelHref="/studio"
@@ -353,10 +444,10 @@ export function ClipWizard({ onSuccess }: ClipWizardProps) {
         <StepInfo form={form} disabled={createContent.isPending} />
       )}
       {currentStep === 2 && (
-        <StepMedia form={form} disabled={createContent.isPending} />
+        <StepMedia form={form} contentId={createdContentId || undefined} disabled={createContent.isPending || createContent.isLoading} />
       )}
       {currentStep === 3 && (
-        <StepPublishing form={form} disabled={createContent.isPending} />
+        <StepPublishing form={form} disabled={updateContent.isPending} />
       )}
     </WizardShell>
   );

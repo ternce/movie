@@ -2,7 +2,6 @@
 
 import { HeroSection, type HeroContent } from '@/components/content';
 import { HeroSkeleton } from './hero-skeleton';
-import { useAddToWatchlist } from '@/hooks/use-account';
 
 interface DashboardHeroProps {
   content: HeroContent | null;
@@ -14,8 +13,6 @@ interface DashboardHeroProps {
  * Falls back to a gradient welcome hero if no content is available.
  */
 export function DashboardHero({ content, isLoading }: DashboardHeroProps) {
-  const addToWatchlist = useAddToWatchlist();
-
   if (isLoading) {
     return <HeroSkeleton />;
   }
@@ -53,7 +50,6 @@ export function DashboardHero({ content, isLoading }: DashboardHeroProps) {
   return (
     <HeroSection
       content={content}
-      onSecondaryClick={() => addToWatchlist.mutate(content.id)}
     />
   );
 }

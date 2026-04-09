@@ -83,32 +83,25 @@ async function seedCategories() {
   console.log('✅ Content Categories seeded');
 }
 
-<<<<<<< Updated upstream
-=======
 async function seedTags() {
   console.log('🎯 Seeding Content Tags...');
 
   const tags = [
-    { name: 'Кино', slug: 'cinema' },
-    { name: 'Сериалы', slug: 'series' },
-    { name: 'Анимация', slug: 'animation' },
-    { name: 'Наука', slug: 'science' },
-    { name: 'Технологии', slug: 'technology' },
-    { name: 'Программирование', slug: 'programming' },
-    { name: 'Дизайн', slug: 'design' },
-    { name: 'Маркетинг', slug: 'marketing' },
-    { name: 'Бизнес', slug: 'business' },
-    { name: 'Финансы', slug: 'finance' },
-    { name: 'Психология', slug: 'psychology' },
-    { name: 'Саморазвитие', slug: 'self-development' },
-    { name: 'Здоровье', slug: 'health' },
-    { name: 'Фитнес', slug: 'fitness' },
-    { name: 'Кулинария', slug: 'cooking' },
-    { name: 'Путешествия', slug: 'travel' },
-    { name: 'Музыка', slug: 'music' },
-    { name: 'Спорт', slug: 'sport' },
-    { name: 'История', slug: 'history' },
-    { name: 'Образование', slug: 'education' },
+    { name: 'Новинка', slug: 'new' },
+    { name: 'Популярное', slug: 'popular' },
+    { name: 'Рекомендуем', slug: 'recommended' },
+    { name: 'Для новичков', slug: 'for-beginners' },
+    { name: 'Продвинутый уровень', slug: 'advanced' },
+    { name: 'Практика', slug: 'practice' },
+    { name: 'Теория', slug: 'theory' },
+    { name: 'Разбор кейсов', slug: 'case-studies' },
+    { name: 'Интервью', slug: 'interview' },
+    { name: 'Подборка', slug: 'collection' },
+    { name: 'Без спойлеров', slug: 'no-spoilers' },
+    { name: 'Топ недели', slug: 'top-week' },
+    { name: 'Топ месяца', slug: 'top-month' },
+    { name: 'С субтитрами', slug: 'subtitles' },
+    { name: 'Семейное', slug: 'family' },
   ];
 
   for (const tag of tags) {
@@ -122,7 +115,6 @@ async function seedTags() {
   console.log('✅ Content Tags seeded');
 }
 
->>>>>>> Stashed changes
 async function seedProductCategories() {
   console.log('🎯 Seeding Product Categories...');
 
@@ -903,6 +895,7 @@ async function main() {
     // Phase 1: Lookup Tables (no dependencies)
     await seedPartnerLevels();
     await seedCategories();
+    await seedTags();
     await seedProductCategories();
     await seedSubscriptionPlans();
     await seedBonusRates();

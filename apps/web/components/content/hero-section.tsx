@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ContentImage } from '@/components/content/content-image';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAddToWatchlist } from '@/hooks/use-account';
 
 /**
  * Genre color mapping based on age category
@@ -55,6 +56,16 @@ interface HeroSectionProps {
  */
 export function HeroSection({ content, className, onCTAClick, onSecondaryClick }: HeroSectionProps) {
   const genreColor = genreColors[String(content.genre || '').toLowerCase()] || genreColors.default;
+  const addToWatchlist = useAddToWatchlist();
+
+  const handleAddToWatchlist = async () => {
+    try {
+      await addToWatchlist.mutateAsync(content.id);
+      onSecondaryClick?.();
+    } catch {
+      // hook shows toast
+    }
+  };
 
   return (
     <section
@@ -129,7 +140,8 @@ export function HeroSection({ content, className, onCTAClick, onSecondaryClick }
             variant="glass"
             size="lg"
             className="rounded-lg"
-            onClick={onSecondaryClick}
+            onClick={handleAddToWatchlist}
+            disabled={addToWatchlist.isPending}
           >
             <DownloadSimple className="w-4 h-4" />
             В избранное

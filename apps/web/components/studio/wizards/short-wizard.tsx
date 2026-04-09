@@ -10,6 +10,7 @@ import Link from 'next/link';
 import * as React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 import { AgeRatingSelector } from '@/components/studio/age-rating-selector';
 import { TagInput } from '@/components/studio/tag-input';
 import { VideoUpload } from '@/components/admin/content/video-upload';
@@ -17,7 +18,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useCreateContent } from '@/hooks/use-admin-content';
+import { useCreateContent, useUpdateContent } from '@/hooks/use-admin-content';
+import { useEncodingStatus } from '@/hooks/use-streaming';
 import { useContentTags } from '@/hooks/use-studio-data';
 import { cn } from '@/lib/utils';
 import { shortFormSchema, type ShortFormValues } from '@/components/studio/schemas';
@@ -52,8 +54,15 @@ function CharCounter({ current, max }: { current: number; max: number }) {
 
 export function ShortWizard({ onSuccess }: ShortWizardProps) {
   const createContent = useCreateContent();
+  const updateContent = useUpdateContent();
   const { data: tagsData } = useContentTags();
   const availableTags = tagsData ?? [];
+  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
+
+  const { data: encodingStatusRaw } = useEncodingStatus(createdContentId || undefined);
+  const encodingStatus = (encodingStatusRaw as any)?.data || encodingStatusRaw;
+  const hasVideo = encodingStatus?.hasVideo === true;
+  const isVideoReady = hasVideo && encodingStatus?.status === 'COMPLETED';
 
   const form = useForm<ShortFormValues>({
     resolver: zodResolver(shortFormSchema),
@@ -82,8 +91,35 @@ export function ShortWizard({ onSuccess }: ShortWizardProps) {
   const title = watch('title');
   const description = watch('description');
 
-  const handleCreate = React.useCallback(
-    (status: 'DRAFT' | 'PUBLISHED') => {
+  const ensureDraftContentId = React.useCallback(async (): Promise<string> => {
+    if (createdContentId) return createdContentId;
+
+    const valid = await form.trigger(['title', 'description', 'ageCategory']);
+    if (!valid) {
+      toast.error('Заполните название, описание и возрастное ограничение перед загрузкой видео');
+      throw new Error('Form validation failed');
+    }
+
+    const values = form.getValues();
+    const data = await createContent.mutateAsync({
+      title: values.title,
+      description: values.description || undefined,
+      contentType: 'SHORT',
+      ageCategory: values.ageCategory,
+      thumbnailUrl: values.thumbnailUrl || undefined,
+      previewUrl: undefined,
+      isFree: values.isFree,
+      tagIds: values.tagIds?.length ? values.tagIds : undefined,
+      status: 'DRAFT',
+    });
+
+    setCreatedContentId(data.id);
+    toast.success('Черновик создан. Начинается загрузка видео');
+    return data.id;
+  }, [createdContentId, form, createContent]);
+
+  const handleCreateDraft = React.useCallback(
+    () => {
       return handleSubmit((values) => {
         createContent.mutate(
           {
@@ -92,20 +128,53 @@ export function ShortWizard({ onSuccess }: ShortWizardProps) {
             contentType: 'SHORT',
             ageCategory: values.ageCategory,
             thumbnailUrl: values.thumbnailUrl || undefined,
-            previewUrl: values.previewUrl || undefined,
+            previewUrl: undefined,
             isFree: values.isFree,
             tagIds: values.tagIds?.length ? values.tagIds : undefined,
-            status,
+            status: 'DRAFT',
           },
           {
             onSuccess: (data) => {
-              onSuccess?.(data.id);
+              setCreatedContentId(data.id);
+              toast.success('Черновик создан. Теперь загрузите видео');
             },
           }
         );
       })();
     },
-    [handleSubmit, createContent, onSuccess]
+    [handleSubmit, createContent]
+  );
+
+  const handlePublish = React.useCallback(
+    () => {
+      if (!createdContentId) {
+        toast.error('Сначала создайте черновик');
+        return;
+      }
+
+      if (!hasVideo) {
+        toast.error('Сначала загрузите основное видео');
+        return;
+      }
+
+      if (!isVideoReady) {
+        toast.error('Видео ещё обрабатывается. Дождитесь статуса «Готово»');
+        return;
+      }
+      
+      updateContent.mutate(
+        {
+          id: createdContentId,
+          status: 'PUBLISHED',
+        },
+        {
+          onSuccess: (data) => {
+            onSuccess?.(data.id);
+          },
+        }
+      );
+    },
+    [createdContentId, hasVideo, isVideoReady, updateContent, onSuccess]
   );
 
   return (
@@ -158,13 +227,19 @@ export function ShortWizard({ onSuccess }: ShortWizardProps) {
               control={control}
               render={({ field }) => (
                 <VideoUpload
+                  contentId={createdContentId || undefined}
+                  ensureContentId={ensureDraftContentId}
                   label="Видео Short"
-                  description="Загрузите вертикальное видео 9:16, до 60 секунд (MP4, WebM до 200MB)"
+                  description={
+                    createdContentId
+                      ? 'Загрузите вертикальное видео 9:16, до 60 секунд (MP4, WebM до 200MB)'
+                      : 'Загрузите видео — черновик будет создан автоматически'
+                  }
                   value={field.value}
                   onChange={field.onChange}
                   accept="video/mp4,video/webm"
                   maxSizeMB={200}
-                  disabled={createContent.isPending}
+                  disabled={createContent.isPending || updateContent.isPending}
                 />
               )}
             />
@@ -231,9 +306,9 @@ export function ShortWizard({ onSuccess }: ShortWizardProps) {
                   value={field.value ?? []}
                   onChange={field.onChange}
                   availableTags={availableTags}
-                  placeholder="Выберите тег..."
+                  placeholder="Добавить тег..."
                   disabled={createContent.isPending}
-                  maxTags={1}
+                  maxTags={10}
                 />
               )}
             />
@@ -262,28 +337,33 @@ export function ShortWizard({ onSuccess }: ShortWizardProps) {
 
           {/* Action buttons */}
           <div className="flex items-center gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleCreate('DRAFT')}
-              disabled={createContent.isPending}
-            >
-              {createContent.isPending ? (
-                <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Сохранить черновик
-            </Button>
-            <Button
-              type="button"
-              onClick={() => handleCreate('PUBLISHED')}
-              disabled={createContent.isPending}
-              className="bg-[#c94bff] hover:bg-[#c94bff]/90 text-white"
-            >
-              {createContent.isPending ? (
-                <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Опубликовать
-            </Button>
+            {!createdContentId ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCreateDraft}
+                disabled={createContent.isPending}
+              >
+                {createContent.isPending ? (
+                  <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Создать черновик
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePublish}
+                  disabled={!isVideoReady || updateContent.isPending}
+                >
+                  {updateContent.isPending ? (
+                    <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  Опубликовать
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

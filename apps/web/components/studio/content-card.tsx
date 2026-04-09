@@ -1,7 +1,6 @@
 'use client';
 
 import { Eye, PencilSimple, ArrowUp } from '@phosphor-icons/react';
-import Image from 'next/image';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ContentStatusBadge } from './content-status-badge';
 import { ContentTypeBadge } from './content-type-badge';
 import type { Content } from '@movie-platform/shared';
+import { normalizeMediaUrl } from '@/lib/media-url';
+import { ContentImage } from '@/components/content/content-image';
 
 interface StudioContentCardProps {
   content: Content;
@@ -32,8 +33,8 @@ export function StudioContentCard({ content, onPublish, isPublishing }: StudioCo
       {/* Thumbnail */}
       <div className="relative aspect-video bg-mp-bg-secondary overflow-hidden">
         {content.thumbnailUrl ? (
-          <Image
-            src={content.thumbnailUrl}
+          <ContentImage
+            src={normalizeMediaUrl(content.thumbnailUrl)}
             alt={content.title}
             fill
             className="object-cover transition-transform group-hover:scale-105"

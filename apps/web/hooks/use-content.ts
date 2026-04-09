@@ -4,6 +4,7 @@ import { useQuery, useInfiniteQuery, keepPreviousData } from '@tanstack/react-qu
 
 import { api, endpoints } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-client';
+import { formatDuration } from '@/lib/utils';
 import type { PaginatedList } from '@/types';
 
 interface ContentListParams {
@@ -62,8 +63,19 @@ interface TutorialDetail {
   ageCategory: string;
   category: string | { id: string; name: string; slug: string };
   instructor?: string;
-  duration?: string;
+  duration?: string | number;
   lessons?: TutorialLesson[];
+  seasons?: Array<{
+    number: number;
+    title: string;
+    episodes: Array<{
+      id: string;
+      title: string;
+      episodeNumber: number;
+      seasonNumber: number;
+      duration: number;
+    }>;
+  }>;
 }
 
 export interface TutorialLesson {
@@ -175,7 +187,39 @@ export function useTutorialDetail(slug: string) {
     queryKey: [...queryKeys.content.details(), 'tutorial', slug],
     queryFn: async () => {
       const response = await api.get<TutorialDetail>(endpoints.content.detail(slug));
-      return response.data;
+
+      // Backend returns tutorials with SERIES-like structure: { seasons: [{ episodes: [...] }] }
+      // UI expects a flat lessons list for CTA/progress.
+      const raw = response.data as TutorialDetail;
+
+      const duration =
+        typeof raw.duration === 'number'
+          ? formatDuration(raw.duration)
+          : raw.duration;
+
+      const lessonsFromSeasons: TutorialLesson[] =
+        raw.seasons?.flatMap((season) =>
+          season.episodes
+            .slice()
+            .sort((a, b) => a.episodeNumber - b.episodeNumber)
+            .map((episode) => ({
+              id: episode.id,
+              number: 0, // filled below
+              title: episode.title,
+              duration: episode.duration,
+              isCompleted: false,
+            })),
+        ) ?? [];
+
+      for (let i = 0; i < lessonsFromSeasons.length; i += 1) {
+        lessonsFromSeasons[i]!.number = i + 1;
+      }
+
+      return {
+        ...raw,
+        duration,
+        lessons: raw.lessons?.length ? raw.lessons : lessonsFromSeasons,
+      };
     },
     enabled: !!slug,
     staleTime: 60_000,

@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { BullModule } from '@nestjs/bull';
 
 import { CacheModule } from './common/cache/cache.module';
 import { HealthModule } from './common/health/health.module';
@@ -18,6 +19,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { BonusesModule } from './modules/bonuses/bonuses.module';
 import { EdgeCenterModule } from './modules/edgecenter/edgecenter.module';
 import { ContentModule } from './modules/content/content.module';
+import { CommentsModule } from './modules/comments/comments.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { GenresModule } from './modules/genres/genres.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -34,6 +36,30 @@ import { UsersModule } from './modules/users/users.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
+    }),
+
+    // Bull (Queues)
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>('REDIS_URL');
+        const password = config.get<string>('REDIS_PASSWORD', '');
+
+        if (redisUrl) {
+          return {
+            redis: redisUrl,
+          };
+        }
+
+        return {
+          redis: {
+            host: config.get<string>('REDIS_HOST', 'localhost'),
+            port: config.get<number>('REDIS_PORT', 6379),
+            ...(password ? { password } : {}),
+          },
+        };
+      },
     }),
 
     // Rate limiting
@@ -67,6 +93,7 @@ import { UsersModule } from './modules/users/users.module';
     AuthModule,
     UsersModule,
     ContentModule,
+    CommentsModule,
     EdgeCenterModule,
     SubscriptionsModule,
     PaymentsModule,

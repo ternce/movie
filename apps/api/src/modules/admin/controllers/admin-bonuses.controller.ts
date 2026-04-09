@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
+import { UserRole } from '@movie-platform/shared';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -37,7 +38,7 @@ import {
 @ApiBearerAuth()
 @Controller('admin/bonuses')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
+@Roles(UserRole.ADMIN)
 export class AdminBonusesController {
   constructor(private readonly adminBonusesService: AdminBonusesService) {}
 

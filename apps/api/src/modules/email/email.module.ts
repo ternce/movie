@@ -14,7 +14,13 @@ import { EMAIL_QUEUE } from './email.constants';
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
+      useFactory: (config: ConfigService) => {
+        const isProduction = config.get<string>('NODE_ENV') === 'production';
+        const templateDir = isProduction
+          ? join(__dirname, 'templates')
+          : join(process.cwd(), 'src/modules/email/templates');
+
+        return {
         transport: {
           host: config.get<string>('SMTP_HOST', 'localhost'),
           port: config.get<number>('SMTP_PORT', 1025),
@@ -30,36 +36,41 @@ import { EMAIL_QUEUE } from './email.constants';
           from: `"${config.get<string>('SMTP_FROM_NAME', 'MoviePlatform')}" <${config.get<string>('SMTP_FROM_EMAIL', 'noreply@movieplatform.local')}>`,
         },
         template: {
-          dir: join(__dirname, 'templates'),
+          dir: templateDir,
           adapter: new HandlebarsAdapter(),
           options: {
             strict: true,
           },
         },
-      }),
+        };
+      },
     }),
     BullModule.registerQueueAsync({
       name: EMAIL_QUEUE,
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>('REDIS_URL');
         const password = config.get<string>('REDIS_PASSWORD', '');
+
         return {
-        redis: {
-          host: config.get<string>('REDIS_HOST', 'localhost'),
-          port: config.get<number>('REDIS_PORT', 6379),
-          ...(password ? { password } : {}),
-        },
-        defaultJobOptions: {
-          removeOnComplete: true,
-          removeOnFail: false,
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 5000,
+          redis: redisUrl
+            ? redisUrl
+            : {
+                host: config.get<string>('REDIS_HOST', 'localhost'),
+                port: config.get<number>('REDIS_PORT', 6379),
+                ...(password ? { password } : {}),
+              },
+          defaultJobOptions: {
+            removeOnComplete: true,
+            removeOnFail: false,
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 5000,
+            },
           },
-        },
-      };
+        };
       },
     }),
   ],

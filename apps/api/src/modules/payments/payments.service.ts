@@ -384,7 +384,7 @@ export class PaymentsService {
             amount,
             currency: 'RUB',
             dueDate: invoice.dueDate,
-            bankDetails: invoice.bankDetails as unknown as Prisma.JsonValue,
+            bankDetails: (invoice.bankDetails ?? {}) as unknown as Prisma.InputJsonValue,
             qrCodeUrl: this.bankTransferService.generateQrCode(invoice),
             status: InvoiceStatus.PENDING,
           },

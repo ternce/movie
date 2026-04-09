@@ -4,7 +4,6 @@ import {
   LandingNav,
   LandingHero,
   LandingStats,
-  LandingContentPreview,
   LandingFeatures,
   LandingPricing,
   LandingCTA,
@@ -21,7 +20,6 @@ export default function LandingPageClient() {
       <LandingNav />
       <LandingHero />
       <LandingStats />
-      <LandingContentPreview />
       <LandingFeatures />
       <LandingPricing />
       <LandingCTA />

@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
   eslint: { ignoreDuringBuilds: true },
 
   // Transpile monorepo packages
-  transpilePackages: ['@movie-platform/shared', '@movie-platform/ui'],
+  transpilePackages: ['@movie-platform/shared'],
 
   // Replace @phosphor-icons/react with a noop stub in server bundles to prevent
   // createContext from being called in react-server context (standalone build issue).
@@ -86,6 +86,25 @@ const nextConfig: NextConfig = {
         source: '/partners',
         destination: '/partner',
         permanent: true,
+      },
+    ];
+  },
+
+  // Proxy MinIO buckets through the web app.
+  // - In production, nginx already proxies /minio/* to MinIO.
+  // - In local Docker dev (without nginx), Next.js must proxy /minio/* to reach the MinIO container.
+  async rewrites() {
+    const targetBase =
+      process.env.MINIO_INTERNAL_ENDPOINT ||
+      process.env.NEXT_PUBLIC_MINIO_URL ||
+      'http://localhost:9000';
+
+    const normalizedTarget = targetBase.replace(/\/+$/, '');
+
+    return [
+      {
+        source: '/minio/:path*',
+        destination: `${normalizedTarget}/:path*`,
       },
     ];
   },

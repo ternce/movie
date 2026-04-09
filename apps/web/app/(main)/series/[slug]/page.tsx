@@ -1,10 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Play, Plus, ShareNetwork, Calendar } from '@phosphor-icons/react';
+import { toast } from 'sonner';
 
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
@@ -12,14 +12,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ContentGrid } from '@/components/ui/grid';
 import {
   AgeBadge,
+  ContentImage,
   EpisodeCard,
   VideoCardSkeletonGrid,
   type AgeCategory,
   type EpisodeContent,
 } from '@/components/content';
 import { RatingBadge } from '@/components/ui/rating-badge';
-import { cn } from '@/lib/utils';
+import { cn, copyTextToClipboard } from '@/lib/utils';
 import { useSeriesDetail } from '@/hooks/use-content';
+import { useAddToWatchlist } from '@/hooks/use-account';
 
 /**
  * Series detail page — fetches real data from API by slug
@@ -30,11 +32,12 @@ export default function SeriesDetailPage() {
   const { data: apiData, isLoading, error } = useSeriesDetail(slug);
   const [selectedSeason, setSelectedSeason] = React.useState('1');
   const [showFullDescription, setShowFullDescription] = React.useState(false);
+  const addToWatchlist = useAddToWatchlist();
 
   // Build series object from API response
   const series = React.useMemo(() => {
-    if (!apiData?.data) return null;
-    const d = apiData.data;
+    const d = (apiData as any)?.data ?? apiData;
+    if (!d) return null;
     return {
       id: d.id,
       slug: d.slug,
@@ -73,6 +76,33 @@ export default function SeriesDetailPage() {
     return series.seasons[0]?.episodes[0];
   }, [series]);
 
+  const handleAddToList = React.useCallback(async () => {
+    if (!series?.id) return;
+    try {
+      await addToWatchlist.mutateAsync(series.id);
+    } catch {
+      // hook shows toast
+    }
+  }, [addToWatchlist, series?.id]);
+
+  const handleShare = React.useCallback(async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    if (!url) return;
+
+    try {
+      if (typeof navigator !== 'undefined' && 'share' in navigator) {
+        await (navigator as any).share({ title: series?.title || 'Сериал', url });
+        return;
+      }
+    } catch {
+      // fall back to clipboard
+    }
+
+    const ok = await copyTextToClipboard(url);
+    if (ok) toast.success('Ссылка скопирована');
+    else toast.error('Не удалось скопировать ссылку');
+  }, [series?.title]);
+
   if (isLoading) {
     return (
       <div className="animate-pulse">
@@ -104,13 +134,14 @@ export default function SeriesDetailPage() {
     <div>
       {/* Hero banner */}
       <div className="relative h-[400px] md:h-[500px]">
-        <Image
+        <ContentImage
           src={series.bannerUrl}
           alt={series.title}
           fill
           className="object-cover"
           priority
           unoptimized={series.bannerUrl.startsWith('http')}
+          sizes="100vw"
         />
 
         <div className="absolute inset-0 bg-gradient-to-t from-mp-bg-primary via-mp-bg-primary/60 to-transparent" />
@@ -181,11 +212,16 @@ export default function SeriesDetailPage() {
                   Смотреть
                 </Link>
               </Button>
-              <Button variant="outline" size="lg">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleAddToList}
+                disabled={addToWatchlist.isPending}
+              >
                 <Plus className="w-5 h-5 mr-2" />
                 В список
               </Button>
-              <Button variant="ghost" size="lg">
+              <Button variant="ghost" size="lg" onClick={handleShare}>
                 <ShareNetwork className="w-5 h-5" />
               </Button>
             </div>

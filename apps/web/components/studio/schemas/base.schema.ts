@@ -16,7 +16,7 @@ export const baseContentSchema = z.object({
 
 export const fullMetadataSchema = baseContentSchema.extend({
   categoryId: z.string().min(1, 'Выберите тематику'),
-  tagIds: z.array(z.string()).max(1, 'Выберите один тег').optional().default([]),
+  tagIds: z.array(z.string()).optional().default([]),
   genreIds: z.array(z.string()).optional().default([]),
 });
 
