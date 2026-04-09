@@ -586,7 +586,7 @@ export function ContentForm({
                     value={field.value ?? []}
                     onChange={field.onChange}
                     availableTags={availableTags}
-                    maxTags={20}
+                    maxTags={1}
                   />
                 )}
               />

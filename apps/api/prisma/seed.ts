@@ -83,6 +83,46 @@ async function seedCategories() {
   console.log('✅ Content Categories seeded');
 }
 
+<<<<<<< Updated upstream
+=======
+async function seedTags() {
+  console.log('🎯 Seeding Content Tags...');
+
+  const tags = [
+    { name: 'Кино', slug: 'cinema' },
+    { name: 'Сериалы', slug: 'series' },
+    { name: 'Анимация', slug: 'animation' },
+    { name: 'Наука', slug: 'science' },
+    { name: 'Технологии', slug: 'technology' },
+    { name: 'Программирование', slug: 'programming' },
+    { name: 'Дизайн', slug: 'design' },
+    { name: 'Маркетинг', slug: 'marketing' },
+    { name: 'Бизнес', slug: 'business' },
+    { name: 'Финансы', slug: 'finance' },
+    { name: 'Психология', slug: 'psychology' },
+    { name: 'Саморазвитие', slug: 'self-development' },
+    { name: 'Здоровье', slug: 'health' },
+    { name: 'Фитнес', slug: 'fitness' },
+    { name: 'Кулинария', slug: 'cooking' },
+    { name: 'Путешествия', slug: 'travel' },
+    { name: 'Музыка', slug: 'music' },
+    { name: 'Спорт', slug: 'sport' },
+    { name: 'История', slug: 'history' },
+    { name: 'Образование', slug: 'education' },
+  ];
+
+  for (const tag of tags) {
+    await prisma.tag.upsert({
+      where: { slug: tag.slug },
+      update: { name: tag.name },
+      create: tag,
+    });
+  }
+
+  console.log('✅ Content Tags seeded');
+}
+
+>>>>>>> Stashed changes
 async function seedProductCategories() {
   console.log('🎯 Seeding Product Categories...');
 

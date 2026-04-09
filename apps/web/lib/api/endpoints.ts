@@ -82,6 +82,19 @@ export const endpoints = {
     detail: (slug: string) => `/content/${slug}`,
     featured: '/content/featured',
     search: '/content/search',
+<<<<<<< Updated upstream
+=======
+    recordView: (contentId: string) => `/content/${contentId}/view`,
+    like: (contentId: string) => `/content/${contentId}/like`,
+  },
+
+  // Comments
+  comments: {
+    list: (contentId: string) => `/content/${contentId}/comments`,
+    create: (contentId: string) => `/content/${contentId}/comments`,
+    delete: (contentId: string, commentId: string) =>
+      `/content/${contentId}/comments/${commentId}`,
+>>>>>>> Stashed changes
   },
 
   // Series

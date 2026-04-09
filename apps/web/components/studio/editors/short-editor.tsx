@@ -270,9 +270,9 @@ export function ShortEditor({ content, contentId }: ShortEditorProps) {
                   value={field.value ?? []}
                   onChange={field.onChange}
                   availableTags={availableTags}
-                  placeholder="Добавить тег..."
+                  placeholder="Выберите тег..."
                   disabled={updateContent.isPending}
-                  maxTags={10}
+                  maxTags={1}
                 />
               )}
             />

@@ -395,7 +395,8 @@ export function SeriesWizard({ onSuccess }: SeriesWizardProps) {
                       value={field.value ?? []}
                       onChange={field.onChange}
                       availableTags={availableTags}
-                      maxTags={20}
+                      placeholder="Выберите тег..."
+                      maxTags={1}
                     />
                   )}
                 />

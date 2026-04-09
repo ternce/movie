@@ -3,8 +3,11 @@ import {
   Get,
   Query,
   Param,
+  Post,
+  Delete,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -171,5 +174,39 @@ export class ContentController {
   })
   async recordView(@Param('id') id: string): Promise<void> {
     await this.contentService.incrementViewCount(id);
+  }
+
+  /**
+   * Like a content item.
+   * Requires authentication.
+   */
+  @Post('content/:id/like')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Like content' })
+  @ApiParam({ name: 'id', description: 'Content ID' })
+  @ApiResponse({ status: 200, description: 'Like recorded' })
+  async like(
+    @Param('id') id: string,
+    @CurrentUser('id') userId?: string,
+  ): Promise<{ likeCount: number }> {
+    if (!userId) throw new UnauthorizedException();
+    return this.contentService.likeContent(id, userId);
+  }
+
+  /**
+   * Remove like from a content item.
+   * Requires authentication.
+   */
+  @Delete('content/:id/like')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Unlike content' })
+  @ApiParam({ name: 'id', description: 'Content ID' })
+  @ApiResponse({ status: 200, description: 'Like removed' })
+  async unlike(
+    @Param('id') id: string,
+    @CurrentUser('id') userId?: string,
+  ): Promise<{ likeCount: number }> {
+    if (!userId) throw new UnauthorizedException();
+    return this.contentService.unlikeContent(id, userId);
   }
 }

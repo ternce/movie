@@ -114,6 +114,20 @@ export class ContentService {
             publishedAt: true,
             viewCount: true,
             duration: true,
+<<<<<<< Updated upstream
+=======
+            _count: {
+              select: {
+                comments: true,
+                likes: true,
+              },
+            },
+            series: {
+              select: {
+                id: true,
+              },
+            },
+>>>>>>> Stashed changes
             category: {
               select: {
                 id: true,
@@ -187,6 +201,15 @@ export class ContentService {
         ageCategory: { in: allowedCategories },
       },
       include: {
+<<<<<<< Updated upstream
+=======
+        _count: {
+          select: {
+            comments: true,
+            likes: true,
+          },
+        },
+>>>>>>> Stashed changes
         category: {
           select: {
             id: true,
@@ -239,6 +262,15 @@ export class ContentService {
         ageCategory: { in: allowedCategories },
       },
       include: {
+<<<<<<< Updated upstream
+=======
+        _count: {
+          select: {
+            comments: true,
+            likes: true,
+          },
+        },
+>>>>>>> Stashed changes
         category: {
           select: {
             id: true,
@@ -305,6 +337,15 @@ export class ContentService {
           { publishedAt: 'desc' },
         ],
         include: {
+<<<<<<< Updated upstream
+=======
+          _count: {
+            select: {
+              comments: true,
+              likes: true,
+            },
+          },
+>>>>>>> Stashed changes
           category: {
             select: {
               id: true,
@@ -406,12 +447,96 @@ export class ContentService {
     });
   }
 
+<<<<<<< Updated upstream
   private readonly AGE_CATEGORY_MAP: Record<string, string> = {
     ZERO_PLUS: '0+',
     SIX_PLUS: '6+',
     TWELVE_PLUS: '12+',
     SIXTEEN_PLUS: '16+',
     EIGHTEEN_PLUS: '18+',
+=======
+  private async invalidateContentCaches(): Promise<void> {
+    await Promise.all([
+      this.cache.invalidatePattern('content:list:*'),
+      this.cache.invalidatePattern('content:search:*'),
+      this.cache.invalidatePattern('content:detail:*'),
+      this.cache.delete(CACHE_KEYS.content.featured()),
+    ]);
+  }
+
+  /**
+   * Like content (idempotent).
+   */
+  async likeContent(contentId: string, userId: string): Promise<{ likeCount: number }> {
+    if (!contentId) throw new BadRequestException('contentId is required');
+    if (!userId) throw new BadRequestException('userId is required');
+
+    const contentExists = await this.prisma.content.findUnique({
+      where: { id: contentId },
+      select: { id: true, status: true },
+    });
+
+    if (!contentExists || contentExists.status === ContentStatus.ARCHIVED) {
+      throw new NotFoundException(`Контент с ID "${contentId}" не найден`);
+    }
+
+    await this.prisma.contentLike.upsert({
+      where: {
+        contentId_userId: {
+          contentId,
+          userId,
+        },
+      },
+      update: {},
+      create: {
+        contentId,
+        userId,
+      },
+    });
+
+    const likeCount = await this.prisma.contentLike.count({ where: { contentId } });
+
+    // Best-effort cache invalidation so counts reflect after reload.
+    this.invalidateContentCaches().catch(() => undefined);
+
+    return { likeCount };
+  }
+
+  /**
+   * Unlike content (idempotent).
+   */
+  async unlikeContent(contentId: string, userId: string): Promise<{ likeCount: number }> {
+    if (!contentId) throw new BadRequestException('contentId is required');
+    if (!userId) throw new BadRequestException('userId is required');
+
+    // Delete if exists; ignore if it doesn't.
+    try {
+      await this.prisma.contentLike.delete({
+        where: {
+          contentId_userId: {
+            contentId,
+            userId,
+          },
+        },
+      });
+    } catch {
+      // ignore
+    }
+
+    const likeCount = await this.prisma.contentLike.count({ where: { contentId } });
+
+    this.invalidateContentCaches().catch(() => undefined);
+
+    return { likeCount };
+  }
+
+  private readonly AGE_CATEGORY_MAP: Record<AgeCategory, SharedAgeCategory> = {
+    [AgeCategory.ZERO_PLUS]: SharedAgeCategory.ZERO_PLUS,
+    [AgeCategory.SIX_PLUS]: SharedAgeCategory.SIX_PLUS,
+    [AgeCategory.TWELVE_PLUS]: SharedAgeCategory.TWELVE_PLUS,
+    [AgeCategory.SIXTEEN_PLUS]: SharedAgeCategory.SIXTEEN_PLUS,
+    [AgeCategory.EIGHTEEN_PLUS]: SharedAgeCategory.EIGHTEEN_PLUS,
+>>>>>>> Stashed changes
   };
 
   /**
@@ -436,6 +561,11 @@ export class ContentService {
       category: content.category,
       tags: content.tags.map((ct: any) => ct.tag),
       genres: content.genres.map((cg: any) => cg.genre),
+<<<<<<< Updated upstream
+=======
+      commentCount: typeof content?._count?.comments === 'number' ? content._count.comments : undefined,
+      likeCount: typeof content?._count?.likes === 'number' ? content._count.likes : undefined,
+>>>>>>> Stashed changes
     };
   }
 

@@ -214,6 +214,21 @@ export default function AdminContentNewPage() {
                     </SelectContent>
                   </Select>
                 </div>
+<<<<<<< Updated upstream
+=======
+
+                <div className="space-y-2">
+                  <Label>Теги</Label>
+                  <TagInput
+                    value={tagIds}
+                    onChange={setTagIds}
+                    availableTags={availableTags ?? []}
+                    placeholder="Выберите тег..."
+                    disabled={createContent.isPending}
+                    maxTags={1}
+                  />
+                </div>
+>>>>>>> Stashed changes
               </CardContent>
             </Card>
 

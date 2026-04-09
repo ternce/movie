@@ -231,9 +231,9 @@ export function ShortWizard({ onSuccess }: ShortWizardProps) {
                   value={field.value ?? []}
                   onChange={field.onChange}
                   availableTags={availableTags}
-                  placeholder="Добавить тег..."
+                  placeholder="Выберите тег..."
                   disabled={createContent.isPending}
-                  maxTags={10}
+                  maxTags={1}
                 />
               )}
             />
