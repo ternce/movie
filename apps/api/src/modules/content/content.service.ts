@@ -1,6 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { AgeCategory, ContentStatus, ContentType, Prisma } from '@prisma/client';
-import { AgeCategory as SharedAgeCategory } from '@movie-platform/shared';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { AgeCategory, ContentStatus, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../config/prisma.service';
 import { CacheService, CACHE_TTL, CACHE_KEYS } from '../../common/cache/cache.service';
@@ -115,9 +114,16 @@ export class ContentService {
             publishedAt: true,
             viewCount: true,
             duration: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+              <<<<<<< Updated upstream
+=======
             _count: {
               select: {
                 comments: true,
+                likes: true,
               },
             },
             series: {
@@ -125,6 +131,7 @@ export class ContentService {
                 id: true,
               },
             },
+>>>>>>> Stashed changes
             category: {
               select: {
                 id: true,
@@ -158,62 +165,10 @@ export class ContentService {
         }),
       ]);
 
-      // Compute season/episode counts for root series/tutorial items shown in listings.
-      // Root content has a Series row with parentSeriesId=null; episodes reference it via parentSeriesId.
-      const rootSeriesIds = Array.from(
-        new Set(
-          items
-            .map((item: any) => item.series?.id)
-            .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0),
-        ),
-      );
-
-      const episodeCountBySeriesId = new Map<string, number>();
-      const seasonCountBySeriesId = new Map<string, number>();
-
-      if (rootSeriesIds.length > 0) {
-        const [episodeCounts, seasonGroups] = await Promise.all([
-          this.prisma.series.groupBy({
-            by: ['parentSeriesId'],
-            where: { parentSeriesId: { in: rootSeriesIds } },
-            _count: { _all: true },
-          }),
-          this.prisma.series.groupBy({
-            by: ['parentSeriesId', 'seasonNumber'],
-            where: { parentSeriesId: { in: rootSeriesIds } },
-          }),
-        ]);
-
-        for (const row of episodeCounts) {
-          if (row.parentSeriesId) {
-            episodeCountBySeriesId.set(row.parentSeriesId, row._count._all);
-          }
-        }
-
-        for (const row of seasonGroups) {
-          if (row.parentSeriesId) {
-            seasonCountBySeriesId.set(
-              row.parentSeriesId,
-              (seasonCountBySeriesId.get(row.parentSeriesId) ?? 0) + 1,
-            );
-          }
-        }
-      }
-
       const totalPages = Math.ceil(total / limit);
 
       return {
-        items: items.map((item: any) => {
-          const dto = this.mapContentToDto(item);
-          const seriesId = item.series?.id as string | undefined;
-          if (!seriesId) return dto;
-
-          return {
-            ...dto,
-            seasonCount: seasonCountBySeriesId.get(seriesId) ?? 0,
-            episodeCount: episodeCountBySeriesId.get(seriesId) ?? 0,
-          };
-        }),
+        items: items.map((item) => this.mapContentToDto(item)),
         meta: {
           page,
           limit,
@@ -229,36 +184,16 @@ export class ContentService {
   /**
    * Get a single content item by slug.
    */
-  async findBySlug(slug: string, userAgeCategory?: AgeCategory, userRole?: string) {
-    const roleKey = userRole || 'ANON';
-    const ageKey = userAgeCategory || 'ANON';
-    const cacheKey = CACHE_KEYS.content.detail(`${slug}:${ageKey}:${roleKey}`);
+  async findBySlug(slug: string, userAgeCategory?: AgeCategory) {
+    const cacheKey = CACHE_KEYS.content.detail(`${slug}:${userAgeCategory || 'ZERO_PLUS'}`);
 
     return this.cache.getOrSet(cacheKey, async () => {
-      return this._findBySlugUncached(slug, userAgeCategory, userRole);
+      return this._findBySlugUncached(slug, userAgeCategory);
     }, { ttl: CACHE_TTL.MEDIUM });
   }
 
-  private isPrivilegedViewer(userRole?: string): boolean {
-    return userRole === 'ADMIN' || userRole === 'MODERATOR';
-  }
-
-  private async _findBySlugUncached(
-    slug: string,
-    userAgeCategory?: AgeCategory,
-    userRole?: string,
-  ) {
-    const isPrivileged = this.isPrivilegedViewer(userRole);
-
-    const allowedCategories = isPrivileged
-      ? [
-          AgeCategory.ZERO_PLUS,
-          AgeCategory.SIX_PLUS,
-          AgeCategory.TWELVE_PLUS,
-          AgeCategory.SIXTEEN_PLUS,
-          AgeCategory.EIGHTEEN_PLUS,
-        ]
-      : this.getAllowedAgeCategories(userAgeCategory);
+  private async _findBySlugUncached(slug: string, userAgeCategory?: AgeCategory) {
+    const allowedCategories = this.getAllowedAgeCategories(userAgeCategory);
 
     // Support both UUID and slug lookup (consistent with streaming endpoint)
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
@@ -266,17 +201,19 @@ export class ContentService {
     const content = await this.prisma.content.findFirst({
       where: {
         ...(isUuid ? { id: slug } : { slug }),
-        ...(isPrivileged
-          ? { status: { not: ContentStatus.ARCHIVED } }
-          : { status: ContentStatus.PUBLISHED }),
+        status: ContentStatus.PUBLISHED,
         ageCategory: { in: allowedCategories },
       },
       include: {
+<<<<<<< Updated upstream
+=======
         _count: {
           select: {
             comments: true,
+            likes: true,
           },
         },
+>>>>>>> Stashed changes
         category: {
           select: {
             id: true,
@@ -310,21 +247,10 @@ export class ContentService {
     });
 
     if (!content) {
-      if (isUuid) {
-        throw new NotFoundException(`Контент с ID "${slug}" не найден`);
-      }
       throw new NotFoundException(`Контент с slug "${slug}" не найден`);
     }
 
-    const dto = this.mapContentToDetailDto(content);
-
-    // For SERIES and TUTORIAL types, include season/episode structure
-    if (content.contentType === ContentType.SERIES || content.contentType === ContentType.TUTORIAL) {
-      const structure = await this._getSeriesStructure(content.id);
-      return { ...dto, seasons: structure.seasons };
-    }
-
-    return dto;
+    return this.mapContentToDetailDto(content);
   }
 
   /**
@@ -340,11 +266,15 @@ export class ContentService {
         ageCategory: { in: allowedCategories },
       },
       include: {
+<<<<<<< Updated upstream
+=======
         _count: {
           select: {
             comments: true,
+            likes: true,
           },
         },
+>>>>>>> Stashed changes
         category: {
           select: {
             id: true,
@@ -381,15 +311,7 @@ export class ContentService {
       throw new NotFoundException(`Контент с ID "${id}" не найден`);
     }
 
-    const dto = this.mapContentToDetailDto(content);
-
-    // For SERIES and TUTORIAL types, include season/episode structure
-    if (content.contentType === ContentType.SERIES || content.contentType === ContentType.TUTORIAL) {
-      const structure = await this._getSeriesStructure(content.id);
-      return { ...dto, seasons: structure.seasons };
-    }
-
-    return dto;
+    return this.mapContentToDetailDto(content);
   }
 
   /**
@@ -419,11 +341,15 @@ export class ContentService {
           { publishedAt: 'desc' },
         ],
         include: {
+<<<<<<< Updated upstream
+=======
           _count: {
             select: {
               comments: true,
+              likes: true,
             },
           },
+>>>>>>> Stashed changes
           category: {
             select: {
               id: true,
@@ -501,10 +427,7 @@ export class ContentService {
    */
   async getTags() {
     return this.prisma.tag.findMany({
-      orderBy: [
-        { content: { _count: 'desc' } },
-        { name: 'asc' },
-      ],
+      orderBy: { name: 'asc' },
     });
   }
 
@@ -528,26 +451,109 @@ export class ContentService {
     });
   }
 
+<<<<<<< Updated upstream
+  private readonly AGE_CATEGORY_MAP: Record<string, string> = {
+    ZERO_PLUS: '0+',
+    SIX_PLUS: '6+',
+    TWELVE_PLUS: '12+',
+    SIXTEEN_PLUS: '16+',
+    EIGHTEEN_PLUS: '18+',
+=======
+  private async invalidateContentCaches(): Promise<void> {
+    await Promise.all([
+      this.cache.invalidatePattern('content:list:*'),
+      this.cache.invalidatePattern('content:search:*'),
+      this.cache.invalidatePattern('content:detail:*'),
+      this.cache.delete(CACHE_KEYS.content.featured()),
+    ]);
+  }
+
+  /**
+   * Like content (idempotent).
+   */
+  async likeContent(contentId: string, userId: string): Promise<{ likeCount: number }> {
+    if (!contentId) throw new BadRequestException('contentId is required');
+    if (!userId) throw new BadRequestException('userId is required');
+
+    const contentExists = await this.prisma.content.findUnique({
+      where: { id: contentId },
+      select: { id: true, status: true },
+    });
+
+    if (!contentExists || contentExists.status === ContentStatus.ARCHIVED) {
+      throw new NotFoundException(`Контент с ID "${contentId}" не найден`);
+    }
+
+    await this.prisma.contentLike.upsert({
+      where: {
+        contentId_userId: {
+          contentId,
+          userId,
+        },
+      },
+      update: {},
+      create: {
+        contentId,
+        userId,
+      },
+    });
+
+    const likeCount = await this.prisma.contentLike.count({ where: { contentId } });
+
+    // Best-effort cache invalidation so counts reflect after reload.
+    this.invalidateContentCaches().catch(() => undefined);
+
+    return { likeCount };
+  }
+
+  /**
+   * Unlike content (idempotent).
+   */
+  async unlikeContent(contentId: string, userId: string): Promise<{ likeCount: number }> {
+    if (!contentId) throw new BadRequestException('contentId is required');
+    if (!userId) throw new BadRequestException('userId is required');
+
+    // Delete if exists; ignore if it doesn't.
+    try {
+      await this.prisma.contentLike.delete({
+        where: {
+          contentId_userId: {
+            contentId,
+            userId,
+          },
+        },
+      });
+    } catch {
+      // ignore
+    }
+
+    const likeCount = await this.prisma.contentLike.count({ where: { contentId } });
+
+    this.invalidateContentCaches().catch(() => undefined);
+
+    return { likeCount };
+  }
+
   private readonly AGE_CATEGORY_MAP: Record<AgeCategory, SharedAgeCategory> = {
     [AgeCategory.ZERO_PLUS]: SharedAgeCategory.ZERO_PLUS,
     [AgeCategory.SIX_PLUS]: SharedAgeCategory.SIX_PLUS,
     [AgeCategory.TWELVE_PLUS]: SharedAgeCategory.TWELVE_PLUS,
     [AgeCategory.SIXTEEN_PLUS]: SharedAgeCategory.SIXTEEN_PLUS,
     [AgeCategory.EIGHTEEN_PLUS]: SharedAgeCategory.EIGHTEEN_PLUS,
+>>>>>>> Stashed changes
   };
 
   /**
    * Map content entity to list DTO.
    */
   private mapContentToDto(content: any) {
-    const mappedAgeCategory = this.AGE_CATEGORY_MAP[content.ageCategory as AgeCategory];
     return {
       id: content.id,
       title: content.title,
       slug: content.slug,
       description: content.description,
       contentType: content.contentType,
-      ageCategory: mappedAgeCategory ?? (content.ageCategory as unknown as SharedAgeCategory),
+      ageCategory: this.AGE_CATEGORY_MAP[content.ageCategory] ?? content.ageCategory,
       thumbnailUrl: content.thumbnailUrl,
       duration: content.duration,
       isFree: content.isFree,
@@ -559,108 +565,12 @@ export class ContentService {
       category: content.category,
       tags: content.tags.map((ct: any) => ct.tag),
       genres: content.genres.map((cg: any) => cg.genre),
+<<<<<<< Updated upstream
+=======
       commentCount: typeof content?._count?.comments === 'number' ? content._count.comments : undefined,
-    };
-  }
-
-  /**
-   * Map content entity to detail DTO.
-   */
-  private mapContentToDetailDto(content: any) {
-    return {
-      ...this.mapContentToDto(content),
-      previewUrl: content.previewUrl,
-      createdAt: content.createdAt,
-      updatedAt: content.updatedAt,
-    };
-  }
-
-  /**
-   * Get series structure (seasons and episodes) for a content item.
-   * Used to provide season/episode information for SERIES and TUTORIAL content types.
-   */
-  private async _getSeriesStructure(contentId: string) {
-    // Get root content with series reference
-    const rootContent = await this.prisma.content.findUnique({
-      where: { id: contentId },
-      include: {
-        series: true,
-      },
-    });
-
-    if (!rootContent || !rootContent.series) {
-      // Not a series/tutorial, return empty seasons
-      return { seasons: [] };
-    }
-
-    // Get all episodes (children of root series)
-    const episodes = await this.prisma.series.findMany({
-      where: { parentSeriesId: rootContent.series.id },
-      include: {
-        content: {
-          include: {
-            videoFiles: {
-              select: { encodingStatus: true },
-            },
-          },
-        },
-      },
-      orderBy: [
-        { seasonNumber: 'asc' },
-        { episodeNumber: 'asc' },
-      ],
-    });
-
-    // Group episodes by season number
-    const seasonMap = new Map<number, any[]>();
-
-    for (const ep of episodes) {
-      const seasonNum = ep.seasonNumber;
-      if (!seasonMap.has(seasonNum)) {
-        seasonMap.set(seasonNum, []);
-      }
-
-      const hasVideo = !!ep.content.edgecenterVideoId || ep.content.videoFiles.length > 0;
-
-      seasonMap.get(seasonNum)!.push({
-        id: ep.content.id,
-        contentId: ep.content.id,
-        title: ep.content.title,
-        description: ep.content.description,
-        seasonNumber: ep.seasonNumber,
-        episodeNumber: ep.episodeNumber,
-        hasVideo,
-        thumbnailUrl: ep.content.thumbnailUrl ?? undefined,
-        duration: ep.content.duration,
-        slug: ep.content.slug,
-      });
-    }
-
-    // Build seasons array
-    const seasons: any[] = [];
-    const sortedSeasonNums = [...seasonMap.keys()].sort((a, b) => a - b);
-
-    for (const seasonNum of sortedSeasonNums) {
-      const label = rootContent.contentType === ContentType.TUTORIAL
-        ? `Глава ${seasonNum}`
-        : `Сезон ${seasonNum}`;
-
-      seasons.push({
-        number: seasonNum,
-        title: label,
-        episodes: seasonMap.get(seasonNum)!,
-      });
-    }
-
-    return { seasons };
-  }
-
-  // ============================================
-  // Admin Methods
-  // ============================================
-
-  /**
-   * Generate URL-friendly slug from title.
+      likeCount: typeof content?._count?.likes === 'number' ? content._count.likes : undefined,
+>>>>>>> Stashed changes
+ slug from title.
    * Supports Russian characters (Cyrillic).
    */
   private generateSlug(title: string): string {
@@ -755,8 +665,6 @@ export class ContentService {
     return {
       ...this.mapContentToDetailDto(content),
       status: content.status,
-      edgecenterVideoId: content.edgecenterVideoId || undefined,
-      edgecenterClientId: content.edgecenterClientId || undefined,
       videoFiles: content.videoFiles,
     };
   }
@@ -791,14 +699,6 @@ export class ContentService {
         ? dto.status
         : ContentStatus.DRAFT;
 
-    // Validate: cannot publish content on creation without videos
-    if (finalStatus === ContentStatus.PUBLISHED) {
-      throw new BadRequestException(
-        `Новый контент не может быть опубликован без видео. ` +
-        `Создайте контент как DRAFT, загрузите видео, а затем опубликуйте.`,
-      );
-    }
-
     // Create content with relations
     const content = await this.prisma.content.create({
       data: {
@@ -814,6 +714,7 @@ export class ContentService {
         isFree: dto.isFree ?? false,
         individualPrice: dto.individualPrice,
         status: finalStatus,
+        ...(finalStatus === ContentStatus.PUBLISHED && { publishedAt: new Date() }),
         tags: dto.tagIds?.length
           ? {
               create: dto.tagIds.map((tagId) => ({ tagId })),
@@ -838,8 +739,6 @@ export class ContentService {
     return {
       ...this.mapContentToDetailDto(content),
       status: content.status,
-      edgecenterVideoId: content.edgecenterVideoId || undefined,
-      edgecenterClientId: content.edgecenterClientId || undefined,
     };
   }
 
@@ -863,59 +762,6 @@ export class ContentService {
       });
       if (!category) {
         throw new NotFoundException(`Категория с ID "${dto.categoryId}" не найдена`);
-      }
-    }
-
-    // Validate publishing requirements
-    if (dto.status === ContentStatus.PUBLISHED && existing.status !== ContentStatus.PUBLISHED) {
-      // Publishing for the first time — verify content requirements
-      const videoFiles = await this.prisma.videoFile.findMany({
-        where: { contentId: id },
-      });
-
-      // Check if content has videos (either local VideoFiles or EdgeCenter reference)
-      const hasLocalVideos = videoFiles.length > 0;
-      const hasEdgecenterVideo = !!existing.edgecenterVideoId;
-      const hasVideos = hasLocalVideos || hasEdgecenterVideo;
-      
-      if (!hasVideos) {
-        // For series/tutorials, also check if any episodes have videos
-        if (existing.contentType === ContentType.SERIES || existing.contentType === ContentType.TUTORIAL) {
-          const rootSeries = await this.prisma.series.findUnique({
-            where: { contentId: id },
-            select: { id: true },
-          });
-
-          if (!rootSeries) {
-            throw new BadRequestException(
-              `Невозможно опубликовать ${existing.contentType === ContentType.SERIES ? 'сериал' : 'курс'} без видео. ` +
-                `Структура эпизодов не найдена — создайте хотя бы один эпизод и загрузите видео.`,
-            );
-          }
-
-          const episodesWithContent = await this.prisma.content.count({
-            where: {
-              series: {
-                parentSeriesId: rootSeries.id,
-              },
-              OR: [
-                { videoFiles: { some: {} } },
-                { edgecenterVideoId: { not: null } },
-              ],
-            },
-          });
-
-          if (episodesWithContent === 0) {
-            throw new BadRequestException(
-              `Невозможно опубликовать ${existing.contentType === ContentType.SERIES ? 'сериал' : 'курс'} без видео. ` +
-              `Загрузите видео для как минимум одного эпизода.`,
-            );
-          }
-        } else {
-          throw new BadRequestException(
-            `Новый контент не может быть опубликован без видео. Создайте контент как DRAFT, загрузите видео, а затем опубликуйте.`,
-          );
-        }
       }
     }
 
@@ -976,31 +822,3 @@ export class ContentService {
     return {
       ...this.mapContentToDetailDto(content),
       status: content.status,
-      edgecenterVideoId: content.edgecenterVideoId || undefined,
-      edgecenterClientId: content.edgecenterClientId || undefined,
-    };
-  }
-
-  /**
-   * Soft delete content (Admin only).
-   * Sets status to ARCHIVED instead of deleting.
-   */
-  async delete(id: string) {
-    const content = await this.prisma.content.findUnique({
-      where: { id },
-    });
-    if (!content) {
-      throw new NotFoundException(`Контент с ID "${id}" не найден`);
-    }
-
-    await this.prisma.content.update({
-      where: { id },
-      data: { status: ContentStatus.ARCHIVED },
-    });
-
-    // Invalidate content caches
-    await this.cache.invalidatePattern('content:*');
-
-    return { success: true, message: 'Content archived successfully' };
-  }
-}

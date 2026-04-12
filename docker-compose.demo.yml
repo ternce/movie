@@ -1,0 +1,10 @@
+# ============================================
+# MoviePlatform — Demo override for local sharing
+# - Exposes nginx on :8080 (no admin rights needed on Windows)
+# - Use together with docker-compose.prod.yml
+# ============================================
+
+services:
+  nginx:
+    ports:
+      - '8080:80'

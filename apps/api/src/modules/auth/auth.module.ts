@@ -12,6 +12,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { AgeVerificationGuard } from './guards/age-verification.guard';
+import { TurnstileGuard } from './guards/turnstile.guard';
 import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
 
@@ -41,6 +42,7 @@ import { EmailModule } from '../email/email.module';
     JwtAuthGuard,
     RolesGuard,
     AgeVerificationGuard,
+    TurnstileGuard,
   ],
   exports: [
     AuthService,
@@ -49,6 +51,7 @@ import { EmailModule } from '../email/email.module';
     JwtAuthGuard,
     RolesGuard,
     AgeVerificationGuard,
+    TurnstileGuard,
   ],
 })
 export class AuthModule {}

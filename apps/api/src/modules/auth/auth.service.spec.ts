@@ -51,7 +51,7 @@ describe('AuthService', () => {
     };
 
     const mockSessionService = {
-      createSession: jest.fn().mockResolvedValue('session-hash'),
+      createSession: jest.fn().mockResolvedValue({ sessionId: 'session-hash' }),
       validateSession: jest.fn(),
       invalidateSession: jest.fn().mockResolvedValue(undefined),
       invalidateAllUserSessions: jest.fn().mockResolvedValue(undefined),
@@ -80,8 +80,19 @@ describe('AuthService', () => {
       },
       partnerRelationship: {
         findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn(),
       },
+      auditLog: {
+        create: jest.fn(),
+      },
+      // Support interactive transactions: execute the callback with the mock itself
+      $transaction: jest.fn().mockImplementation(async (fn: any) => {
+        if (typeof fn === 'function') {
+          return fn(mockPrismaService);
+        }
+        return fn;
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({

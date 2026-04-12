@@ -21,6 +21,7 @@ import { Request } from 'express';
 
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
+import { TurnstileGuard } from './guards/turnstile.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { ThrottleAuth } from '../../common/decorators/throttle.decorator';
@@ -45,6 +46,7 @@ export class AuthController {
    */
   @Post('register')
   @Public()
+  @UseGuards(TurnstileGuard)
   @ThrottleAuth.Register()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register a new user' })
