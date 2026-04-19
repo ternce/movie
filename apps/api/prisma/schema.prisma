@@ -60,6 +60,8 @@ model User {
   referralCode       String             @unique @map("referral_code")
   referredById       String?            @map("referred_by_id")
   bonusBalance       Decimal            @default(0) @map("bonus_balance") @db.Decimal(12, 2)
+  emailVerified      Boolean            @default(false) @map("email_verified")
+  referralCodeActive Boolean            @default(true) @map("referral_code_active")
   isActive           Boolean            @default(true) @map("is_active")
   lastLoginAt        DateTime?          @map("last_login_at")
   createdAt          DateTime           @default(now()) @map("created_at")
@@ -633,7 +635,7 @@ model PartnerRelationship {
 
 model PartnerCommission {
   id                  String           @id @default(uuid())
-  partnerId           String           @map("partner_id")
+  partnerId           String?          @map("partner_id")
   sourceUserId        String           @map("source_user_id")
   sourceTransactionId String           @map("source_transaction_id")
   level               Int              // Commission level (1-5)
@@ -642,10 +644,11 @@ model PartnerCommission {
   createdAt           DateTime         @default(now()) @map("created_at")
   paidAt              DateTime?        @map("paid_at")
 
-  partner           User        @relation("PartnerCommissions", fields: [partnerId], references: [id], onDelete: Cascade)
+  partner           User?       @relation("PartnerCommissions", fields: [partnerId], references: [id], onDelete: SetNull)
   sourceUser        User        @relation("SourceUserCommissions", fields: [sourceUserId], references: [id])
   sourceTransaction Transaction @relation(fields: [sourceTransactionId], references: [id])
 
+  @@unique([partnerId, sourceTransactionId, level])
   @@index([partnerId])
   @@index([status])
   @@index([createdAt])

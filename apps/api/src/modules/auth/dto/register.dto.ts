@@ -68,7 +68,17 @@ export class RegisterDto {
   @IsString()
   @MinLength(6, { message: 'Реферальный код должен содержать минимум 6 символов' })
   @MaxLength(12, { message: 'Реферальный код не может превышать 12 символов' })
+  @Matches(/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6,12}$/, {
+    message: 'Реферальный код содержит недопустимые символы',
+  })
   referralCode?: string;
+
+  @ApiPropertyOptional({
+    description: 'Cloudflare Turnstile verification token',
+  })
+  @IsOptional()
+  @IsString()
+  turnstileToken?: string;
 
   @ApiProperty({
     description: 'User must accept terms and conditions',

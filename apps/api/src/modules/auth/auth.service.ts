@@ -17,7 +17,7 @@ import { TokenService } from './token.service';
 import { EmailService } from '../email/email.service';
 import { RegisterDto, LoginResponseDto, RefreshResponseDto } from './dto';
 import { getAgeCategory, isMinor } from '../users/utils/age.util';
-import { generateReferralCode, normalizeReferralCode } from '../users/utils/referral.util';
+import { generateReferralCode, normalizeReferralCode, isValidReferralCodeFormat } from '../users/utils/referral.util';
 
 export interface JwtPayload {
   sub: string;
@@ -97,11 +97,17 @@ export class AuthService {
     let referredById: string | undefined;
     if (dto.referralCode) {
       const normalizedCode = normalizeReferralCode(dto.referralCode);
-      const referrer = await this.usersService.findByReferralCode(normalizedCode);
-      if (referrer) {
-        referredById = referrer.id;
+      if (isValidReferralCodeFormat(normalizedCode)) {
+        const referrer = await this.usersService.findByReferralCode(normalizedCode);
+        if (
+          referrer &&
+          referrer.referralCodeActive &&
+          referrer.email !== dto.email.toLowerCase() // Prevent self-referral
+        ) {
+          referredById = referrer.id;
+        }
       }
-      // Silently ignore invalid referral codes (don't expose if code exists)
+      // Silently ignore invalid/inactive referral codes (don't expose if code exists)
     }
 
     // Generate unique referral code for new user
@@ -123,26 +129,48 @@ export class AuthService {
     // Hash password
     const passwordHash = await this.hashPassword(dto.password);
 
-    // Create user
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email.toLowerCase(),
-        passwordHash,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        dateOfBirth,
-        ageCategory,
-        role,
-        referralCode,
-        referredById,
-        verificationStatus: VerificationStatus.UNVERIFIED,
-      },
-    });
+    // Create user and partner relationship atomically
+    const user = await this.prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          email: dto.email.toLowerCase(),
+          passwordHash,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          dateOfBirth,
+          ageCategory,
+          role,
+          referralCode,
+          referredById,
+          verificationStatus: VerificationStatus.UNVERIFIED,
+        },
+      });
 
-    // Create partner relationship if referred
-    if (referredById) {
-      await this.createPartnerRelationship(referredById, user.id);
-    }
+      // Create partner relationship if referred (skip for minors)
+      if (referredById && !userIsMinor) {
+        await this.createPartnerRelationship(referredById, newUser.id, tx);
+      }
+
+      // Audit log for referral code usage
+      if (referredById) {
+        await tx.auditLog.create({
+          data: {
+            userId: newUser.id,
+            action: 'REFERRAL_CODE_USED',
+            entityType: 'User',
+            entityId: newUser.id,
+            newValue: {
+              referralCode: dto.referralCode,
+              referrerId: referredById,
+              ipAddress,
+              deviceInfo,
+            },
+          },
+        });
+      }
+
+      return newUser;
+    });
 
     // Generate tokens and create session
     const tokens = await this.generateTokens(user);
@@ -326,15 +354,12 @@ export class AuthService {
     // Validate token
     const userId = await this.tokenService.validateEmailVerificationToken(token);
 
-    // Update user verification status
-    // Note: Email verification alone doesn't make user VERIFIED,
-    // it just confirms email ownership
+    // Mark email as verified
+    // Note: Email verification alone doesn't make user VERIFIED (age verification may still be needed),
+    // but it enables commission tracking in the partner program
     await this.prisma.user.update({
       where: { id: userId },
-      data: {
-        // Email is now verified, but age verification may still be needed
-        // This could be tracked with a separate emailVerified field
-      },
+      data: { emailVerified: true },
     });
 
     // Invalidate token
@@ -421,20 +446,32 @@ export class AuthService {
 
   /**
    * Create partner relationship when user is referred.
+   * Accepts optional transaction client for atomic operations.
    */
   private async createPartnerRelationship(
     partnerId: string,
     referralId: string,
+    tx?: any,
   ): Promise<void> {
+    const client = tx || this.prisma;
+
+    // Prevent circular referral chains (A→B then B→A)
+    const existingChain = await client.partnerRelationship.findFirst({
+      where: { partnerId: referralId, referralId: partnerId },
+    });
+    if (existingChain) {
+      return; // Circular reference detected — skip silently
+    }
+
     // Get the partner's existing relationships to calculate level
-    const partnerRelations = await this.prisma.partnerRelationship.findMany({
+    const partnerRelations = await client.partnerRelationship.findMany({
       where: { referralId: partnerId },
       orderBy: { level: 'asc' },
       take: 4, // Max level is 5, so partner can be at most at level 4
     });
 
     // Create direct relationship
-    await this.prisma.partnerRelationship.create({
+    await client.partnerRelationship.create({
       data: {
         partnerId,
         referralId,
@@ -446,7 +483,7 @@ export class AuthService {
     for (const relation of partnerRelations) {
       const newLevel = relation.level + 1;
       if (newLevel <= 5) {
-        await this.prisma.partnerRelationship.create({
+        await client.partnerRelationship.create({
           data: {
             partnerId: relation.partnerId,
             referralId,

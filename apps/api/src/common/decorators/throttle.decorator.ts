@@ -29,15 +29,15 @@ export const ThrottleAuth = {
     ),
 
   /**
-   * Register: 3 attempts per minute per IP, 10 min block after exceeded.
+   * Register: 2 attempts per minute per IP, 30 min block after exceeded.
    */
   Register: () =>
     applyDecorators(
-      Throttle({ default: { limit: 3, ttl: 60000 } }),
+      Throttle({ default: { limit: 2, ttl: 60000 } }),
       SetMetadata(THROTTLE_CONFIG_KEY, {
-        limit: 3,
+        limit: 2,
         ttl: 60000,
-        blockDuration: 600000,
+        blockDuration: 1800000,
         keyGenerator: 'ip',
       } as ThrottleConfig),
     ),

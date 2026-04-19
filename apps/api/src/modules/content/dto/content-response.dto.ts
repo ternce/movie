@@ -80,16 +80,26 @@ export class ContentListItemDto {
   @ApiProperty({ type: [GenreDto] })
   genres!: GenreDto[];
 
+  @ApiPropertyOptional({ description: 'Number of comments' })
+  commentCount?: n<<<<<<< Updated upstream
+=======
+
+  @ApiPropertyOptional({ description: 'Number of comments' })
+  commentCount?: number;
+
+  @ApiPropertyOptional({ description: 'Number of likes' })
+  likeCount?: number;
+
+  @ApiPropertyOptional({ description: 'Number of shares' })
+  shareCount?: number;
+
   @ApiPropertyOptional({ description: 'Number of seasons (SERIES/TUTORIAL only)' })
   seasonCount?: number;
 
   @ApiPropertyOptional({ description: 'Number of episodes/lessons (SERIES/TUTORIAL only)' })
   episodeCount?: number;
-}
-
-export class ContentDetailDto extends ContentListItemDto {
-  @ApiPropertyOptional()
-  previewUrl?: string;
+>>>>>>> Stashed changes
+Url?: string;
 
   @ApiProperty()
   createdAt!: Date;
