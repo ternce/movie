@@ -22,13 +22,13 @@ coverage/
 .env.production
 .env.production.local
 .env*.local
-<<<<<<< HEAD
+
 *.env.docker
 docker.env
 docker-compose.*.yml
+.yml
 =======
 
->>>>>>> 425fd64fc77c86b87660aa6ba30e17b5e17ca3ea
 # IDE
 .idea/
 .vscode/*

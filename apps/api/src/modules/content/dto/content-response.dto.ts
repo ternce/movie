@@ -80,9 +80,8 @@ export class ContentListItemDto {
   @ApiProperty({ type: [GenreDto] })
   genres!: GenreDto[];
 
-  @ApiPropertyOptional({ description: 'Number of comments' })
-  commentCount?: n<<<<<<< Updated upstream
-=======
+  @ApiPropertyOptional()
+  previewUrl?: string;
 
   @ApiPropertyOptional({ description: 'Number of comments' })
   commentCount?: number;
@@ -98,14 +97,20 @@ export class ContentListItemDto {
 
   @ApiPropertyOptional({ description: 'Number of episodes/lessons (SERIES/TUTORIAL only)' })
   episodeCount?: number;
->>>>>>> Stashed changes
-Url?: string;
 
-  @ApiProperty()
-  createdAt!: Date;
+  @ApiPropertyOptional()
+  createdAt?: Date;
 
-  @ApiProperty()
-  updatedAt!: Date;
+  @ApiPropertyOptional()
+  updatedAt?: Date;
+}
+
+export class ContentDetailDto extends ContentListItemDto {
+  @ApiPropertyOptional({ description: 'Content status (admin only)' })
+  status?: string;
+
+  @ApiPropertyOptional({ description: 'Attached video files (admin only)' })
+  videoFiles?: unknown[];
 }
 
 export class PaginationMetaDto {

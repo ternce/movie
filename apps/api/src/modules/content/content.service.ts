@@ -1,12 +1,28 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { AgeCategory, ContentStatus, Prisma } from '@prisma/client';
+import {
+  AgeCategory as PrismaAgeCategory,
+  ContentStatus,
+  Prisma,
+} from '@prisma/client';
+import {
+  AgeCategory as SharedAgeCategory,
+  UserRole,
+} from '@movie-platform/shared';
 
 import { PrismaService } from '../../config/prisma.service';
-import { CacheService, CACHE_TTL, CACHE_KEYS } from '../../common/cache/cache.service';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../../common/cache/cache.service';
 import { ContentQueryDto, CreateContentDto, SearchQueryDto, UpdateContentDto } from './dto';
 
 @Injectable()
 export class ContentService {
+  private readonly AGE_CATEGORY_MAP: Record<PrismaAgeCategory, SharedAgeCategory> = {
+    [PrismaAgeCategory.ZERO_PLUS]: SharedAgeCategory.ZERO_PLUS,
+    [PrismaAgeCategory.SIX_PLUS]: SharedAgeCategory.SIX_PLUS,
+    [PrismaAgeCategory.TWELVE_PLUS]: SharedAgeCategory.TWELVE_PLUS,
+    [PrismaAgeCategory.SIXTEEN_PLUS]: SharedAgeCategory.SIXTEEN_PLUS,
+    [PrismaAgeCategory.EIGHTEEN_PLUS]: SharedAgeCategory.EIGHTEEN_PLUS,
+  };
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
@@ -16,23 +32,22 @@ export class ContentService {
    * Get allowed age categories based on user's age category.
    * A user can access content for their age and below.
    */
-  private getAllowedAgeCategories(userAgeCategory?: AgeCategory): AgeCategory[] {
-    const order: AgeCategory[] = [
-      AgeCategory.ZERO_PLUS,
-      AgeCategory.SIX_PLUS,
-      AgeCategory.TWELVE_PLUS,
-      AgeCategory.SIXTEEN_PLUS,
-      AgeCategory.EIGHTEEN_PLUS,
+  private getAllowedAgeCategories(userAgeCategory?: PrismaAgeCategory): PrismaAgeCategory[] {
+    const order: PrismaAgeCategory[] = [
+      PrismaAgeCategory.ZERO_PLUS,
+      PrismaAgeCategory.SIX_PLUS,
+      PrismaAgeCategory.TWELVE_PLUS,
+      PrismaAgeCategory.SIXTEEN_PLUS,
+      PrismaAgeCategory.EIGHTEEN_PLUS,
     ];
 
     if (!userAgeCategory) {
       // Unauthenticated users see content up to 16+
-      // 18+ requires authenticated age verification
       return [
-        AgeCategory.ZERO_PLUS,
-        AgeCategory.SIX_PLUS,
-        AgeCategory.TWELVE_PLUS,
-        AgeCategory.SIXTEEN_PLUS,
+        PrismaAgeCategory.ZERO_PLUS,
+        PrismaAgeCategory.SIX_PLUS,
+        PrismaAgeCategory.TWELVE_PLUS,
+        PrismaAgeCategory.SIXTEEN_PLUS,
       ];
     }
 
@@ -40,10 +55,27 @@ export class ContentService {
     return order.slice(0, index + 1);
   }
 
+  private getAllowedAgeCategoriesForRole(
+    userAgeCategory?: PrismaAgeCategory,
+    userRole?: string,
+  ): PrismaAgeCategory[] {
+    if (userRole === UserRole.ADMIN || userRole === UserRole.MODERATOR) {
+      return [
+        PrismaAgeCategory.ZERO_PLUS,
+        PrismaAgeCategory.SIX_PLUS,
+        PrismaAgeCategory.TWELVE_PLUS,
+        PrismaAgeCategory.SIXTEEN_PLUS,
+        PrismaAgeCategory.EIGHTEEN_PLUS,
+      ];
+    }
+
+    return this.getAllowedAgeCategories(userAgeCategory);
+  }
+
   /**
    * Get paginated content list with filters.
    */
-  async findAll(query: ContentQueryDto, userAgeCategory?: AgeCategory) {
+  async findAll(query: ContentQueryDto, userAgeCategory?: PrismaAgeCategory) {
     const {
       type,
       categoryId,
@@ -57,206 +89,135 @@ export class ContentService {
       sortOrder = 'desc',
     } = query;
 
-    // Build cache key from query params
     const cacheParams = CacheService.createKeyFromParams({
-      type, categoryId, genreId, tagId, search, freeOnly,
-      page, limit, sortBy, sortOrder, age: userAgeCategory,
+      type,
+      categoryId,
+      genreId,
+      tagId,
+      search,
+      freeOnly,
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      age: userAgeCategory,
     });
     const cacheKey = CACHE_KEYS.content.list(cacheParams);
 
-    return this.cache.getOrSet(cacheKey, async () => {
-      const allowedCategories = this.getAllowedAgeCategories(userAgeCategory);
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        const allowedCategories = this.getAllowedAgeCategories(userAgeCategory);
 
-      // Build where clause with type-safe Prisma input
-      // Exclude child episodes/lessons — only show root content in listings
-      const where: Prisma.ContentWhereInput = {
-        status: ContentStatus.PUBLISHED,
-        ageCategory: { in: allowedCategories },
-        OR: [
-          { series: null },                                    // Content with no Series record
-          { series: { parentSeriesId: null } },                // Root series only
-        ],
-        ...(type && { contentType: type }),
-        ...(categoryId && { categoryId }),
-        ...(genreId && { genres: { some: { genreId } } }),
-        ...(tagId && { tags: { some: { tagId } } }),
-        ...(freeOnly && { isFree: true }),
-        ...(search && {
-          AND: [
-            {
-              OR: [
-                { title: { contains: search, mode: 'insensitive' as const } },
-                { description: { contains: search, mode: 'insensitive' as const } },
-              ],
-            },
+        const where: Prisma.ContentWhereInput = {
+          status: ContentStatus.PUBLISHED,
+          ageCategory: { in: allowedCategories },
+          // Exclude child episodes/lessons — only show root content in listings
+          OR: [
+            { series: { is: null } },
+            { series: { is: { parentSeriesId: null } } },
           ],
-        }),
-      };
+          ...(type && { contentType: type as any }),
+          ...(categoryId && { categoryId }),
+          ...(genreId && { genres: { some: { genreId } } }),
+          ...(tagId && { tags: { some: { tagId } } }),
+          ...(freeOnly && { isFree: true }),
+          ...(search && {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' } },
+              { description: { contains: search, mode: 'insensitive' } },
+            ],
+          }),
+        };
 
-      // Execute count and find in parallel
-      const [total, items] = await Promise.all([
-        this.prisma.content.count({ where }),
-        this.prisma.content.findMany({
-          where,
-          skip: (page - 1) * limit,
-          take: limit,
-          orderBy: { [sortBy]: sortOrder },
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-            description: true,
-            thumbnailUrl: true,
-            contentType: true,
-            ageCategory: true,
-            isFree: true,
-            individualPrice: true,
-            publishedAt: true,
-            viewCount: true,
-            duration: true,
-            category: {
-              select: {
-                id: true,
-                name: true,
-              <<<<<<< Updated upstream
-=======
-            _count: {
-              select: {
-                comments: true,
-                likes: true,
+        const orderBy = this.getOrderBy(sortBy, sortOrder);
+
+        const [total, items] = await Promise.all([
+          this.prisma.content.count({ where }),
+          this.prisma.content.findMany({
+            where,
+            skip: (page - 1) * limit,
+            take: limit,
+            orderBy,
+            include: {
+              category: { select: { id: true, name: true, slug: true } },
+              tags: {
+                include: { tag: { select: { id: true, name: true, slug: true } } },
               },
-            },
-            series: {
-              select: {
-                id: true,
+              genres: {
+                include: { genre: { select: { id: true, name: true, slug: true } } },
               },
+              _count: { select: { comments: true } },
             },
->>>>>>> Stashed changes
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-            tags: {
-              select: {
-                tag: {
-                  select: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                  },
-                },
-              },
-            },
-            genres: {
-              select: {
-                genre: {
-                  select: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                  },
-                },
-              },
-            },
+          }),
+        ]);
+
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+          items: items.map((item) => this.mapContentToDto(item)),
+          meta: {
+            page,
+            limit,
+            total,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPreviousPage: page > 1,
           },
-        }),
-      ]);
-
-      const totalPages = Math.ceil(total / limit);
-
-      return {
-        items: items.map((item) => this.mapContentToDto(item)),
-        meta: {
-          page,
-          limit,
-          total,
-          totalPages,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1,
-        },
-      };
-    }, { ttl: CACHE_TTL.DEFAULT });
+        };
+      },
+      { ttl: CACHE_TTL.DEFAULT },
+    );
   }
 
   /**
-   * Get a single content item by slug.
+   * Get a single content item by slug (or UUID).
    */
-  async findBySlug(slug: string, userAgeCategory?: AgeCategory) {
-    const cacheKey = CACHE_KEYS.content.detail(`${slug}:${userAgeCategory || 'ZERO_PLUS'}`);
+  async findBySlug(
+    slug: string,
+    userAgeCategory?: PrismaAgeCategory,
+    userRole?: string,
+  ) {
+    const cacheKey = CACHE_KEYS.content.detail(`${slug}:${userAgeCategory || 'ZERO_PLUS'}:${userRole || 'anon'}`);
 
-    return this.cache.getOrSet(cacheKey, async () => {
-      return this._findBySlugUncached(slug, userAgeCategory);
-    }, { ttl: CACHE_TTL.MEDIUM });
-  }
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        const allowedCategories = this.getAllowedAgeCategoriesForRole(userAgeCategory, userRole);
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
 
-  private async _findBySlugUncached(slug: string, userAgeCategory?: AgeCategory) {
-    const allowedCategories = this.getAllowedAgeCategories(userAgeCategory);
-
-    // Support both UUID and slug lookup (consistent with streaming endpoint)
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
-
-    const content = await this.prisma.content.findFirst({
-      where: {
-        ...(isUuid ? { id: slug } : { slug }),
-        status: ContentStatus.PUBLISHED,
-        ageCategory: { in: allowedCategories },
-      },
-      include: {
-<<<<<<< Updated upstream
-=======
-        _count: {
-          select: {
-            comments: true,
-            likes: true,
+        const content = await this.prisma.content.findFirst({
+          where: {
+            ...(isUuid ? { id: slug } : { slug }),
+            status: ContentStatus.PUBLISHED,
+            ageCategory: { in: allowedCategories },
           },
-        },
->>>>>>> Stashed changes
-        category: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        tags: {
           include: {
-            tag: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
+            category: { select: { id: true, name: true, slug: true } },
+            tags: {
+              include: { tag: { select: { id: true, name: true, slug: true } } },
             },
-          },
-        },
-        genres: {
-          include: {
-            genre: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
+            genres: {
+              include: { genre: { select: { id: true, name: true, slug: true } } },
             },
+            _count: { select: { comments: true } },
           },
-        },
+        });
+
+        if (!content) {
+          throw new NotFoundException(`Контент с slug "${slug}" не найден`);
+        }
+
+        return this.mapContentToDetailDto(content);
       },
-    });
-
-    if (!content) {
-      throw new NotFoundException(`Контент с slug "${slug}" не найден`);
-    }
-
-    return this.mapContentToDetailDto(content);
+      { ttl: CACHE_TTL.MEDIUM },
+    );
   }
 
   /**
    * Get a single content item by ID.
    */
-  async findById(id: string, userAgeCategory?: AgeCategory) {
+  async findById(id: string, userAgeCategory?: PrismaAgeCategory) {
     const allowedCategories = this.getAllowedAgeCategories(userAgeCategory);
 
     const content = await this.prisma.content.findFirst({
@@ -266,44 +227,10 @@ export class ContentService {
         ageCategory: { in: allowedCategories },
       },
       include: {
-<<<<<<< Updated upstream
-=======
-        _count: {
-          select: {
-            comments: true,
-            likes: true,
-          },
-        },
->>>>>>> Stashed changes
-        category: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        tags: {
-          include: {
-            tag: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-          },
-        },
-        genres: {
-          include: {
-            genre: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-          },
-        },
+        category: { select: { id: true, name: true, slug: true } },
+        tags: { include: { tag: { select: { id: true, name: true, slug: true } } } },
+        genres: { include: { genre: { select: { id: true, name: true, slug: true } } } },
+        _count: { select: { comments: true } },
       },
     });
 
@@ -315,13 +242,14 @@ export class ContentService {
   }
 
   /**
-   * Search content using PostgreSQL full-text search or ILIKE fallback.
+   * Search content (simple ILIKE-based).
    */
-  async search(query: SearchQueryDto, userAgeCategory?: AgeCategory) {
+  async search(query: SearchQueryDto, userAgeCategory?: PrismaAgeCategory) {
     const { q, page = 1, limit = 20 } = query;
+
     const allowedCategories = this.getAllowedAgeCategories(userAgeCategory);
 
-    const where: any = {
+    const where: Prisma.ContentWhereInput = {
       status: ContentStatus.PUBLISHED,
       ageCategory: { in: allowedCategories },
       OR: [
@@ -336,49 +264,12 @@ export class ContentService {
         where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: [
-          { viewCount: 'desc' },
-          { publishedAt: 'desc' },
-        ],
+        orderBy: [{ viewCount: 'desc' }, { publishedAt: 'desc' }],
         include: {
-<<<<<<< Updated upstream
-=======
-          _count: {
-            select: {
-              comments: true,
-              likes: true,
-            },
-          },
->>>>>>> Stashed changes
-          category: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-          tags: {
-            include: {
-              tag: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                },
-              },
-            },
-          },
-          genres: {
-            include: {
-              genre: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                },
-              },
-            },
-          },
+          category: { select: { id: true, name: true, slug: true } },
+          tags: { include: { tag: { select: { id: true, name: true, slug: true } } } },
+          genres: { include: { genre: { select: { id: true, name: true, slug: true } } } },
+          _count: { select: { comments: true } },
         },
       }),
     ]);
@@ -402,32 +293,37 @@ export class ContentService {
    * Get all categories as a hierarchical tree.
    */
   async getCategories() {
-    return this.cache.getOrSet(CACHE_KEYS.category.tree(), async () => {
-      const categories = await this.prisma.category.findMany({
-        where: { parentId: null },
-        orderBy: { order: 'asc' },
-        include: {
-          children: {
-            orderBy: { order: 'asc' },
-            include: {
-              children: {
-                orderBy: { order: 'asc' },
+    return this.cache.getOrSet(
+      CACHE_KEYS.category.tree(),
+      async () => {
+        const categories = await this.prisma.category.findMany({
+          where: { parentId: null },
+          orderBy: { order: 'asc' },
+          include: {
+            children: {
+              orderBy: { order: 'asc' },
+              include: {
+                children: {
+                  orderBy: { order: 'asc' },
+                },
               },
             },
           },
-        },
-      });
+        });
 
-      return { categories };
-    }, { ttl: CACHE_TTL.LONG });
+        return { categories };
+      },
+      { ttl: CACHE_TTL.LONG },
+    );
   }
 
   /**
-   * Get all active tags.
+   * Get all tags.
+   * Ordered by popularity (usage count) descending, then name.
    */
   async getTags() {
     return this.prisma.tag.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: [{ content: { _count: 'desc' } }, { name: 'asc' }],
     });
   }
 
@@ -451,161 +347,21 @@ export class ContentService {
     });
   }
 
-<<<<<<< Updated upstream
-  private readonly AGE_CATEGORY_MAP: Record<string, string> = {
-    ZERO_PLUS: '0+',
-    SIX_PLUS: '6+',
-    TWELVE_PLUS: '12+',
-    SIXTEEN_PLUS: '16+',
-    EIGHTEEN_PLUS: '18+',
-=======
-  private async invalidateContentCaches(): Promise<void> {
-    await Promise.all([
-      this.cache.invalidatePattern('content:list:*'),
-      this.cache.invalidatePattern('content:search:*'),
-      this.cache.invalidatePattern('content:detail:*'),
-      this.cache.delete(CACHE_KEYS.content.featured()),
-    ]);
-  }
+  // ===================== Admin endpoints =====================
 
-  /**
-   * Like content (idempotent).
-   */
-  async likeContent(contentId: string, userId: string): Promise<{ likeCount: number }> {
-    if (!contentId) throw new BadRequestException('contentId is required');
-    if (!userId) throw new BadRequestException('userId is required');
-
-    const contentExists = await this.prisma.content.findUnique({
-      where: { id: contentId },
-      select: { id: true, status: true },
-    });
-
-    if (!contentExists || contentExists.status === ContentStatus.ARCHIVED) {
-      throw new NotFoundException(`Контент с ID "${contentId}" не найден`);
-    }
-
-    await this.prisma.contentLike.upsert({
-      where: {
-        contentId_userId: {
-          contentId,
-          userId,
-        },
-      },
-      update: {},
-      create: {
-        contentId,
-        userId,
-      },
-    });
-
-    const likeCount = await this.prisma.contentLike.count({ where: { contentId } });
-
-    // Best-effort cache invalidation so counts reflect after reload.
-    this.invalidateContentCaches().catch(() => undefined);
-
-    return { likeCount };
-  }
-
-  /**
-   * Unlike content (idempotent).
-   */
-  async unlikeContent(contentId: string, userId: string): Promise<{ likeCount: number }> {
-    if (!contentId) throw new BadRequestException('contentId is required');
-    if (!userId) throw new BadRequestException('userId is required');
-
-    // Delete if exists; ignore if it doesn't.
-    try {
-      await this.prisma.contentLike.delete({
-        where: {
-          contentId_userId: {
-            contentId,
-            userId,
-          },
-        },
-      });
-    } catch {
-      // ignore
-    }
-
-    const likeCount = await this.prisma.contentLike.count({ where: { contentId } });
-
-    this.invalidateContentCaches().catch(() => undefined);
-
-    return { likeCount };
-  }
-
-  private readonly AGE_CATEGORY_MAP: Record<AgeCategory, SharedAgeCategory> = {
-    [AgeCategory.ZERO_PLUS]: SharedAgeCategory.ZERO_PLUS,
-    [AgeCategory.SIX_PLUS]: SharedAgeCategory.SIX_PLUS,
-    [AgeCategory.TWELVE_PLUS]: SharedAgeCategory.TWELVE_PLUS,
-    [AgeCategory.SIXTEEN_PLUS]: SharedAgeCategory.SIXTEEN_PLUS,
-    [AgeCategory.EIGHTEEN_PLUS]: SharedAgeCategory.EIGHTEEN_PLUS,
->>>>>>> Stashed changes
-  };
-
-  /**
-   * Map content entity to list DTO.
-   */
-  private mapContentToDto(content: any) {
-    return {
-      id: content.id,
-      title: content.title,
-      slug: content.slug,
-      description: content.description,
-      contentType: content.contentType,
-      ageCategory: this.AGE_CATEGORY_MAP[content.ageCategory] ?? content.ageCategory,
-      thumbnailUrl: content.thumbnailUrl,
-      duration: content.duration,
-      isFree: content.isFree,
-      individualPrice: content.individualPrice
-        ? Number(content.individualPrice)
-        : undefined,
-      viewCount: content.viewCount,
-      publishedAt: content.publishedAt,
-      category: content.category,
-      tags: content.tags.map((ct: any) => ct.tag),
-      genres: content.genres.map((cg: any) => cg.genre),
-<<<<<<< Updated upstream
-=======
-      commentCount: typeof content?._count?.comments === 'number' ? content._count.comments : undefined,
-      likeCount: typeof content?._count?.likes === 'number' ? content._count.likes : undefined,
->>>>>>> Stashed changes
- slug from title.
-   * Supports Russian characters (Cyrillic).
-   */
-  private generateSlug(title: string): string {
-    const slug = title
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\u0400-\u04FF\s-]/g, '')
-      .replace(/[\s_]+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
-
-    return `${slug}-${Date.now().toString(36)}`;
-  }
-
-  /**
-   * Get all content for admin (includes all statuses).
-   */
   async findAllAdmin(query: { status?: string; contentType?: string; search?: string; page: number; limit: number; includeEpisodes?: boolean }) {
     const { status, contentType, search, page, limit, includeEpisodes } = query;
 
-    const where: any = {};
-    if (status) {
-      where.status = status;
-    }
-    if (contentType) {
-      where.contentType = contentType;
-    }
-    if (search) {
-      where.title = { contains: search, mode: 'insensitive' };
-    }
-    // By default, exclude child episodes/lessons from admin listing
+    const where: Prisma.ContentWhereInput = {};
+
+    if (status) where.status = status as any;
+    if (contentType) where.contentType = contentType as any;
+    if (search) where.title = { contains: search, mode: 'insensitive' };
+
     if (!includeEpisodes) {
       where.OR = [
-        { series: null },
-        { series: { parentSeriesId: null } },
+        { series: { is: null } },
+        { series: { is: { parentSeriesId: null } } },
       ];
     }
 
@@ -620,6 +376,7 @@ export class ContentService {
           category: { select: { id: true, name: true, slug: true } },
           tags: { include: { tag: { select: { id: true, name: true, slug: true } } } },
           genres: { include: { genre: { select: { id: true, name: true, slug: true } } } },
+          _count: { select: { comments: true } },
         },
       }),
     ]);
@@ -644,9 +401,6 @@ export class ContentService {
     };
   }
 
-  /**
-   * Get content by ID for admin (includes all statuses).
-   */
   async findByIdAdmin(id: string) {
     const content = await this.prisma.content.findUnique({
       where: { id },
@@ -655,6 +409,7 @@ export class ContentService {
         tags: { include: { tag: { select: { id: true, name: true, slug: true } } } },
         genres: { include: { genre: { select: { id: true, name: true, slug: true } } } },
         videoFiles: true,
+        _count: { select: { comments: true } },
       },
     });
 
@@ -669,37 +424,25 @@ export class ContentService {
     };
   }
 
-  /**
-   * Create new content (Admin only).
-   */
   async create(dto: CreateContentDto) {
-    // Resolve categoryId — required by DB schema, use first category as fallback for SHORT
     let categoryId = dto.categoryId;
+
     if (categoryId) {
-      const category = await this.prisma.category.findUnique({
-        where: { id: categoryId },
-      });
-      if (!category) {
-        throw new NotFoundException(`Категория с ID "${categoryId}" не найдена`);
-      }
+      const category = await this.prisma.category.findUnique({ where: { id: categoryId } });
+      if (!category) throw new NotFoundException(`Категория с ID "${categoryId}" не найдена`);
     } else {
       const fallback = await this.prisma.category.findFirst({ select: { id: true } });
-      if (!fallback) {
-        throw new NotFoundException('Нет доступных категорий');
-      }
+      if (!fallback) throw new NotFoundException('Нет доступных категорий');
       categoryId = fallback.id;
     }
 
-    // Generate unique slug
     const slug = this.generateSlug(dto.title);
 
-    // Only allow DRAFT or PUBLISHED on creation
     const finalStatus =
       dto.status === ContentStatus.DRAFT || dto.status === ContentStatus.PUBLISHED
         ? dto.status
         : ContentStatus.DRAFT;
 
-    // Create content with relations
     const content = await this.prisma.content.create({
       data: {
         title: dto.title,
@@ -715,25 +458,17 @@ export class ContentService {
         individualPrice: dto.individualPrice,
         status: finalStatus,
         ...(finalStatus === ContentStatus.PUBLISHED && { publishedAt: new Date() }),
-        tags: dto.tagIds?.length
-          ? {
-              create: dto.tagIds.map((tagId) => ({ tagId })),
-            }
-          : undefined,
-        genres: dto.genreIds?.length
-          ? {
-              create: dto.genreIds.map((genreId) => ({ genreId })),
-            }
-          : undefined,
+        tags: dto.tagIds?.length ? { create: dto.tagIds.map((tagId) => ({ tagId })) } : undefined,
+        genres: dto.genreIds?.length ? { create: dto.genreIds.map((genreId) => ({ genreId })) } : undefined,
       },
       include: {
         category: { select: { id: true, name: true, slug: true } },
         tags: { include: { tag: { select: { id: true, name: true, slug: true } } } },
         genres: { include: { genre: { select: { id: true, name: true, slug: true } } } },
+        _count: { select: { comments: true } },
       },
     });
 
-    // Invalidate content caches
     await this.cache.invalidatePattern('content:*');
 
     return {
@@ -742,35 +477,26 @@ export class ContentService {
     };
   }
 
-  /**
-   * Update existing content (Admin only).
-   */
   async update(id: string, dto: UpdateContentDto) {
-    // Verify content exists
     const existing = await this.prisma.content.findUnique({
       where: { id },
       include: { tags: true, genres: true },
     });
+
     if (!existing) {
       throw new NotFoundException(`Контент с ID "${id}" не найден`);
     }
 
-    // If category is being updated, verify it exists
     if (dto.categoryId) {
-      const category = await this.prisma.category.findUnique({
-        where: { id: dto.categoryId },
-      });
-      if (!category) {
-        throw new NotFoundException(`Категория с ID "${dto.categoryId}" не найдена`);
-      }
+      const category = await this.prisma.category.findUnique({ where: { id: dto.categoryId } });
+      if (!category) throw new NotFoundException(`Категория с ID "${dto.categoryId}" не найдена`);
     }
 
-    // Build update data
-    const updateData: any = {
+    const updateData: Prisma.ContentUpdateInput = {
       ...(dto.title && { title: dto.title }),
       ...(dto.description && { description: dto.description }),
-      ...(dto.contentType && { contentType: dto.contentType }),
-      ...(dto.categoryId && { categoryId: dto.categoryId }),
+      ...(dto.contentType && { contentType: dto.contentType as any }),
+      ...(dto.categoryId && { category: { connect: { id: dto.categoryId } } }),
       ...(dto.ageCategory && { ageCategory: dto.ageCategory }),
       ...(dto.thumbnailUrl !== undefined && { thumbnailUrl: dto.thumbnailUrl }),
       ...(dto.previewUrl !== undefined && { previewUrl: dto.previewUrl }),
@@ -778,13 +504,10 @@ export class ContentService {
       ...(dto.isFree !== undefined && { isFree: dto.isFree }),
       ...(dto.individualPrice !== undefined && { individualPrice: dto.individualPrice }),
       ...(dto.status && { status: dto.status }),
-      ...(dto.status === ContentStatus.PUBLISHED &&
-        !existing.publishedAt && { publishedAt: new Date() }),
+      ...(dto.status === ContentStatus.PUBLISHED && !existing.publishedAt && { publishedAt: new Date() }),
     };
 
-    // Use transaction for tag/genre updates
     const content = await this.prisma.$transaction(async (tx) => {
-      // Update tags if provided
       if (dto.tagIds !== undefined) {
         await tx.contentTag.deleteMany({ where: { contentId: id } });
         if (dto.tagIds.length > 0) {
@@ -794,7 +517,6 @@ export class ContentService {
         }
       }
 
-      // Update genres if provided
       if (dto.genreIds !== undefined) {
         await tx.contentGenre.deleteMany({ where: { contentId: id } });
         if (dto.genreIds.length > 0) {
@@ -804,7 +526,6 @@ export class ContentService {
         }
       }
 
-      // Update content
       return tx.content.update({
         where: { id },
         data: updateData,
@@ -812,13 +533,94 @@ export class ContentService {
           category: { select: { id: true, name: true, slug: true } },
           tags: { include: { tag: { select: { id: true, name: true, slug: true } } } },
           genres: { include: { genre: { select: { id: true, name: true, slug: true } } } },
+          _count: { select: { comments: true } },
         },
       });
     });
 
-    // Invalidate content caches
     await this.cache.invalidatePattern('content:*');
 
     return {
       ...this.mapContentToDetailDto(content),
       status: content.status,
+    };
+  }
+
+  async delete(id: string) {
+    const existing = await this.prisma.content.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) {
+      throw new NotFoundException(`Контент с ID "${id}" не найден`);
+    }
+
+    await this.prisma.content.update({
+      where: { id },
+      data: { status: ContentStatus.ARCHIVED },
+    });
+
+    await this.cache.invalidatePattern('content:*');
+
+    return { success: true, message: 'Content archived' };
+  }
+
+  // ===================== Mapping helpers =====================
+
+  private mapContentToDto(content: any) {
+    return {
+      id: content.id,
+      title: content.title,
+      slug: content.slug,
+      description: content.description,
+      contentType: content.contentType,
+      ageCategory:
+        this.AGE_CATEGORY_MAP[content.ageCategory as PrismaAgeCategory] ?? content.ageCategory,
+      thumbnailUrl: content.thumbnailUrl,
+      previewUrl: content.previewUrl,
+      duration: content.duration,
+      isFree: content.isFree,
+      individualPrice: content.individualPrice ? Number(content.individualPrice) : undefined,
+      viewCount: content.viewCount,
+      publishedAt: content.publishedAt,
+      category: content.category,
+      tags: Array.isArray(content.tags) ? content.tags.map((ct: any) => ct.tag) : [],
+      genres: Array.isArray(content.genres) ? content.genres.map((cg: any) => cg.genre) : [],
+      commentCount: typeof content?._count?.comments === 'number' ? content._count.comments : undefined,
+    };
+  }
+
+  private mapContentToDetailDto(content: any) {
+    return {
+      ...this.mapContentToDto(content),
+      createdAt: content.createdAt,
+      updatedAt: content.updatedAt,
+    };
+  }
+
+  private generateSlug(title: string): string {
+    const slug = title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\u0400-\u04FF\s-]/g, '')
+      .replace(/[\s_]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    return `${slug}-${Date.now().toString(36)}`;
+  }
+
+  private getOrderBy(
+    sortBy: 'publishedAt' | 'viewCount' | 'title' | 'createdAt',
+    sortOrder: 'asc' | 'desc',
+  ): Prisma.ContentOrderByWithRelationInput {
+    switch (sortBy) {
+      case 'viewCount':
+        return { viewCount: sortOrder };
+      case 'title':
+        return { title: sortOrder };
+      case 'createdAt':
+        return { createdAt: sortOrder };
+      case 'publishedAt':
+      default:
+        return { publishedAt: sortOrder };
+    }
+  }
+}
