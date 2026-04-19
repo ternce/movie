@@ -104,7 +104,7 @@ services:
       - api_video_uploads:/tmp/video-uploads
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://movieplatform:movieplatform_dev@postgres:5432/movieplatform
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-movieplatform}:${POSTGRES_PASSWORD:-movieplatform_dev}@postgres:5432/${POSTGRES_DB:-movieplatform}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - MINIO_ENDPOINT=http://minio:9000

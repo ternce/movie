@@ -33,7 +33,7 @@ export default function CreateTutorialPage() {
 
   return (
     <div className="py-8 md:py-12">
-      <TutorialWizard onSuccess={(id) => router.push(`/studio/${id}`)} />
+      <TutorialWizard onSuccess={(id) => router.push(`/studio/${id}?created=1`)} />
     </div>
   );
 }

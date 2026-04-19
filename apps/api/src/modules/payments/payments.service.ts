@@ -375,6 +375,13 @@ export class PaymentsService {
           `Оплата ${dto.type}`,
         );
 
+        const bankDetailsJson =
+          invoice.bankDetails === null
+            ? Prisma.JsonNull
+            : {
+                ...invoice.bankDetails,
+              };
+
         // Create invoice record
         const invoiceRecord = await this.prisma.invoice.create({
           data: {
@@ -384,7 +391,7 @@ export class PaymentsService {
             amount,
             currency: 'RUB',
             dueDate: invoice.dueDate,
-            bankDetails: invoice.bankDetails as unknown as Prisma.JsonValue,
+            bankDetails: bankDetailsJson,
             qrCodeUrl: this.bankTransferService.generateQrCode(invoice),
             status: InvoiceStatus.PENDING,
           },

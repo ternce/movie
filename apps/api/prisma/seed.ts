@@ -83,8 +83,6 @@ async function seedCategories() {
   console.log('✅ Content Categories seeded');
 }
 
-<<<<<<< Updated upstream
-=======
 async function seedTags() {
   console.log('🎯 Seeding Content Tags...');
 
@@ -122,7 +120,6 @@ async function seedTags() {
   console.log('✅ Content Tags seeded');
 }
 
->>>>>>> Stashed changes
 async function seedProductCategories() {
   console.log('🎯 Seeding Product Categories...');
 
@@ -903,6 +900,7 @@ async function main() {
     // Phase 1: Lookup Tables (no dependencies)
     await seedPartnerLevels();
     await seedCategories();
+    await seedTags();
     await seedProductCategories();
     await seedSubscriptionPlans();
     await seedBonusRates();

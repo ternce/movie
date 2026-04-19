@@ -2,8 +2,9 @@
 
 import { ArrowLeft, FloppyDisk, SpinnerGap } from '@phosphor-icons/react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
+import { toast } from 'sonner';
 
 import { AdminPageHeader } from '@/components/admin/layout/admin-page-header';
 import { Button } from '@/components/ui/button';
@@ -23,12 +24,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageUpload } from '@/components/admin/content/image-upload';
 import { VideoUpload } from '@/components/admin/content/video-upload';
+import { TagInput } from '@/components/studio/tag-input';
 import {
   useAdminContentDetail,
   useUpdateContent,
   AGE_CATEGORY_FROM_BACKEND,
 } from '@/hooks/use-admin-content';
-import { useContentCategories } from '@/hooks/use-studio-data';
+import { useContentCategories, useContentTags } from '@/hooks/use-studio-data';
 
 /**
  * Admin content edit page
@@ -36,11 +38,14 @@ import { useContentCategories } from '@/hooks/use-studio-data';
 export default function AdminContentEditPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const contentId = params.id as string;
 
   const { data: content, isLoading } = useAdminContentDetail(contentId);
   const updateContent = useUpdateContent();
   const { flat: categories } = useContentCategories();
+  const { data: tagsData } = useContentTags();
+  const availableTags = tagsData ?? [];
 
   // Form state
   const [title, setTitle] = React.useState('');
@@ -54,6 +59,7 @@ export default function AdminContentEditPage() {
   const [isFree, setIsFree] = React.useState(false);
   const [individualPrice, setIndividualPrice] = React.useState('');
   const [status, setStatus] = React.useState('');
+  const [tagIds, setTagIds] = React.useState<string[]>([]);
 
   // Populate form when data loads
   React.useEffect(() => {
@@ -74,6 +80,9 @@ export default function AdminContentEditPage() {
       const price = (c as { individualPrice?: number }).individualPrice;
       setIndividualPrice(price != null ? String(price) : '');
       setStatus((c as { status?: string }).status || '');
+
+      const tags = (c as any).tags as Array<{ id: string }> | undefined;
+      setTagIds(Array.isArray(tags) ? tags.map((t) => t.id) : []);
     }
   }, [content]);
 
@@ -93,6 +102,7 @@ export default function AdminContentEditPage() {
         isFree,
         individualPrice: individualPrice ? Number(individualPrice) : undefined,
         status: status || undefined,
+        tagIds: tagIds.length ? tagIds : undefined,
       },
       {
         onSuccess: () => {
@@ -101,6 +111,10 @@ export default function AdminContentEditPage() {
       }
     );
   };
+
+  const created = searchParams.get('created') === '1';
+  const watchPath = `/watch/${contentId}`;
+  const watchUrl = typeof window !== 'undefined' ? `${window.location.origin}${watchPath}` : watchPath;
 
   if (isLoading) {
     return (
@@ -157,6 +171,37 @@ export default function AdminContentEditPage() {
           { label: title || 'Контент' },
         ]}
       />
+
+      {created && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-lg">Ссылка на видео</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Input value={watchUrl} readOnly className="flex-1" />
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" asChild>
+                <Link href={watchPath} target="_blank">
+                  Открыть
+                </Link>
+              </Button>
+              <Button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(watchUrl);
+                    toast.success('Ссылка скопирована');
+                  } catch {
+                    toast.error('Не удалось скопировать ссылку');
+                  }
+                }}
+              >
+                Копировать
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-3 mt-6">
@@ -308,21 +353,17 @@ export default function AdminContentEditPage() {
                     </SelectContent>
                   </Select>
                 </div>
-<<<<<<< Updated upstream
-=======
 
                 <div className="space-y-2">
                   <Label>Теги</Label>
                   <TagInput
                     value={tagIds}
                     onChange={setTagIds}
-                    availableTags={availableTags ?? []}
+                    availableTags={availableTags}
                     placeholder="Выберите тег..."
                     disabled={updateContent.isPending}
-                    maxTags={1}
                   />
                 </div>
->>>>>>> Stashed changes
               </CardContent>
             </Card>
 

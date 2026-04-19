@@ -32,7 +32,7 @@ export default function CreateShortPage() {
 
   return (
     <div className="py-8 md:py-12">
-      <ShortWizard onSuccess={(id) => router.push(`/studio/${id}`)} />
+      <ShortWizard onSuccess={(id) => router.push(`/studio/${id}?created=1`)} />
     </div>
   );
 }

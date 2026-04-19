@@ -5,7 +5,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { VerificationStatus, VerificationMethod } from '@movie-platform/shared';
 

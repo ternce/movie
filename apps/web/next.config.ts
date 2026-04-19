@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
   eslint: { ignoreDuringBuilds: true },
 
   // Transpile monorepo packages
-  transpilePackages: ['@movie-platform/shared', '@movie-platform/ui'],
+  transpilePackages: ['@movie-platform/shared'],
 
   // Replace @phosphor-icons/react with a noop stub in server bundles to prevent
   // createContext from being called in react-server context (standalone build issue).

@@ -128,18 +128,18 @@ describe('CacheControlInterceptor', () => {
       interceptor = new CacheControlInterceptor(reflector);
     });
 
-    const buildHeader = (options: CacheControlOptions): string => {
+    const buildHeader = async (options: CacheControlOptions): Promise<string> => {
       const { context, mockSetHeader } = createMockContext();
       const callHandler = createMockCallHandler();
 
       jest.spyOn(reflector, 'get').mockReturnValue(options);
 
-      return new Promise<string>((resolve) => {
-        interceptor.intercept(context, callHandler).subscribe(() => {
-          const headerValue = mockSetHeader.mock.calls[0]?.[1] || '';
-          resolve(headerValue);
-        });
+    return await new Promise<string>((resolve) => {
+      interceptor.intercept(context, callHandler).subscribe(() => {
+        const headerValue = mockSetHeader.mock.calls[0]?.[1] || '';
+        resolve(headerValue);
       });
+    });
     };
 
     it('should return "no-store" when noStore is true', async () => {

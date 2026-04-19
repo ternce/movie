@@ -44,7 +44,11 @@ export class UploadService {
 
     fs.writeFileSync(filePath, file.buffer);
 
-    const baseUrl = this.config.get<string>('APP_URL', 'http://localhost:4000');
+    // Public URL for serving uploaded static files lives on the API host.
+    // APP_URL is typically the frontend (3000), so prefer API_URL.
+    const baseUrl = this.config.get<string>('API_URL')
+      || this.config.get<string>('APP_URL')
+      || 'http://localhost:4000';
     const url = `${baseUrl}/uploads/images/${filename}`;
 
     return { url, filename };
@@ -67,7 +71,9 @@ export class UploadService {
 
     // If file was stored to disk via diskStorage, file.path is set
     if (file.path) {
-      const baseUrl = this.config.get<string>('APP_URL', 'http://localhost:4000');
+      const baseUrl = this.config.get<string>('API_URL')
+        || this.config.get<string>('APP_URL')
+        || 'http://localhost:4000';
       const url = `${baseUrl}/uploads/videos/${file.filename}`;
       return { url, filename: file.filename, filePath: file.path };
     }
@@ -86,7 +92,9 @@ export class UploadService {
 
     fs.writeFileSync(filePath, file.buffer);
 
-    const baseUrl = this.config.get<string>('APP_URL', 'http://localhost:4000');
+    const baseUrl = this.config.get<string>('API_URL')
+      || this.config.get<string>('APP_URL')
+      || 'http://localhost:4000';
     const url = `${baseUrl}/uploads/videos/${filename}`;
 
     return { url, filename, filePath };

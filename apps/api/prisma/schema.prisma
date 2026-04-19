@@ -86,11 +86,7 @@ model User {
   newsletterPrefs    NewsletterPreferences?
   documentAcceptances DocumentAcceptance[]
   genrePreferences    UserGenrePreference[]
-<<<<<<< Updated upstream
-=======
-  comments            Comment[]
   contentLikes        ContentLike[]
->>>>>>> Stashed changes
 
   // Admin relations
   reviewedVerifications UserVerification[] @relation("ReviewedVerifications")
@@ -212,11 +208,7 @@ model Content {
   playlistItems   PlaylistItem[]
   subscriptionPlans SubscriptionPlan[]
   subscriptionAccess SubscriptionAccess[]
-<<<<<<< Updated upstream
-=======
-  comments        Comment[]
   likes           ContentLike[]
->>>>>>> Stashed changes
 
   @@index([slug])
   @@index([contentType])
@@ -232,8 +224,6 @@ model Content {
   @@map("content")
 }
 
-<<<<<<< Updated upstream
-=======
 model ContentLike {
   id        String   @id @default(uuid())
   contentId String   @map("content_id")
@@ -249,27 +239,6 @@ model ContentLike {
   @@map("content_likes")
 }
 
-model Comment {
-  id        String   @id @default(uuid())
-  contentId String   @map("content_id")
-  userId    String   @map("user_id")
-  parentId  String?  @map("parent_id")
-  text      String   @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent  Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  replies Comment[] @relation("CommentReplies")
-
-  @@index([contentId, createdAt])
-  @@index([userId])
-  @@index([parentId])
-  @@map("comments")
-}
-
->>>>>>> Stashed changes
 model Series {
   id             String  @id @default(uuid())
   contentId      String  @unique @map("content_id")
@@ -857,7 +826,7 @@ model Product {
   id                String        @id @default(uuid())
   name              String
   slug              String        @unique
-  description       String        @db.Text
+  description       String?        @db.Text
   categoryId        String        @map("category_id")
   price             Decimal       @db.Decimal(10, 2)
   bonusPrice        Decimal?      @map("bonus_price") @db.Decimal(10, 2)

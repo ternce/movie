@@ -1,3 +1,4 @@
+import { UserRole } from '@movie-platform/shared';
 import {
   Body,
   Controller,
@@ -14,38 +15,35 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { UserRole } from '@movie-platform/shared';
 
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { AdminPartnersService } from '../services/admin-partners.service';
+import { Roles } from '../../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../auth/guards/roles.guard';
 import {
-  AdminPartnersQueryDto,
+  AdminCommissionListDto,
+  BatchApproveCommissionsDto,
+  BatchCommissionActionResponseDto,
+  CommissionActionResponseDto,
+  RejectCommissionDto
+} from '../dto/partner/admin-commission.dto';
+import {
   AdminCommissionsQueryDto,
+  AdminPartnersQueryDto,
   AdminWithdrawalsQueryDto,
 } from '../dto/partner/admin-partner-query.dto';
 import {
-  AdminPartnerDto,
-  AdminPartnerListDto,
-  AdminPartnerStatsDto,
   AdminPartnerDetailDto,
+  AdminPartnerListDto,
+  AdminPartnerStatsDto
 } from '../dto/partner/admin-partner.dto';
-import {
-  AdminCommissionDto,
-  AdminCommissionListDto,
-  RejectCommissionDto,
-  BatchApproveCommissionsDto,
-  CommissionActionResponseDto,
-  BatchCommissionActionResponseDto,
-} from '../dto/partner/admin-commission.dto';
 import {
   AdminWithdrawalDto,
   AdminWithdrawalListDto,
+  AdminWithdrawalStatsDto,
   RejectWithdrawalDto,
   WithdrawalActionResponseDto,
-  AdminWithdrawalStatsDto,
 } from '../dto/partner/admin-withdrawal.dto';
+import { AdminPartnersService } from '../services/admin-partners.service';
 
 @ApiTags('Admin - Partners')
 @ApiBearerAuth()

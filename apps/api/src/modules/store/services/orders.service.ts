@@ -93,7 +93,7 @@ export class OrdersService {
           status: OrderStatus.PENDING,
           totalAmount,
           bonusAmountUsed: bonusAmount,
-          shippingAddress: dto.shippingAddress as unknown as Prisma.JsonValue,
+          shippingAddress: dto.shippingAddress as unknown as Prisma.InputJsonValue,
         },
       });
 
@@ -323,7 +323,7 @@ export class OrdersService {
       totalAmount: Number(order.totalAmount),
       bonusAmountUsed: Number(order.bonusAmountUsed),
       amountPaid: Number(order.totalAmount) - Number(order.bonusAmountUsed),
-      shippingAddress: order.shippingAddress as ShippingAddressDto,
+      shippingAddress: order.shippingAddress as unknown as ShippingAddressDto,
       trackingNumber: order.trackingNumber || undefined,
       createdAt: order.createdAt,
     };

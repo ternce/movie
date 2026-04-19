@@ -36,7 +36,7 @@ export default function CreateClipPage() {
 
   return (
     <div className="py-8 md:py-12">
-      <ClipWizard onSuccess={(id) => router.push(`/studio/${id}`)} />
+      <ClipWizard onSuccess={(id) => router.push(`/studio/${id}?created=1`)} />
     </div>
   );
 }

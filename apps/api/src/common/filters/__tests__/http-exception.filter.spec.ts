@@ -433,7 +433,7 @@ describe('HttpExceptionFilter', () => {
     });
 
     it('should handle undefined exception', () => {
-      const { mockHost, mockStatus, mockJson } = createMockContext();
+      const { mockHost, mockStatus, mockJson: _mockJson } = createMockContext();
 
       filter.catch(undefined, mockHost);
 

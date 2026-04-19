@@ -115,12 +115,16 @@ export class AdminStoreService {
       .replace(/[^a-zа-яё0-9]+/gi, '-')
       .replace(/(^-|-$)/g, '');
 
+    if (!dto.categoryId) {
+      throw new BadRequestException('categoryId обязателен');
+    }
+
     const product = await this.prisma.product.create({
       data: {
         name: dto.name,
         slug,
-        description: dto.description || null,
-        categoryId: dto.categoryId || null,
+        description: dto.description ?? '',
+        category: { connect: { id: dto.categoryId } },
         price: dto.price,
         bonusPrice: dto.bonusPrice ?? null,
         allowsPartialBonus: dto.allowsPartialBonus ?? true,
@@ -175,7 +179,7 @@ export class AdminStoreService {
     if (dto.categoryId !== undefined) {
       data.category = dto.categoryId
         ? { connect: { id: dto.categoryId } }
-        : { disconnect: true };
+        : undefined; // или вообще не менять
     }
     if (dto.price !== undefined) data.price = dto.price;
     if (dto.bonusPrice !== undefined) data.bonusPrice = dto.bonusPrice;

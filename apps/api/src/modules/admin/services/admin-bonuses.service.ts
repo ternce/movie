@@ -6,7 +6,6 @@ import {
   BonusTransactionType,
   Prisma,
 } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
 
 import { PrismaService } from '../../../config/prisma.service';
 import { BonusesService } from '../../bonuses/bonuses.service';
@@ -365,7 +364,7 @@ export class AdminBonusesService {
         description: dto.description,
         bonusAmount: dto.bonusAmount,
         targetType: dto.targetType,
-        targetCriteria: dto.targetCriteria || {},
+        targetCriteria: (dto.targetCriteria || {}) as Prisma.InputJsonValue,
         startDate: new Date(dto.startDate),
         endDate: dto.endDate ? new Date(dto.endDate) : null,
         expiryDays: dto.expiryDays,
@@ -413,7 +412,7 @@ export class AdminBonusesService {
         description: dto.description,
         bonusAmount: dto.bonusAmount,
         targetType: dto.targetType,
-        targetCriteria: dto.targetCriteria,
+        targetCriteria: (dto.targetCriteria || {}) as Prisma.InputJsonValue,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         expiryDays: dto.expiryDays,
@@ -474,7 +473,6 @@ export class AdminBonusesService {
     const expiryDays = campaign.expiryDays || BONUS_CONFIG.DEFAULT_EXPIRY_DAYS;
 
     let usersAwarded = 0;
-    const totalAmount = new Decimal(0);
 
     // Process users in batches
     const batchSize = 100;

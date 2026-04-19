@@ -6,19 +6,20 @@
  */
 
 // ── User factory ──────────────────────────────────────────────────────
-export {
-  // Types & interfaces
+// TYPES (только типы)
+export type {
   MockUser,
   CreateUserOptions,
-  // Constants
+} from './user.factory';
+
+// VALUES (функции, константы, enums)
+export {
   DEFAULT_PASSWORD,
   DEFAULT_PASSWORD_HASH,
-  // Enums (re-exported from Prisma)
   AgeCategory,
   UserRole,
   VerificationStatus,
   VerificationMethod,
-  // Functions
   generateReferralCode,
   getAgeCategory,
   createMockUser,
@@ -31,11 +32,12 @@ export {
   createVerifiedUser,
   createReferralChain,
 } from './user.factory';
+
 export { default as userFactory } from './user.factory';
 
 // ── Content factory ───────────────────────────────────────────────────
-export {
-  // Types & interfaces
+// TYPES
+export type {
   MockContent,
   MockCategory,
   MockTag,
@@ -46,10 +48,12 @@ export {
   CreateTagOptions,
   CreateGenreOptions,
   CreateWatchHistoryOptions,
-  // Enums (re-exported from Prisma)
+} from './content.factory';
+
+// VALUES (runtime)
+export {
   ContentStatus,
   ContentType,
-  // Functions
   generateSlug as generateContentSlug,
   createMockContent,
   createPublishedContent,
@@ -66,17 +70,18 @@ export {
   createMockGenre,
   createMockWatchHistory,
   createContentWithRelations,
-  // Factory objects
   categoryFactory,
   tagFactory,
   genreFactory,
   watchHistoryFactory,
 } from './content.factory';
+
 export { default as contentFactory } from './content.factory';
 
 // ── Bonus factory ─────────────────────────────────────────────────────
-export {
-  // Types & interfaces
+
+// TYPES
+export type {
   MockBonusTransaction,
   MockPartnerCommission as MockBonusCommission,
   MockBonusCampaign,
@@ -88,10 +93,12 @@ export {
   CreateBonusCampaignOptions,
   CreateBonusWithdrawalOptions,
   CreateBonusRateOptions,
-  // Enums
+} from './bonus.factory';
+
+// VALUES (runtime)
+export {
   BonusTransactionType,
   BonusSource,
-  // Functions
   createMockBonusTransaction,
   createEarnTransaction,
   createSpendTransaction,
@@ -107,25 +114,28 @@ export {
   createMockUserActivityBonus,
   createUserWithReferrer,
 } from './bonus.factory';
+
 export { default as bonusFactory } from './bonus.factory';
 
 // ── Partner factory ───────────────────────────────────────────────────
-export {
-  // Types & interfaces
+
+// TYPES
+export type {
   MockPartnerCommission,
   MockPartnerRelationship,
   MockWithdrawalRequest,
   CreateCommissionOptions as CreatePartnerCommissionOptions,
   CreateRelationshipOptions,
   CreateWithdrawalOptions as CreatePartnerWithdrawalOptions,
-  // Enums
   CommissionStatus as PartnerCommissionStatus,
   WithdrawalStatus as PartnerWithdrawalStatus,
   TaxStatus as PartnerTaxStatus,
-  // Constants
+} from './partner.factory';
+
+// VALUES (runtime)
+export {
   COMMISSION_RATES,
   TAX_RATES,
-  // Functions
   createMockCommission as createMockPartnerCommission,
   createPendingCommission,
   createApprovedCommission,
@@ -136,18 +146,22 @@ export {
   calculateExpectedCommission,
   calculateExpectedTax,
 } from './partner.factory';
+
 export { default as partnerFactory } from './partner.factory';
 
 // ── Product factory ───────────────────────────────────────────────────
-export {
-  // Types & interfaces
+
+// TYPES
+export type {
   MockProduct,
   MockProductCategory,
   CreateProductOptions,
   CreateCategoryOptions as CreateProductCategoryOptions,
-  // Enums
+} from './product.factory';
+
+// VALUES (runtime)
+export {
   ProductStatus,
-  // Functions
   createMockProduct,
   createActiveProduct,
   createOutOfStockProduct,
@@ -158,21 +172,26 @@ export {
   createProductsForCategory,
   createProductsWithPriceRange,
 } from './product.factory';
+
 export { default as productFactory } from './product.factory';
 
 // ── Subscription factory ──────────────────────────────────────────────
-export {
-  // Types & interfaces
+// ── Subscription factory ──────────────────────────────────────────────
+
+// TYPES
+export type {
   MockSubscriptionPlan,
   MockUserSubscription,
   MockSubscriptionAccess,
   CreatePlanOptions,
   CreateUserSubscriptionOptions,
   CreateAccessOptions,
-  // Enums
   SubscriptionType,
   SubscriptionStatus,
-  // Functions
+} from './subscription.factory';
+
+// VALUES (runtime)
+export {
   createMockSubscriptionPlan,
   createPremiumPlan,
   createContentPlan,
@@ -187,22 +206,26 @@ export {
   createSubscriptionAboutToExpire,
   calculateDaysRemaining,
 } from './subscription.factory';
+
 export { default as subscriptionFactory } from './subscription.factory';
 
 // ── Order factory ─────────────────────────────────────────────────────
-export {
-  // Types & interfaces
+// ── Order factory ─────────────────────────────────────────────────────
+
+// TYPES
+export type {
   ShippingAddress,
   MockOrder,
   MockOrderItem,
   CartItem,
   CreateOrderOptions,
   CreateOrderItemOptions,
-  // Enums
-  OrderStatus,
-  // Constants
+} from './order.factory';
+
+// VALUES (runtime)
+export {
   DEFAULT_SHIPPING_ADDRESS,
-  // Functions
+  OrderStatus,
   createMockOrder,
   createPendingOrder,
   createPaidOrder,
@@ -217,18 +240,23 @@ export {
   createOrderHistory,
   canCancelOrder,
 } from './order.factory';
+
 export { default as orderFactory } from './order.factory';
 
 // ── Transaction factory ───────────────────────────────────────────────
-export {
-  // Types & interfaces
+// ── Transaction factory ───────────────────────────────────────────────
+
+// TYPES
+export type {
   MockTransaction,
   CreateTransactionOptions,
-  // Enums (re-exported from Prisma)
   TransactionType,
   TransactionStatus,
   PaymentMethodType,
-  // Functions
+} from './transaction.factory';
+
+// VALUES (runtime)
+export {
   createMockTransaction,
   createPendingTransaction,
   createCompletedTransaction,
@@ -243,4 +271,5 @@ export {
   createTransactionWithBonus,
   createFullyBonusCoveredTransaction,
 } from './transaction.factory';
+
 export { default as transactionFactory } from './transaction.factory';

@@ -96,6 +96,26 @@ export interface ReorderStructureInput {
   }>;
 }
 
+export interface TreeStructureItem {
+  id: string;
+  title: string;
+  description: string;
+  order: number;
+  /** Present only for existing episodes/lessons fetched from API */
+  contentId?: string;
+}
+
+export interface TreeStructureGroup {
+  id: string;
+  order: number;
+  items: TreeStructureItem[];
+}
+
+export interface SyncSeriesStructureInput {
+  original: SeriesStructure;
+  groups: TreeStructureGroup[];
+}
+
 // ============ Queries ============
 
 /**
@@ -246,6 +266,158 @@ export function useReorderStructure(rootContentId: string) {
     },
     onError: (error: ApiError) => {
       toast.error(error.message || 'Не удалось обновить порядок');
+    },
+  });
+}
+
+function flattenOriginalEpisodes(structure: SeriesStructure) {
+  const map = new Map<string, { title: string; description: string; seasonNumber: number; episodeNumber: number }>();
+  for (const season of structure.seasons ?? []) {
+    for (const ep of season.episodes ?? []) {
+      if (ep.contentId) {
+        map.set(ep.contentId, {
+          title: ep.title,
+          description: ep.description || '',
+          seasonNumber: ep.seasonNumber,
+          episodeNumber: ep.episodeNumber,
+        });
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * Sync series/tutorial structure edits from the TreeManager UI:
+ * - creates new episodes/lessons
+ * - updates title/description
+ * - deletes removed episodes/lessons
+ * - reorders/moves existing episodes/lessons across seasons
+ */
+export function useSyncSeriesStructure(rootContentId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ original, groups }: SyncSeriesStructureInput) => {
+      const originalByContentId = flattenOriginalEpisodes(original);
+
+      const nextExisting: Array<{
+        contentId: string;
+        title: string;
+        description: string;
+        seasonNumber: number;
+        episodeNumber: number;
+      }> = [];
+
+      const nextNew: Array<{
+        title: string;
+        description: string;
+        seasonNumber: number;
+        episodeNumber: number;
+      }> = [];
+
+      for (const group of groups ?? []) {
+        for (const item of group.items ?? []) {
+          const title = (item.title || '').trim();
+          const description = item.description || '';
+          if (!title) {
+            throw new Error('Название эпизода/урока не может быть пустым');
+          }
+
+          const seasonNumber = group.order;
+          const episodeNumber = item.order;
+
+          if (item.contentId) {
+            nextExisting.push({
+              contentId: item.contentId,
+              title,
+              description,
+              seasonNumber,
+              episodeNumber,
+            });
+          } else {
+            nextNew.push({
+              title,
+              description,
+              seasonNumber,
+              episodeNumber,
+            });
+          }
+        }
+      }
+
+      const nextExistingIds = new Set(nextExisting.map((e) => e.contentId));
+      const originalIds = new Set(originalByContentId.keys());
+
+      const deletions: string[] = [];
+      for (const id of originalIds) {
+        if (!nextExistingIds.has(id)) deletions.push(id);
+      }
+
+      const updates: Array<{ contentId: string; title: string; description: string }> = [];
+      const reorderPayload: ReorderStructureInput['episodes'] = [];
+
+      let reorderNeeded = false;
+      for (const ep of nextExisting) {
+        const prev = originalByContentId.get(ep.contentId);
+        if (prev) {
+          if (prev.title !== ep.title || (prev.description || '') !== (ep.description || '')) {
+            updates.push({ contentId: ep.contentId, title: ep.title, description: ep.description });
+          }
+          if (prev.seasonNumber !== ep.seasonNumber || prev.episodeNumber !== ep.episodeNumber) {
+            reorderNeeded = true;
+          }
+        } else {
+          // Episode exists in UI but not in original (shouldn't happen); treat as reorder-needed.
+          reorderNeeded = true;
+        }
+
+        reorderPayload.push({
+          id: ep.contentId,
+          seasonNumber: ep.seasonNumber,
+          episodeNumber: ep.episodeNumber,
+        });
+      }
+
+      // 1) Delete removed episodes (best-effort sequential)
+      for (const contentId of deletions) {
+        await api.delete(endpoints.adminContent.deleteEpisode(contentId));
+      }
+
+      // 2) Create new episodes
+      for (const ep of nextNew) {
+        await api.post(endpoints.adminContent.addEpisode(rootContentId), {
+          title: ep.title,
+          description: ep.description || undefined,
+          seasonNumber: ep.seasonNumber,
+          episodeNumber: ep.episodeNumber,
+        });
+      }
+
+      // 3) Update metadata
+      for (const ep of updates) {
+        await api.patch(endpoints.adminContent.updateEpisode(ep.contentId), {
+          title: ep.title,
+          description: ep.description,
+        });
+      }
+
+      // 4) Reorder/move existing episodes
+      if (reorderNeeded && reorderPayload.length > 0) {
+        await api.patch(endpoints.adminContent.reorderStructure(rootContentId), {
+          episodes: reorderPayload,
+        });
+      }
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.adminContent.structure(rootContentId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.adminContent.detail(rootContentId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.adminContent.lists() }),
+      ]);
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.message || 'Не удалось сохранить структуру');
     },
   });
 }

@@ -1,11 +1,15 @@
 'use client';
 
 import { Trash } from '@phosphor-icons/react';
-import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 
 import { StudioPageHeader } from '@/components/studio/studio-page-header';
 import { ContentEditorRouter } from '@/components/studio/editors/content-editor-router';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,9 +29,14 @@ import {
 export default function StudioEditPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const contentId = params.id as string;
   const { data: content } = useAdminContentDetail(contentId);
   const deleteContent = useDeleteContent();
+
+  const created = searchParams.get('created') === '1';
+  const watchPath = `/watch/${contentId}`;
+  const watchUrl = typeof window !== 'undefined' ? `${window.location.origin}${watchPath}` : watchPath;
 
   const handleDelete = () => {
     deleteContent.mutate(contentId, {
@@ -74,6 +83,37 @@ export default function StudioEditPage() {
           ) : undefined
         }
       />
+
+      {created && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-lg">Ссылка на видео</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Input value={watchUrl} readOnly className="flex-1" />
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" asChild>
+                <Link href={watchPath} target="_blank">
+                  Открыть
+                </Link>
+              </Button>
+              <Button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(watchUrl);
+                    toast.success('Ссылка скопирована');
+                  } catch {
+                    toast.error('Не удалось скопировать ссылку');
+                  }
+                }}
+              >
+                Копировать
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="mt-6">
         <ContentEditorRouter contentId={contentId} />

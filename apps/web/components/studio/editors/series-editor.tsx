@@ -29,6 +29,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUpdateContent } from '@/hooks/use-admin-content';
 import {
   useSeriesStructure,
+  useSyncSeriesStructure,
   type SeriesSeason,
 } from '@/hooks/use-series-structure';
 import {
@@ -166,6 +167,7 @@ function buildDefaultValues(content: Record<string, unknown>): SeriesFormValues 
 export function SeriesEditor({ content, contentId }: SeriesEditorProps) {
   const [currentStep, setCurrentStep] = React.useState(1);
   const updateContent = useUpdateContent();
+  const syncStructure = useSyncSeriesStructure(contentId);
 
   // Load series structure
   const { data: structure, isLoading: structureLoading } = useSeriesStructure(contentId);
@@ -229,8 +231,8 @@ export function SeriesEditor({ content, contentId }: SeriesEditorProps) {
 
   // --- Submit ---
   const onFormSubmit = React.useCallback(
-    (values: SeriesFormValues) => {
-      updateContent.mutate({
+    async (values: SeriesFormValues) => {
+      await updateContent.mutateAsync({
         id: contentId,
         title: values.title,
         description: values.description || undefined,
@@ -245,8 +247,16 @@ export function SeriesEditor({ content, contentId }: SeriesEditorProps) {
         tagIds: values.tagIds?.length ? values.tagIds : undefined,
         genreIds: values.genreIds?.length ? values.genreIds : undefined,
       });
+
+      // Persist structure edits (seasons + episodes)
+      if (structure) {
+        await syncStructure.mutateAsync({
+          original: structure,
+          groups: treeGroups,
+        } as any);
+      }
     },
-    [updateContent, contentId]
+    [updateContent, contentId, structure, syncStructure, treeGroups]
   );
 
   const handleFormSubmit = React.useCallback(() => {
@@ -261,7 +271,7 @@ export function SeriesEditor({ content, contentId }: SeriesEditorProps) {
       onNext={handleNext}
       onBack={handleBack}
       onSubmit={handleFormSubmit}
-      isSubmitting={updateContent.isPending}
+      isSubmitting={updateContent.isPending || syncStructure.isPending}
       submitLabel="Сохранить"
       submitIcon={<FloppyDisk weight="fill" className="h-4 w-4" />}
       cancelHref="/studio"

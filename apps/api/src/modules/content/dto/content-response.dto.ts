@@ -79,11 +79,6 @@ export class ContentListItemDto {
 
   @ApiProperty({ type: [GenreDto] })
   genres!: GenreDto[];
-<<<<<<< Updated upstream
-=======
-
-  @ApiPropertyOptional({ description: 'Number of comments' })
-  commentCount?: number;
 
   @ApiPropertyOptional({ description: 'Number of likes' })
   likeCount?: number;
@@ -96,7 +91,6 @@ export class ContentListItemDto {
 
   @ApiPropertyOptional({ description: 'Number of episodes/lessons (SERIES/TUTORIAL only)' })
   episodeCount?: number;
->>>>>>> Stashed changes
 }
 
 export class ContentDetailDto extends ContentListItemDto {

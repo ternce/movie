@@ -16,7 +16,6 @@ import {
   TransactionStatus,
   TransactionType,
 } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
 
 import { UserSubscriptionsService } from './user-subscriptions.service';
 import { SubscriptionPlansService } from './subscription-plans.service';
@@ -27,8 +26,6 @@ import {
   createPremiumPlan,
   createContentPlan,
   createActiveSubscription,
-  createExpiredSubscription,
-  createCancelledSubscription,
   SubscriptionStatus,
   SubscriptionType,
 } from '../../../test/factories/subscription.factory';

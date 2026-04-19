@@ -83,7 +83,7 @@ export class ContentServiceWithCache {
   /**
    * Example: Invalidate cache when content is updated
    */
-  async updateContent(slug: string, data: Record<string, unknown>) {
+  async updateContent(slug: string, _data: Record<string, unknown>) {
     // Perform update
     // const updated = await this.prisma.content.update({ ... });
 
@@ -223,7 +223,7 @@ export class UserServiceWithCache {
   /**
    * Invalidate profile cache on update
    */
-  async updateProfile(userId: string, data: Record<string, unknown>) {
+  async updateProfile(userId: string, _data: Record<string, unknown>) {
     // Perform update
     // const updated = await this.prisma.user.update({ ... });
 

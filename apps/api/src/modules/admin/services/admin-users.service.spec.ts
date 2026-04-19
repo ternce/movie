@@ -18,7 +18,7 @@ import { AdminUsersService } from './admin-users.service';
 import { PrismaService } from '../../../config/prisma.service';
 import { BonusesService } from '../../bonuses/bonuses.service';
 import {
-  createMockUser,
+  createMockUser as _createMockUser,
   createAdminUser,
   createAdultUser,
   createPartnerUser,

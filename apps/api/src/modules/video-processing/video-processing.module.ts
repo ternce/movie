@@ -16,19 +16,23 @@ import { EdgeCenterModule } from '../edgecenter/edgecenter.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>('REDIS_URL');
         const password = config.get<string>('REDIS_PASSWORD', '');
+
         return {
-        redis: {
-          host: config.get<string>('REDIS_HOST', 'localhost'),
-          port: config.get<number>('REDIS_PORT', 6379),
-          ...(password ? { password } : {}),
-        },
-        defaultJobOptions: {
-          removeOnComplete: 5,
-          removeOnFail: 10,
-          attempts: 1,
-        },
-      };
+          redis: redisUrl
+            ? redisUrl
+            : {
+                host: config.get<string>('REDIS_HOST', 'localhost'),
+                port: config.get<number>('REDIS_PORT', 6379),
+                ...(password ? { password } : {}),
+              },
+          defaultJobOptions: {
+            removeOnComplete: 5,
+            removeOnFail: 10,
+            attempts: 1,
+          },
+        };
       },
     }),
   ],

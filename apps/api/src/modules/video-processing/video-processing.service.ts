@@ -33,19 +33,26 @@ export class VideoProcessingService {
     sourceFilePath: string,
     fileName: string,
   ): Promise<{ jobId: string }> {
+    this.logger.debug(`[enqueueTranscoding START] contentId=${contentId}, filepath=${sourceFilePath}`);
+    
     // Verify content exists
     const content = await this.prisma.content.findUnique({
       where: { id: contentId },
     });
     if (!content) {
+      this.logger.error(`[enqueueTranscoding] Content not found: ${contentId}`);
       throw new NotFoundException(`Контент ${contentId} не найден`);
     }
+    this.logger.debug(`[enqueueTranscoding] Content found: ${contentId}`);
 
     // Delete any existing video files for this content
-    await this.prisma.videoFile.deleteMany({ where: { contentId } });
+    this.logger.debug(`[enqueueTranscoding] Deleting existing video files for ${contentId}`);
+    const deletedCount = await this.prisma.videoFile.deleteMany({ where: { contentId } });
+    this.logger.debug(`[enqueueTranscoding] Deleted ${deletedCount.count} video files`);
 
     // Create a pending VideoFile record
-    await this.prisma.videoFile.create({
+    this.logger.debug(`[enqueueTranscoding] Creating PENDING VideoFile record`);
+    const videoFile = await this.prisma.videoFile.create({
       data: {
         contentId,
         quality: 'Q_720P',
@@ -54,8 +61,10 @@ export class VideoProcessingService {
         encodingStatus: 'PENDING',
       },
     });
+    this.logger.debug(`[enqueueTranscoding] VideoFile created: ${videoFile.id}`);
 
     // Add to BullMQ queue
+    this.logger.debug(`[enqueueTranscoding] Adding to BullMQ queue`);
     const job = await this.videoQueue.add(
       VideoJobType.TRANSCODE,
       { contentId, sourceFilePath, sourceFileName: fileName },
@@ -65,7 +74,6 @@ export class VideoProcessingService {
         attempts: 1,
       },
     );
-
     this.logger.log(
       `Enqueued transcode job ${job.id} for content ${contentId}`,
     );

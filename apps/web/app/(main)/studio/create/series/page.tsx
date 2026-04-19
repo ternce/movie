@@ -33,7 +33,7 @@ export default function CreateSeriesPage() {
 
   return (
     <div className="py-8 md:py-12">
-      <SeriesWizard onSuccess={(id) => router.push(`/studio/${id}`)} />
+      <SeriesWizard onSuccess={(id) => router.push(`/studio/${id}?created=1`)} />
     </div>
   );
 }

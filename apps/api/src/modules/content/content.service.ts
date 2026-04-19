@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { AgeCategory as SharedAgeCategory } from '@movie-platform/shared';
 import { AgeCategory, ContentStatus, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../config/prisma.service';
@@ -114,11 +115,8 @@ export class ContentService {
             publishedAt: true,
             viewCount: true,
             duration: true,
-<<<<<<< Updated upstream
-=======
             _count: {
               select: {
-                comments: true,
                 likes: true,
               },
             },
@@ -127,7 +125,6 @@ export class ContentService {
                 id: true,
               },
             },
->>>>>>> Stashed changes
             category: {
               select: {
                 id: true,
@@ -201,15 +198,11 @@ export class ContentService {
         ageCategory: { in: allowedCategories },
       },
       include: {
-<<<<<<< Updated upstream
-=======
         _count: {
           select: {
-            comments: true,
             likes: true,
           },
         },
->>>>>>> Stashed changes
         category: {
           select: {
             id: true,
@@ -262,15 +255,11 @@ export class ContentService {
         ageCategory: { in: allowedCategories },
       },
       include: {
-<<<<<<< Updated upstream
-=======
         _count: {
           select: {
-            comments: true,
             likes: true,
           },
         },
->>>>>>> Stashed changes
         category: {
           select: {
             id: true,
@@ -337,15 +326,11 @@ export class ContentService {
           { publishedAt: 'desc' },
         ],
         include: {
-<<<<<<< Updated upstream
-=======
           _count: {
             select: {
-              comments: true,
               likes: true,
             },
           },
->>>>>>> Stashed changes
           category: {
             select: {
               id: true,
@@ -423,7 +408,10 @@ export class ContentService {
    */
   async getTags() {
     return this.prisma.tag.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: [
+        { content: { _count: 'desc' } },
+        { name: 'asc' },
+      ],
     });
   }
 
@@ -447,14 +435,6 @@ export class ContentService {
     });
   }
 
-<<<<<<< Updated upstream
-  private readonly AGE_CATEGORY_MAP: Record<string, string> = {
-    ZERO_PLUS: '0+',
-    SIX_PLUS: '6+',
-    TWELVE_PLUS: '12+',
-    SIXTEEN_PLUS: '16+',
-    EIGHTEEN_PLUS: '18+',
-=======
   private async invalidateContentCaches(): Promise<void> {
     await Promise.all([
       this.cache.invalidatePattern('content:list:*'),
@@ -536,20 +516,20 @@ export class ContentService {
     [AgeCategory.TWELVE_PLUS]: SharedAgeCategory.TWELVE_PLUS,
     [AgeCategory.SIXTEEN_PLUS]: SharedAgeCategory.SIXTEEN_PLUS,
     [AgeCategory.EIGHTEEN_PLUS]: SharedAgeCategory.EIGHTEEN_PLUS,
->>>>>>> Stashed changes
   };
 
   /**
    * Map content entity to list DTO.
    */
   private mapContentToDto(content: any) {
+    const ageCategory = content.ageCategory as AgeCategory;
     return {
       id: content.id,
       title: content.title,
       slug: content.slug,
       description: content.description,
       contentType: content.contentType,
-      ageCategory: this.AGE_CATEGORY_MAP[content.ageCategory] ?? content.ageCategory,
+      ageCategory: this.AGE_CATEGORY_MAP[ageCategory] ?? ageCategory,
       thumbnailUrl: content.thumbnailUrl,
       duration: content.duration,
       isFree: content.isFree,
@@ -561,11 +541,7 @@ export class ContentService {
       category: content.category,
       tags: content.tags.map((ct: any) => ct.tag),
       genres: content.genres.map((cg: any) => cg.genre),
-<<<<<<< Updated upstream
-=======
-      commentCount: typeof content?._count?.comments === 'number' ? content._count.comments : undefined,
       likeCount: typeof content?._count?.likes === 'number' ? content._count.likes : undefined,
->>>>>>> Stashed changes
     };
   }
 

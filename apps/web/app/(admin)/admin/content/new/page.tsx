@@ -22,8 +22,9 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { ImageUpload } from '@/components/admin/content/image-upload';
 import { VideoUpload } from '@/components/admin/content/video-upload';
+import { TagInput } from '@/components/studio/tag-input';
 import { useCreateContent } from '@/hooks/use-admin-content';
-import { useContentCategories } from '@/hooks/use-studio-data';
+import { useContentCategories, useContentTags } from '@/hooks/use-studio-data';
 
 /**
  * Admin content creation page
@@ -32,6 +33,8 @@ export default function AdminContentNewPage() {
   const router = useRouter();
   const createContent = useCreateContent();
   const { flat: categories } = useContentCategories();
+  const { data: tagsData } = useContentTags();
+  const availableTags = tagsData ?? [];
 
   // Form state
   const [title, setTitle] = React.useState('');
@@ -44,6 +47,7 @@ export default function AdminContentNewPage() {
   const [previewUrl, setPreviewUrl] = React.useState('');
   const [isFree, setIsFree] = React.useState(false);
   const [individualPrice, setIndividualPrice] = React.useState('');
+  const [tagIds, setTagIds] = React.useState<string[]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,10 +68,11 @@ export default function AdminContentNewPage() {
         previewUrl: previewUrl || undefined,
         isFree,
         individualPrice: individualPrice ? Number(individualPrice) : undefined,
+        tagIds: tagIds.length ? tagIds : undefined,
       },
       {
-        onSuccess: () => {
-          router.push('/admin/content');
+        onSuccess: (data) => {
+          router.push(`/admin/content/${data.id}?created=1`);
         },
       }
     );
@@ -214,21 +219,17 @@ export default function AdminContentNewPage() {
                     </SelectContent>
                   </Select>
                 </div>
-<<<<<<< Updated upstream
-=======
 
                 <div className="space-y-2">
                   <Label>Теги</Label>
                   <TagInput
                     value={tagIds}
                     onChange={setTagIds}
-                    availableTags={availableTags ?? []}
+                    availableTags={availableTags}
                     placeholder="Выберите тег..."
                     disabled={createContent.isPending}
-                    maxTags={1}
                   />
                 </div>
->>>>>>> Stashed changes
               </CardContent>
             </Card>
 
