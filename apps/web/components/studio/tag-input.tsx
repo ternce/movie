@@ -64,6 +64,11 @@ export function TagInput({
     return suggestions.slice(0, SUGGESTIONS_LIMIT);
   }, [availableTags, value, query]);
 
+  const suggestionsTitle = React.useMemo(() => {
+    const q = query.trim();
+    return q.length === 0 ? 'Популярные теги' : 'Результаты';
+  }, [query]);
+
   const handleAdd = React.useCallback(
     (tagId: string) => {
       if (maxReached) return;
@@ -169,6 +174,12 @@ export function TagInput({
             onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <div className="max-h-[200px] overflow-y-auto p-1">
+              <div className="px-2 pt-2 pb-1">
+                <p className="text-xs font-medium text-mp-text-secondary">
+                  {suggestionsTitle}
+                </p>
+              </div>
+
               {filteredSuggestions.length === 0 ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">
                   Теги не найдены

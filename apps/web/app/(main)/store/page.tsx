@@ -183,29 +183,31 @@ export default function StorePage() {
         </div>
       </div>
 
-      {/* Mobile: Sheet overlay */}
-      <Sheet open={showFilters} onOpenChange={setShowFilters}>
-        <SheetContent side="left" className="w-80 md:hidden">
-          <SheetHeader>
-            <SheetTitle>Фильтры</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4">
-            <StoreFilters
-              categories={categories ?? []}
-              selectedCategories={selectedCategories}
-              onCategoryToggle={handleCategoryToggle}
-              minPrice={minPrice}
-              maxPrice={maxPrice}
-              onMinPriceChange={(v) => { setMinPrice(v); setCurrentPage(1); }}
-              onMaxPriceChange={(v) => { setMaxPrice(v); setCurrentPage(1); }}
-              inStockOnly={inStockOnly}
-              onInStockChange={(v) => { setInStockOnly(v); setCurrentPage(1); }}
-              onClearAll={handleClearFilters}
-              hasActiveFilters={hasActiveFilters}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Mobile: Sheet overlay (do not mount on desktop to avoid invisible overlays blocking clicks) */}
+      <div className="md:hidden">
+        <Sheet open={showFilters} onOpenChange={setShowFilters}>
+          <SheetContent side="left" className="w-80">
+            <SheetHeader>
+              <SheetTitle>Фильтры</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4">
+              <StoreFilters
+                categories={categories ?? []}
+                selectedCategories={selectedCategories}
+                onCategoryToggle={handleCategoryToggle}
+                minPrice={minPrice}
+                maxPrice={maxPrice}
+                onMinPriceChange={(v) => { setMinPrice(v); setCurrentPage(1); }}
+                onMaxPriceChange={(v) => { setMaxPrice(v); setCurrentPage(1); }}
+                inStockOnly={inStockOnly}
+                onInStockChange={(v) => { setInStockOnly(v); setCurrentPage(1); }}
+                onClearAll={handleClearFilters}
+                hasActiveFilters={hasActiveFilters}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
 
       <div className="flex gap-6">
         {/* Desktop: inline aside */}
