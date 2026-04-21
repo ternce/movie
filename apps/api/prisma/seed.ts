@@ -120,6 +120,41 @@ async function seedTags() {
   console.log('✅ Content Tags seeded');
 }
 
+async function seedGenres() {
+  console.log('🎯 Seeding Genres...');
+
+  const genres = [
+    { name: 'Экшен', slug: 'action', order: 1 },
+    { name: 'Комедия', slug: 'comedy', order: 2 },
+    { name: 'Драма', slug: 'drama', order: 3 },
+    { name: 'Триллер', slug: 'thriller', order: 4 },
+    { name: 'Ужасы', slug: 'horror', order: 5 },
+    { name: 'Фантастика', slug: 'sci-fi', order: 6 },
+    { name: 'Фэнтези', slug: 'fantasy', order: 7 },
+    { name: 'Документальное', slug: 'documentary', order: 8 },
+    { name: 'Обучение', slug: 'education', order: 9 },
+  ];
+
+  for (const genre of genres) {
+    await prisma.genre.upsert({
+      where: { slug: genre.slug },
+      update: {
+        name: genre.name,
+        order: genre.order,
+        isActive: true,
+      },
+      create: {
+        name: genre.name,
+        slug: genre.slug,
+        order: genre.order,
+        isActive: true,
+      },
+    });
+  }
+
+  console.log('✅ Genres seeded');
+}
+
 async function seedProductCategories() {
   console.log('🎯 Seeding Product Categories...');
 
@@ -901,6 +936,7 @@ async function main() {
     await seedPartnerLevels();
     await seedCategories();
     await seedTags();
+    await seedGenres();
     await seedProductCategories();
     await seedSubscriptionPlans();
     await seedBonusRates();
@@ -927,6 +963,7 @@ async function main() {
     console.log('📊 Summary:');
     console.log('   - 5 Partner Levels');
     console.log('   - 5 Content Categories');
+    console.log('   - 9 Genres');
     console.log('   - 3 Product Categories');
     console.log('   - 4 Subscription Plans');
     console.log('   - 1 Bonus Rate');

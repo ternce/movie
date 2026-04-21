@@ -52,6 +52,7 @@ export default function WatchPage() {
   const queryClient = useQueryClient();
   const [showFullDescription, setShowFullDescription] = React.useState(false);
   const [liked, setLiked] = React.useState<boolean | null>(null);
+  const hasRecordedViewRef = React.useRef(false);
 
   // Fetch content metadata (works with both UUID and slug)
   const { data: contentData, isLoading: isContentLoading, error: contentError } = useContentDetail(contentId);
@@ -63,6 +64,54 @@ export default function WatchPage() {
 
   const isLoading = isContentLoading && isStreamLoading;
   const error = streamError;
+
+  // Reset per-content flags
+  React.useEffect(() => {
+    hasRecordedViewRef.current = false;
+  }, [contentId]);
+
+  // Record a view once per page open (best-effort)
+  React.useEffect(() => {
+    if (!contentId) return;
+    if (hasRecordedViewRef.current) return;
+
+    // Only record when we know content exists (avoid inflating for true 404s)
+    if (!contentDetail) return;
+
+    hasRecordedViewRef.current = true;
+    api
+      .get(endpoints.content.recordView(contentId))
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.content.detail(contentId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.content.lists() });
+      })
+      .catch(() => {
+        // non-critical
+      });
+  }, [contentId, contentDetail, queryClient]);
+
+  const handleLikeToggle = React.useCallback(async () => {
+    if (!contentId) return;
+
+    const nextLiked = liked === true ? null : true;
+    setLiked(nextLiked);
+
+    try {
+      if (nextLiked === true) {
+        await api.post(endpoints.content.like(contentId));
+      } else {
+        await api.delete(endpoints.content.like(contentId));
+      }
+
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.detail(contentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.details() });
+    } catch (e) {
+      // Revert optimistic state on failure
+      setLiked(liked);
+      throw e;
+    }
+  }, [contentId, liked, queryClient]);
 
   // Save watch progress
   const handleProgress = React.useCallback(
@@ -304,7 +353,9 @@ export default function WatchPage() {
             <Button
               variant={liked === true ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setLiked(liked === true ? null : true)}
+              onClick={() => {
+                handleLikeToggle().catch(() => undefined);
+              }}
               className="gap-2"
             >
               <ThumbsUp

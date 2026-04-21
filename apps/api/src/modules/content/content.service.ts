@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AgeCategory as SharedAgeCategory } from '@movie-platform/shared';
-import { AgeCategory, ContentStatus, Prisma } from '@prisma/client';
+import { AgeCategory, ContentStatus, ContentType, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../config/prisma.service';
 import { CacheService, CACHE_TTL, CACHE_KEYS } from '../../common/cache/cache.service';
@@ -158,10 +158,57 @@ export class ContentService {
         }),
       ]);
 
+      // Compute season/episode counts for series/tutorial root items (based on Series children)
+      const rootSeriesIds = items
+        .map((item: any) => item.series?.id)
+        .filter((id: string | undefined): id is string => !!id);
+
+      const seasonCountBySeriesId = new Map<string, number>();
+      const episodeCountBySeriesId = new Map<string, number>();
+
+      if (rootSeriesIds.length > 0) {
+        const children = await this.prisma.series.findMany({
+          where: { parentSeriesId: { in: rootSeriesIds } },
+          select: { parentSeriesId: true, seasonNumber: true },
+        });
+
+        const seasonSetBySeriesId = new Map<string, Set<number>>();
+
+        for (const child of children) {
+          const parentId = child.parentSeriesId;
+          if (!parentId) continue;
+
+          episodeCountBySeriesId.set(
+            parentId,
+            (episodeCountBySeriesId.get(parentId) ?? 0) + 1,
+          );
+
+          if (!seasonSetBySeriesId.has(parentId)) {
+            seasonSetBySeriesId.set(parentId, new Set<number>());
+          }
+          seasonSetBySeriesId.get(parentId)!.add(child.seasonNumber);
+        }
+
+        for (const [parentId, seasons] of seasonSetBySeriesId.entries()) {
+          seasonCountBySeriesId.set(parentId, seasons.size);
+        }
+      }
+
       const totalPages = Math.ceil(total / limit);
 
       return {
-        items: items.map((item) => this.mapContentToDto(item)),
+        items: items.map((item: any) => {
+          const seriesId = item.series?.id as string | undefined;
+          const episodeCount = seriesId ? (episodeCountBySeriesId.get(seriesId) ?? 0) : undefined;
+          const seasonCount = seriesId ? (seasonCountBySeriesId.get(seriesId) ?? 0) : undefined;
+
+          return this.mapContentToDto({
+            ...item,
+            seasonCount,
+            episodeCount,
+            lessonCount: item.contentType === ContentType.TUTORIAL ? episodeCount : undefined,
+          });
+        }),
         meta: {
           page,
           limit,
@@ -198,6 +245,7 @@ export class ContentService {
         ageCategory: { in: allowedCategories },
       },
       include: {
+        series: true,
         _count: {
           select: {
             likes: true,
@@ -239,7 +287,19 @@ export class ContentService {
       throw new NotFoundException(`Контент с slug "${slug}" не найден`);
     }
 
-    return this.mapContentToDetailDto(content);
+    const { seasonCount, episodeCount } = await this.getSeriesCountsForContent(content);
+    const lessons =
+      content.contentType === ContentType.TUTORIAL
+        ? await this.getTutorialLessonsForContent(content)
+        : undefined;
+
+    return this.mapContentToDetailDto({
+      ...content,
+      seasonCount,
+      episodeCount,
+      lessonCount: content.contentType === ContentType.TUTORIAL ? episodeCount : undefined,
+      lessons,
+    });
   }
 
   /**
@@ -255,6 +315,7 @@ export class ContentService {
         ageCategory: { in: allowedCategories },
       },
       include: {
+        series: true,
         _count: {
           select: {
             likes: true,
@@ -296,7 +357,65 @@ export class ContentService {
       throw new NotFoundException(`Контент с ID "${id}" не найден`);
     }
 
-    return this.mapContentToDetailDto(content);
+    const { seasonCount, episodeCount } = await this.getSeriesCountsForContent(content);
+    const lessons =
+      content.contentType === ContentType.TUTORIAL
+        ? await this.getTutorialLessonsForContent(content)
+        : undefined;
+
+    return this.mapContentToDetailDto({
+      ...content,
+      seasonCount,
+      episodeCount,
+      lessonCount: content.contentType === ContentType.TUTORIAL ? episodeCount : undefined,
+      lessons,
+    });
+  }
+
+  private async getSeriesCountsForContent(
+    content: any,
+  ): Promise<{ seasonCount?: number; episodeCount?: number }> {
+    const seriesId = content?.series?.id as string | undefined;
+    if (!seriesId) return {};
+
+    const children = await this.prisma.series.findMany({
+      where: { parentSeriesId: seriesId },
+      select: { seasonNumber: true },
+    });
+
+    const episodeCount = children.length;
+    const seasonCount = new Set(children.map((c) => c.seasonNumber)).size;
+
+    return { seasonCount, episodeCount };
+  }
+
+  private async getTutorialLessonsForContent(
+    content: any,
+  ): Promise<Array<{ id: string; number: number; title: string; duration: number; isCompleted: boolean }>> {
+    const seriesId = content?.series?.id as string | undefined;
+    if (!seriesId) return [];
+
+    const episodes = await this.prisma.series.findMany({
+      where: { parentSeriesId: seriesId },
+      include: {
+        content: {
+          select: {
+            id: true,
+            title: true,
+            duration: true,
+          },
+        },
+      },
+      orderBy: [{ seasonNumber: 'asc' }, { episodeNumber: 'asc' }],
+    });
+
+    return episodes.map((ep: any, index: number) => ({
+      id: ep.content.id,
+      number: index + 1,
+      title: ep.content.title,
+      duration: ep.content.duration ?? 0,
+      isCompleted: false,
+    }));
   }
 
   /**
@@ -329,6 +448,11 @@ export class ContentService {
           _count: {
             select: {
               likes: true,
+            },
+          },
+          series: {
+            select: {
+              id: true,
             },
           },
           category: {
@@ -364,10 +488,56 @@ export class ContentService {
       }),
     ]);
 
+    const rootSeriesIds = items
+      .map((item: any) => item.series?.id)
+      .filter((id: string | undefined): id is string => !!id);
+
+    const seasonCountBySeriesId = new Map<string, number>();
+    const episodeCountBySeriesId = new Map<string, number>();
+
+    if (rootSeriesIds.length > 0) {
+      const children = await this.prisma.series.findMany({
+        where: { parentSeriesId: { in: rootSeriesIds } },
+        select: { parentSeriesId: true, seasonNumber: true },
+      });
+
+      const seasonSetBySeriesId = new Map<string, Set<number>>();
+
+      for (const child of children) {
+        const parentId = child.parentSeriesId;
+        if (!parentId) continue;
+
+        episodeCountBySeriesId.set(
+          parentId,
+          (episodeCountBySeriesId.get(parentId) ?? 0) + 1,
+        );
+
+        if (!seasonSetBySeriesId.has(parentId)) {
+          seasonSetBySeriesId.set(parentId, new Set<number>());
+        }
+        seasonSetBySeriesId.get(parentId)!.add(child.seasonNumber);
+      }
+
+      for (const [parentId, seasons] of seasonSetBySeriesId.entries()) {
+        seasonCountBySeriesId.set(parentId, seasons.size);
+      }
+    }
+
     const totalPages = Math.ceil(total / limit);
 
     return {
-      items: items.map((item) => this.mapContentToDto(item)),
+      items: items.map((item: any) => {
+        const seriesId = item.series?.id as string | undefined;
+        const episodeCount = seriesId ? (episodeCountBySeriesId.get(seriesId) ?? 0) : undefined;
+        const seasonCount = seriesId ? (seasonCountBySeriesId.get(seriesId) ?? 0) : undefined;
+
+        return this.mapContentToDto({
+          ...item,
+          seasonCount,
+          episodeCount,
+          lessonCount: item.contentType === ContentType.TUTORIAL ? episodeCount : undefined,
+        });
+      }),
       meta: {
         page,
         limit,
@@ -433,6 +603,9 @@ export class ContentService {
       where: { id: contentId },
       data: { viewCount: { increment: 1 } },
     });
+
+    // Best-effort cache invalidation so views reflect after reload.
+    this.invalidateContentCaches().catch(() => undefined);
   }
 
   private async invalidateContentCaches(): Promise<void> {
@@ -542,6 +715,9 @@ export class ContentService {
       tags: content.tags.map((ct: any) => ct.tag),
       genres: content.genres.map((cg: any) => cg.genre),
       likeCount: typeof content?._count?.likes === 'number' ? content._count.likes : undefined,
+      seasonCount: typeof content?.seasonCount === 'number' ? content.seasonCount : undefined,
+      episodeCount: typeof content?.episodeCount === 'number' ? content.episodeCount : undefined,
+      lessonCount: typeof content?.lessonCount === 'number' ? content.lessonCount : undefined,
     };
   }
 
@@ -554,6 +730,7 @@ export class ContentService {
       previewUrl: content.previewUrl,
       createdAt: content.createdAt,
       updatedAt: content.updatedAt,
+      lessons: content.lessons,
     };
   }
 

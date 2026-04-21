@@ -73,11 +73,20 @@ export class VideoProcessingProcessor {
         const thumbKey = `${contentId}/thumb.jpg`;
         await this.storage.uploadFromPath('thumbnails', thumbKey, thumbPath, 'image/jpeg');
         const thumbUrl = this.storage.getPublicUrl('thumbnails', thumbKey);
-        await this.prisma.content.update({
-          where: { id: contentId },
+        const updated = await this.prisma.content.updateMany({
+          where: {
+            id: contentId,
+            OR: [{ thumbnailUrl: null }, { thumbnailUrl: '' }],
+          },
           data: { thumbnailUrl: thumbUrl },
         });
-        this.logger.log(`Thumbnail uploaded for content ${contentId}`);
+        if (updated.count > 0) {
+          this.logger.log(`Thumbnail uploaded for content ${contentId}`);
+        } else {
+          this.logger.log(
+            `Thumbnail generated but skipped updating content ${contentId} (thumbnailUrl already set)`,
+          );
+        }
       }
 
       // 5. Transcode each quality to HLS

@@ -91,6 +91,26 @@ export class ContentListItemDto {
 
   @ApiPropertyOptional({ description: 'Number of episodes/lessons (SERIES/TUTORIAL only)' })
   episodeCount?: number;
+
+  @ApiPropertyOptional({ description: 'Number of lessons (TUTORIAL only)' })
+  lessonCount?: number;
+}
+
+export class TutorialLessonDto {
+  @ApiProperty({ description: 'Lesson content ID' })
+  id!: string;
+
+  @ApiProperty({ description: '1-based lesson order number' })
+  number!: number;
+
+  @ApiProperty()
+  title!: string;
+
+  @ApiProperty({ description: 'Lesson duration in seconds' })
+  duration!: number;
+
+  @ApiProperty({ description: 'Whether the lesson is completed (user-specific)' })
+  isCompleted!: boolean;
 }
 
 export class ContentDetailDto extends ContentListItemDto {
@@ -102,6 +122,9 @@ export class ContentDetailDto extends ContentListItemDto {
 
   @ApiProperty()
   updatedAt!: Date;
+
+  @ApiPropertyOptional({ type: [TutorialLessonDto], description: 'Tutorial lessons (TUTORIAL only)' })
+  lessons?: TutorialLessonDto[];
 }
 
 export class PaginationMetaDto {

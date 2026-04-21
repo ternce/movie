@@ -108,7 +108,7 @@ export function ContentRow({
       </div>
 
       {/* Scrollable content container */}
-      <div className="relative group">
+      <div className="relative group/row">
         {/* Left scroll button - more refined */}
         {canScrollLeft && (
           <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center">
@@ -117,7 +117,7 @@ export function ContentRow({
               variant="ghost"
               size="icon"
               onClick={() => scroll('left')}
-              className="relative z-10 w-11 h-11 rounded-full bg-mp-surface-3/95 backdrop-blur-sm border border-mp-border/50 hover:bg-mp-surface-4 hover:border-mp-border opacity-0 group-hover:opacity-100 touch:hidden transition-all duration-200 ml-2"
+              className="relative z-10 w-11 h-11 rounded-full bg-mp-surface-3/95 backdrop-blur-sm border border-mp-border/50 hover:bg-mp-surface-4 hover:border-mp-border opacity-0 group-hover/row:opacity-100 touch:hidden transition-all duration-200 ml-2"
             >
               <CaretLeft className="w-5 h-5" />
             </Button>
@@ -148,7 +148,7 @@ export function ContentRow({
               variant="ghost"
               size="icon"
               onClick={() => scroll('right')}
-              className="relative z-10 w-11 h-11 rounded-full bg-mp-surface-3/95 backdrop-blur-sm border border-mp-border/50 hover:bg-mp-surface-4 hover:border-mp-border opacity-0 group-hover:opacity-100 touch:hidden transition-all duration-200 mr-2"
+              className="relative z-10 w-11 h-11 rounded-full bg-mp-surface-3/95 backdrop-blur-sm border border-mp-border/50 hover:bg-mp-surface-4 hover:border-mp-border opacity-0 group-hover/row:opacity-100 touch:hidden transition-all duration-200 mr-2"
             >
               <CaretRight className="w-5 h-5" />
             </Button>
